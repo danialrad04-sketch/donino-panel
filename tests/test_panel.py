@@ -20,6 +20,8 @@ class PanelTest(unittest.TestCase):
         self.tmp = tempfile.TemporaryDirectory()
         self.old = dict(os.environ)
         os.environ["DONINO_DB"] = self.tmp.name + "/panel.db"
+        os.environ["DONINO_DATABASE_URL"] = ""
+        os.environ["DONINO_KEY_FILE"] = self.tmp.name + "/master.key"
         os.environ["DONINO_SECURE_COOKIE"] = "false"
         self.client = TestClient(app)
         self.client.__enter__()

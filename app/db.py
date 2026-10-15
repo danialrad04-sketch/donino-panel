@@ -6,41 +6,155 @@ import sqlite3
 import time
 import uuid
 from contextlib import contextmanager
+from functools import lru_cache
 from pathlib import Path
+
+from sqlalchemy import create_engine, event, text
+from sqlalchemy.pool import NullPool
 
 
 def db_path():
     return Path(os.environ.get("DONINO_DB", "data/donino.db"))
 
 
+def database_url():
+    url = os.environ.get("DONINO_DATABASE_URL", "")
+    if url:
+        if not url.startswith(("postgresql+psycopg://", "postgresql://")):
+            raise RuntimeError("DONINO_DATABASE_URL must be a PostgreSQL URL")
+        return url.replace("postgresql://", "postgresql+psycopg://", 1)
+    return "sqlite:///" + str(db_path().resolve())
+
+
+@lru_cache(maxsize=8)
+def _engine(url):
+    if url.startswith("sqlite:"):
+        path = db_path()
+        path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+        engine = create_engine(url, poolclass=NullPool, connect_args={"timeout": 20})
+
+        @event.listens_for(engine, "connect")
+        def configure(connection, record):
+            connection.execute("PRAGMA foreign_keys=ON")
+            connection.execute("PRAGMA busy_timeout=20000")
+
+        return engine
+    return create_engine(
+        url,
+        pool_pre_ping=True,
+        pool_size=5,
+        max_overflow=5,
+        connect_args={"connect_timeout": 10},
+        hide_parameters=True,
+    )
+
+
+class Row(dict):
+    def __getitem__(self, key):
+        if isinstance(key, int):
+            return tuple(self.values())[key]
+        return super().__getitem__(key)
+
+
+class Result:
+    def __init__(self, result):
+        self.result = result
+
+    def fetchone(self):
+        row = self.result.fetchone()
+        return Row(row._mapping) if row is not None else None
+
+    def fetchall(self):
+        return [Row(row._mapping) for row in self.result.fetchall()]
+
+    def __iter__(self):
+        return (Row(row._mapping) for row in self.result)
+
+    @property
+    def rowcount(self):
+        return self.result.rowcount
+
+
+class Connection:
+    def __init__(self, connection):
+        self.connection = connection
+        self.postgres = connection.dialect.name == "postgresql"
+
+    def execute(self, statement, values=()):
+        # Internal qmark SQL is translated to SQLAlchemy bound parameters.
+        # Statement text is never supplied by an API caller.
+        parts = statement.split("?")
+        if len(parts) - 1 != len(values):
+            raise ValueError("SQL parameter count mismatch")
+        sql = parts[0] + "".join(f":p{i}" + part for i, part in enumerate(parts[1:]))
+        return Result(
+            self.connection.execute(
+                text(sql),
+                {
+                    f"p{i}": int(v) if isinstance(v, bool) else v
+                    for i, v in enumerate(values)
+                },
+            )
+        )
+
+    def lock(self, key):
+        if self.postgres:
+            value = int.from_bytes(
+                hashlib.sha256(key.encode()).digest()[:8], "big", signed=True
+            )
+            self.execute("SELECT pg_advisory_xact_lock(?)", (value,))
+
+
 @contextmanager
 def database():
-    path = db_path()
-    path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
-    connection = sqlite3.connect(path, timeout=20)
-    os.chmod(path, 0o600)
-    connection.row_factory = sqlite3.Row
-    connection.execute("PRAGMA foreign_keys=ON")
-    connection.execute("PRAGMA busy_timeout=20000")
-    try:
-        # Serialize read-modify-write operations across requests/workers.
-        connection.execute("BEGIN IMMEDIATE")
-        yield connection
-        connection.commit()
-    except BaseException:
-        connection.rollback()
-        raise
-    finally:
-        connection.close()
+    engine = _engine(database_url())
+    with engine.connect() as connection:
+        try:
+            if engine.dialect.name == "sqlite":
+                os.chmod(db_path(), 0o600)
+                connection.exec_driver_sql("BEGIN IMMEDIATE")
+            else:
+                connection.begin()
+            yield Connection(connection)
+            connection.commit()
+        except BaseException:
+            connection.rollback()
+            raise
+
+
+def initialize():
+    if not os.environ.get("DONINO_DATABASE_URL"):
+        existed = db_path().is_file()
+        initialize_legacy()
+        if existed:
+            with sqlite3.connect(db_path()) as source:
+                foundation = source.execute(
+                    "SELECT 1 FROM sqlite_master WHERE name='alembic_version'"
+                ).fetchone()
+            if not foundation:
+                migration_backup(label="pre-foundation")
+    from alembic import command
+    from alembic.config import Config
+
+    config = Config()
+    config.set_main_option(
+        "script_location", str(Path(__file__).parent.parent / "migrations")
+    )
+    with database() as db:
+        db.lock("donino-schema-upgrade")
+        config.attributes["connection"] = db.connection
+        command.upgrade(config, "head")
 
 
 SCHEMA_VERSION = 2
 
 
-def migration_backup():
+def migration_backup(label="pre-v2"):
     """Called before DDL, while another connection holds the writer reservation."""
     path = db_path()
-    destination = path.with_name(path.name + ".pre-v2-" + uuid.uuid4().hex[:12] + ".db")
+    destination = path.with_name(
+        path.name + "." + label + "-" + uuid.uuid4().hex[:12] + ".db"
+    )
     fd = os.open(destination, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     os.close(fd)
     source, target = sqlite3.connect(path), sqlite3.connect(destination)
@@ -51,7 +165,7 @@ def migration_backup():
         target.close()
 
 
-def initialize():
+def initialize_legacy():
     with database() as db:
         version = db.execute("PRAGMA user_version").fetchone()[0]
         if version > SCHEMA_VERSION:

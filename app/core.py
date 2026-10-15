@@ -4,7 +4,7 @@ import base64
 import hashlib
 import json
 import time
-from urllib.parse import urlencode, quote
+from urllib.parse import quote, urlencode
 
 
 def eligible(user, now=None):
@@ -64,7 +64,9 @@ def compile_config(inbounds, users):
             {
                 "email": u["id"],
                 "level": 0,
-                ("password" if protocol == "trojan" else "id"): u["credential"],
+                ("password" if protocol == "trojan" else "id"): u.get(
+                    "credentials", {}
+                ).get(protocol, u["credential"]),
             }
             for u in live
         ]
@@ -127,6 +129,9 @@ def profiles(user, inbounds):
             inbound["node_name"] + " · " + inbound["name"] + " · " + inbound["id"][:6]
         )
         protocol = inbound["protocol"]
+        credential = user.get("credentials", {}).get(protocol, user["credential"])
+        if "device_name" in user and user["id"] != user.get("user_id"):
+            label += " · " + user["device_name"]
         proxy = {
             "name": label,
             "type": protocol,
@@ -149,7 +154,7 @@ def profiles(user, inbounds):
             }
             proxy.update(
                 {
-                    "uuid": user["credential"],
+                    "uuid": credential,
                     "flow": "xtls-rprx-vision",
                     "client-fingerprint": "chrome",
                     "reality-opts": {
@@ -160,14 +165,14 @@ def profiles(user, inbounds):
             )
         elif protocol == "trojan":
             query = {"security": "tls", "sni": s["sni"], "type": "tcp"}
-            proxy["password"] = user["credential"]
+            proxy["password"] = credential
         else:
             vmess = {
                 "v": "2",
                 "ps": label,
                 "add": host,
                 "port": str(port),
-                "id": user["credential"],
+                "id": credential,
                 "aid": "0",
                 "scy": "auto",
                 "net": "ws",
@@ -182,7 +187,7 @@ def profiles(user, inbounds):
             )
             proxy.update(
                 {
-                    "uuid": user["credential"],
+                    "uuid": credential,
                     "alterId": 0,
                     "cipher": "auto",
                     "network": "ws",
@@ -192,7 +197,7 @@ def profiles(user, inbounds):
             clash.append(proxy)
             continue
         links.append(
-            f"{protocol}://{user['credential']}@{address}:{port}?{urlencode(query)}#{quote(label)}"
+            f"{protocol}://{credential}@{address}:{port}?{urlencode(query)}#{quote(label)}"
         )
         clash.append(proxy)
     return links, {

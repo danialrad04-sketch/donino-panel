@@ -1,6 +1,6 @@
 import base64
-import ipaddress
 import io
+import ipaddress
 import json
 import os
 import re
@@ -12,23 +12,33 @@ import uuid
 from contextlib import asynccontextmanager
 from pathlib import Path
 
+import qrcode
 from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey
 from cryptography.hazmat.primitives.serialization import (
     Encoding,
+    NoEncryption,
     PrivateFormat,
     PublicFormat,
-    NoEncryption,
 )
-from fastapi import FastAPI, Depends, HTTPException, Request, Response
+from fastapi import Depends, FastAPI, HTTPException, Request, Response
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, field_validator, model_validator
-import qrcode
 from qrcode.image.svg import SvgPathImage
+from sqlalchemy.exc import IntegrityError
 
 from . import __version__
-from .db import initialize, database, digest, verify_password, audit
-from .core import compile_config, revision, eligible, status, profiles
+from .core import compile_config, eligible, revision, status
+from .db import audit, database, digest, initialize, verify_password
+from .identity import (
+    apply_usage,
+    connection_users,
+    ensure_identity,
+    profile_sets,
+    reset_period,
+)
+from .identity_api import mount_identity_routes
+from .security import verify_factor
 
 
 @asynccontextmanager
@@ -83,6 +93,7 @@ async def security_headers(request, call_next):
     return response
 
 
+@app.exception_handler(IntegrityError)
 @app.exception_handler(sqlite3.IntegrityError)
 async def conflict(request, exc):
     return JSONResponse(
@@ -92,6 +103,45 @@ async def conflict(request, exc):
 
 
 def admin(request: Request):
+    authorization = request.headers.get("authorization", "")
+    if authorization:
+        if not authorization.startswith("Bearer donino_"):
+            raise HTTPException(401, "Invalid API token")
+        with database() as db:
+            row = db.execute(
+                "SELECT a.username,a.role,t.id,t.scopes FROM api_tokens t JOIN admins a USING(username) WHERE t.digest=? AND t.expires>?",
+                (digest(authorization[7:]), int(time.time())),
+            ).fetchone()
+            if not row:
+                raise HTTPException(401, "Invalid API token")
+            path = request.url.path
+            resource = next(
+                (
+                    r
+                    for r in ("users", "nodes", "inbounds", "audit")
+                    if path == "/api/" + r or path.startswith("/api/" + r + "/")
+                ),
+                None,
+            )
+            operation = "read" if request.method == "GET" else "write"
+            if resource == "users" and path.endswith("/subscription"):
+                operation = "write"
+            if path != "/api/me" and (
+                not resource
+                or resource + ":" + operation not in json.loads(row["scopes"])
+            ):
+                raise HTTPException(
+                    403, "API token scope does not permit this operation"
+                )
+            db.execute(
+                "UPDATE api_tokens SET last_used=? WHERE id=?",
+                (int(time.time()), row["id"]),
+            )
+            return {
+                "username": row["username"],
+                "role": row["role"],
+                "api_token": row["id"],
+            }
     token = request.cookies.get("donino_session", "")
     with database() as db:
         row = db.execute(
@@ -149,6 +199,8 @@ def public_user(row, include_secret=False):
 class Login(BaseModel):
     username: str = Field(min_length=1, max_length=64)
     password: str = Field(min_length=1, max_length=256)
+    code: str = Field(default="", max_length=6)
+    recovery_code: str = Field(default="", max_length=32)
 
 
 class UserInput(BaseModel):
@@ -156,6 +208,7 @@ class UserInput(BaseModel):
     enabled: bool = True
     quota: int = Field(default=0, ge=0, le=9_000_000_000_000_000)
     expires: int | None = Field(default=None, gt=0, le=32_503_680_000)
+    validity_seconds: int = Field(default=0, ge=0, le=315_360_000)
 
 
 class NodeInput(BaseModel):
@@ -206,6 +259,7 @@ class InboundInput(BaseModel):
 
 class Usage(BaseModel):
     user_id: str
+    period_id: str = Field(default="", max_length=64)
     up: int = Field(ge=0, le=9_000_000_000_000_000)
     down: int = Field(ge=0, le=9_000_000_000_000_000)
 
@@ -242,6 +296,7 @@ def login(body: Login, request: Request, response: Response):
     address = request.client.host if request.client else "unknown"
     now = int(time.time())
     with database() as db:
+        db.lock("login:" + address)
         attempts = db.execute(
             "SELECT * FROM login_attempts WHERE address=?", (address,)
         ).fetchone()
@@ -253,12 +308,14 @@ def login(body: Login, request: Request, response: Response):
         # Use a fixed dummy hash to avoid a fast unknown-user path.
         dummy = "donino-dummy:" + "0" * 64
         valid = verify_password(body.password, row["password"] if row else dummy)
+        if valid and row:
+            valid = verify_factor(db, row["username"], body.code, body.recovery_code)
         if not row or not valid:
             count = (
                 attempts["attempts"] + 1 if attempts and attempts["until"] > now else 1
             )
             db.execute(
-                "INSERT OR REPLACE INTO login_attempts VALUES(?,?,?)",
+                "INSERT INTO login_attempts VALUES(?,?,?) ON CONFLICT(address) DO UPDATE SET attempts=excluded.attempts,until=excluded.until",
                 (address, count, now + 900),
             )
             # Commit failed attempts before returning an HTTP error.
@@ -351,6 +408,11 @@ def add_user(body: UserInput, account=Depends(writer)):
                 int(time.time()),
             ),
         )
+        ensure_identity(db, one(db, "users", uid), owner=account["username"])
+        db.execute(
+            "UPDATE user_state SET validity_seconds=? WHERE user_id=?",
+            (body.validity_seconds, uid),
+        )
         audit(db, account["username"], "user.create", uid)
         return public_user(one(db, "users", uid))
 
@@ -362,6 +424,11 @@ def update_user(uid: str, body: UserInput, account=Depends(writer)):
         db.execute(
             "UPDATE users SET name=?,enabled=?,quota=?,expires=? WHERE id=?",
             (body.name, body.enabled, body.quota, body.expires, uid),
+        )
+        ensure_identity(db, one(db, "users", uid))
+        db.execute(
+            "UPDATE user_state SET validity_seconds=? WHERE user_id=?",
+            (body.validity_seconds, uid),
         )
         audit(db, account["username"], "user.update", uid)
         return public_user(one(db, "users", uid))
@@ -380,11 +447,8 @@ def delete_user(uid: str, account=Depends(writer)):
 def reset_traffic(uid: str, account=Depends(writer)):
     with database() as db:
         one(db, "users", uid)
-        # Keep cumulative high-water marks to avoid billing old bytes again.
-        db.execute(
-            "UPDATE users SET used=0,uploaded=0,downloaded=0,legacy_used=0 WHERE id=?",
-            (uid,),
-        )
+        ensure_identity(db, one(db, "users", uid))
+        reset_period(db, uid)
         audit(db, account["username"], "user.reset-traffic", uid)
     return {"ok": True}
 
@@ -420,6 +484,15 @@ def rotate_credentials(uid: str, account=Depends(writer)):
             "UPDATE users SET credential=?,token=? WHERE id=?",
             (str(uuid.uuid4()), secrets.token_urlsafe(32), uid),
         )
+        # Revoke every downloaded device profile, not only the legacy field.
+        for device in db.execute("SELECT id FROM devices WHERE user_id=?", (uid,)):
+            for credential in db.execute(
+                "SELECT id FROM credentials WHERE device_id=?", (device["id"],)
+            ):
+                db.execute(
+                    "UPDATE credentials SET secret=?,generation=generation+1 WHERE id=?",
+                    (str(uuid.uuid4()), credential["id"]),
+                )
         audit(db, account["username"], "user.rotate-credentials", uid)
     return {"ok": True}
 
@@ -579,7 +652,7 @@ def agent_config(node=Depends(node_auth)):
                     "SELECT * FROM inbounds WHERE node_id=? ORDER BY id", (node["id"],)
                 )
             ),
-            list(db.execute("SELECT * FROM users ORDER BY id")),
+            connection_users(db, node_id=node["id"]),
         )
     return {
         "revision": revision(config),
@@ -592,31 +665,12 @@ def agent_config(node=Depends(node_auth)):
 @app.post("/api/agent/heartbeat")
 def heartbeat(body: Heartbeat, node=Depends(node_auth)):
     with database() as db:
+        db.lock("heartbeat:" + node["id"])
         for sample in body.usage:
-            if not db.execute(
-                "SELECT 1 FROM users WHERE id=?", (sample.user_id,)
-            ).fetchone():
-                continue
-            old = db.execute(
-                "SELECT up,down FROM counters WHERE node_id=? AND epoch=? AND user_id=?",
-                (node["id"], body.epoch, sample.user_id),
-            ).fetchone()
-            up, down = (
-                max(sample.up, old["up"] if old else 0),
-                max(sample.down, old["down"] if old else 0),
-            )
-            delta_up, delta_down = (
-                up - (old["up"] if old else 0),
-                down - (old["down"] if old else 0),
-            )
-            db.execute(
-                "UPDATE users SET used=used+?,uploaded=uploaded+?,downloaded=downloaded+? WHERE id=?",
-                (delta_up + delta_down, delta_up, delta_down, sample.user_id),
-            )
-            db.execute(
-                "INSERT OR REPLACE INTO counters VALUES(?,?,?,?,?)",
-                (node["id"], body.epoch, sample.user_id, up, down),
-            )
+            try:
+                apply_usage(db, node["id"], body.epoch, sample)
+            except ValueError as exc:
+                raise HTTPException(409, str(exc)) from exc
         db.execute(
             """UPDATE nodes SET last_seen=?,applied_revision=?,error=?,agent_version=?,
             core_running=?,apply_mode=?,pending_usage=? WHERE id=?""",
@@ -645,25 +699,21 @@ def list_audit(account=Depends(owner)):
 
 @app.get("/api/backup")
 def backup(account=Depends(owner)):
-    # Back up without holding a write transaction on the source connection.
-    from .db import db_path
+    from .storage import backup_database
 
     with tempfile.TemporaryDirectory() as folder:
-        filename = Path(folder) / "backup.db"
-        source = sqlite3.connect(db_path())
-        target = sqlite3.connect(filename)
-        try:
-            source.backup(target)
-        finally:
-            source.close()
-            target.close()
+        filename = Path(folder) / "backup"
+        kind = backup_database(filename)
         data = filename.read_bytes()
     with database() as db:
         audit(db, account["username"], "backup.download")
+    extension = "db" if kind == "sqlite" else "zip"
     return Response(
         data,
-        media_type="application/vnd.sqlite3",
-        headers={"Content-Disposition": "attachment; filename=donino-backup.db"},
+        media_type="application/vnd.sqlite3" if kind == "sqlite" else "application/zip",
+        headers={
+            "Content-Disposition": "attachment; filename=donino-backup." + extension
+        },
     )
 
 
@@ -675,13 +725,7 @@ def subscription(token: str, format: str = "base64"):
         user = db.execute("SELECT * FROM users WHERE token=?", (token,)).fetchone()
         if not user or not eligible(user):
             raise HTTPException(404, "Subscription unavailable")
-        inbounds = list(
-            db.execute(
-                "SELECT i.*,n.host,n.name node_name,n.enabled node_enabled "
-                "FROM inbounds i JOIN nodes n ON n.id=i.node_id ORDER BY i.id"
-            )
-        )
-        links, clash = profiles(user, inbounds)
+        links, clash = profile_sets(db, user)
         info = f"upload={user['uploaded']}; download={user['downloaded'] + user['legacy_used']}; total={user['quota']}; expire={user['expires'] or 0}"
     headers = {
         "Subscription-Userinfo": info,
@@ -720,13 +764,7 @@ def portal_user(db, token):
 
 
 def portal_profiles(db, user):
-    inbounds = list(
-        db.execute(
-            "SELECT i.*,n.host,n.name node_name,n.enabled node_enabled "
-            "FROM inbounds i JOIN nodes n ON n.id=i.node_id ORDER BY i.id"
-        )
-    )
-    return profiles(user, inbounds)
+    return profile_sets(db, user)
 
 
 @app.get("/u/{token}")
@@ -808,3 +846,6 @@ def qr_code(
         media_type="image/svg+xml",
         headers={"Content-Disposition": "inline; filename=donino-qr.svg"},
     )
+
+
+mount_identity_routes(app, admin, writer, owner, one)

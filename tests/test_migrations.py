@@ -12,7 +12,9 @@ class MigrationTest(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.path = Path(self.tmp.name) / "donino.db"
-        self.env = patch.dict(os.environ, {"DONINO_DB": str(self.path)})
+        self.env = patch.dict(
+            os.environ, {"DONINO_DB": str(self.path), "DONINO_DATABASE_URL": ""}
+        )
         self.env.start()
 
     def tearDown(self):

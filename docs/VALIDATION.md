@@ -1,5 +1,11 @@
 # Validation record
 
+## Development foundation checkpoint — 2026-10-15
+
+The phase-one increment was checked locally with PostgreSQL 16 in an isolated Docker service, Xray v26.3.27 and Chromium. All 44 unit/integration checks passed, including three actual PostgreSQL scenarios: concurrent duplicate accounting and cascade deletion, SQLite-to-PostgreSQL identity/legacy-usage preservation, and consistent archive restore into another schema with sequence continuity. Seven new foundation scenarios cover device credentials and revocation views, selective assignment/subscription filtering, explicit late-period accounting, first-use validity, concurrent master-key creation, TOTP/recovery and scoped-token isolation, plus non-destructive SQLite import. The existing 34 checks remain passing.
+
+Expanded browser acceptance passed devices, node assignment, scoped-token creation, MFA enrollment and recovery login alongside the previous portal/mobile/QR checks, with no JavaScript errors. Python lint and JavaScript syntax checks passed. These results do not establish end-to-end period-aware node reporting, distributed budget enforcement, external TLS issuance, new protocol engines or production capacity. The matching master key remains a separate backup requirement; see [implementation status](IMPLEMENTATION-STATUS.fa.md).
+
 ## Phase-zero planning documents — 2026-10-15
 
 The 1.0 planning update is documentation only; the executable product remains 0.2.0. The six linked Persian planning documents define 39 feature rows, 22 protocol/family rows and 26 acceptance scenarios. These are requirements, not completed runtime features or executed future tests.

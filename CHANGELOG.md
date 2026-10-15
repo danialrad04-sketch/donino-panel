@@ -2,6 +2,14 @@
 
 ## Unreleased — planning documentation
 
+Development checkpoint `1.0.0a1` (not a stable release):
+
+- SQLAlchemy connection layer and immutable Alembic foundation schema for SQLite and PostgreSQL. Supported legacy SQLite migrations retain their original backup and preservation behavior.
+- Per-device/per-protocol credentials, device expiry/disable/rotation, selective node assignments and matching subscription filtering. Xray revocations still restart the node.
+- Encrypted TOTP seeds, replay protection, one-use recovery codes and scoped, expiring/revocable API tokens. MFA enable/disable revokes existing sessions and automation tokens.
+- Read-only source snapshots for SQLite import into an empty destination, consistent PostgreSQL logical backups and transactional archive restoration. The matching MFA master key must be preserved separately.
+- Browser controls for devices, assignments, MFA and API tokens; real PostgreSQL integration CI. Period-aware report handling is preliminary until the upgraded node agent is implemented in phase 3.
+
 - Add the Persian 1.0 master plan, feature parity and protocol matrices, gaming DNS/doctor-dns migration design, installer/SSL specification and acceptance contract.
 - Pin additional research references and connect the roadmap to the phased plan. This documentation does not add runtime protocols or change the 0.2.0 product version.
 

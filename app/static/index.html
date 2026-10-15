@@ -8,6 +8,7 @@
     <link rel="icon" href="/static/logo.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="/static/style.css" />
     <script src="/static/app.js" defer></script>
+    <script src="/static/foundation.js" defer></script>
   </head>
   <body>
     <section id="login-view" class="login-view" hidden>
@@ -42,9 +43,26 @@
             maxlength="256"
             dir="ltr"
         /></label>
+        <details>
+          <summary>ورود دومرحله‌ای</summary>
+          <label
+            >کد برنامهٔ احراز هویت<input
+              name="code"
+              inputmode="numeric"
+              autocomplete="one-time-code"
+              maxlength="6"
+              dir="ltr" /></label
+          ><label
+            >یا کد بازیابی<input
+              name="recovery_code"
+              autocomplete="off"
+              maxlength="32"
+              dir="ltr"
+          /></label>
+        </details>
         <p id="login-error" role="alert" class="error"></p>
         <button class="primary" type="submit">ورود به پنل <span>←</span></button
-        ><small class="muted">Donino Panel · نسخهٔ اولیه ۰.۲</small>
+        ><small class="muted">Donino Panel · نسخهٔ توسعه ۱.۰ alpha 1</small>
       </form>
     </section>
     <div id="app-view" class="shell" hidden>
@@ -66,7 +84,7 @@
         <div class="sidebar-bottom">
           <div class="version-card">
             <span class="status-dot"></span><b>Donino Core</b
-            ><small>نسخهٔ اولیه ۰.۲.۰</small>
+            ><small>نسخهٔ توسعه ۱.۰ alpha 1</small>
           </div>
           <div class="account">
             <span class="avatar">D</span>

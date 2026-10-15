@@ -75,6 +75,8 @@ class XrayTest(unittest.TestCase):
             folder = Path(folder)
             os.environ.update(
                 DONINO_DB=str(folder / "panel.db"),
+                DONINO_DATABASE_URL="",
+                DONINO_KEY_FILE=str(folder / "master.key"),
                 DONINO_SECURE_COOKIE="false",
                 DONINO_PANEL_URL="http://127.0.0.1:8000",
                 DONINO_NODE_STATE=str(folder / "node"),

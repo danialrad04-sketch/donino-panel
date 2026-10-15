@@ -1,9 +1,9 @@
 import argparse
 import getpass
-import sqlite3
 from pathlib import Path
-from .db import initialize, database, hash_password, audit, db_path, SCHEMA_VERSION
+
 from . import __version__
+from .db import SCHEMA_VERSION, audit, database, hash_password, initialize
 
 
 def main():
@@ -20,11 +20,35 @@ def main():
     )
     backup = sub.add_parser("backup", help="Create a consistent SQLite backup")
     backup.add_argument("destination", type=Path)
+    move = sub.add_parser(
+        "import-sqlite",
+        help="Copy a supported SQLite database into an empty destination",
+    )
+    move.add_argument("source", type=Path)
+    restore = sub.add_parser(
+        "restore-archive",
+        help="Restore a Donino PostgreSQL archive into an empty destination",
+    )
+    restore.add_argument("source", type=Path)
     args = parser.parse_args()
     initialize()
     if args.command == "migrate":
         print(
             f"Database ready at schema {SCHEMA_VERSION}. Older databases were backed up before migration."
+        )
+        return
+    if args.command == "import-sqlite":
+        from .storage import import_sqlite
+
+        import_sqlite(args.source)
+        print("Database imported. Preserve the source master.key when migrating MFA.")
+        return
+    if args.command == "restore-archive":
+        from .storage import restore_archive
+
+        restore_archive(args.source)
+        print(
+            "Database restored. Restore the matching master.key before serving MFA logins."
         )
         return
     if args.command == "admin":
@@ -47,23 +71,16 @@ def main():
                 (args.username, hash_password(password), args.role),
             )
             db.execute("DELETE FROM sessions WHERE username=?", (args.username,))
+            db.execute("DELETE FROM api_tokens WHERE username=?", (args.username,))
             audit(db, "local-cli", "admin.upsert", args.username)
         print("Admin saved; previous sessions revoked.")
     else:
-        if args.destination.exists():
-            parser.error("Destination already exists")
-        args.destination.parent.mkdir(parents=True, exist_ok=True)
-        import os
+        from .storage import backup_database
 
-        fd = os.open(args.destination, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-        os.close(fd)
-        source, target = sqlite3.connect(db_path()), sqlite3.connect(args.destination)
-        try:
-            source.backup(target)
-        finally:
-            source.close()
-            target.close()
-        print("Backup saved.")
+        backup_database(args.destination)
+        print(
+            "Backup saved with private permissions. Also preserve the matching master.key."
+        )
 
 
 if __name__ == "__main__":

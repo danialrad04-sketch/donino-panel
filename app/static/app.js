@@ -118,7 +118,7 @@ function usersTable(users, compact = false) {
       "با ساخت اولین کاربر، مدیریت دسترسی را شروع کنید.",
       "♧",
     );
-  return `<div class="table-scroll"><table><thead><tr><th>نام کاربر</th><th>وضعیت</th><th>مصرف / سهمیه</th><th>تاریخ انقضا</th>${!compact && writable() ? "<th>عملیات</th>" : ""}</tr></thead><tbody>${users.map((u) => `<tr><td><b>${esc(u.name)}</b><span class="subline">${esc(u.id.slice(0, 8))}</span></td><td>${badge(u.status)}</td><td><span class="mono">${bytes(u.used)} / ${u.quota ? bytes(u.quota) : "∞"}</span></td><td>${date(u.expires)}</td>${!compact && writable() ? `<td class="actions"><button data-action="share" data-id="${u.id}">اشتراک</button><button data-action="edit-user" data-id="${u.id}">ویرایش</button><button data-action="delete-user" data-id="${u.id}" class="danger">حذف</button></td>` : ""}</tr>`).join("")}</tbody></table></div>`;
+  return `<div class="table-scroll"><table><thead><tr><th>نام کاربر</th><th>وضعیت</th><th>مصرف / سهمیه</th><th>تاریخ انقضا</th>${!compact && writable() ? "<th>عملیات</th>" : ""}</tr></thead><tbody>${users.map((u) => `<tr><td><b>${esc(u.name)}</b><span class="subline">${esc(u.id.slice(0, 8))}</span></td><td>${badge(u.status)}</td><td><span class="mono">${bytes(u.used)} / ${u.quota ? bytes(u.quota) : "∞"}</span></td><td>${date(u.expires)}</td>${!compact && writable() ? `<td class="actions"><button data-action="share" data-id="${u.id}">اشتراک</button><button data-action="devices" data-id="${u.id}">دستگاه‌ها</button><button data-action="edit-user" data-id="${u.id}">ویرایش</button><button data-action="delete-user" data-id="${u.id}" class="danger">حذف</button></td>` : ""}</tr>`).join("")}</tbody></table></div>`;
 }
 function renderOverview() {
   const s = data.overview;
@@ -155,7 +155,7 @@ function renderNodes() {
       "سرورهای مستقل، یک نقطهٔ کنترل.",
       owner() ? addButton("node", "نود جدید") : "",
     ) +
-    `<div class="node-grid">${data.nodes.map((n) => `<article class="card"><div class="node-row"><span class="node-symbol">⌘</span><div><b>${esc(n.name)}</b><small>${esc(n.host)}</small></div>${badge(n.online ? "active" : "disabled", n.online ? "متصل" : "قطع")}</div><div class="node-meta"><span>${number(data.inbounds.filter((i) => i.node_id === n.id).length)} اتصال</span><span>آخرین ارتباط: ${n.last_seen ? new Date(n.last_seen * 1000).toLocaleTimeString("fa-IR") : "هنوز متصل نشده"}</span></div><div class="node-meta"><span>عامل: <span class="mono">${esc(n.agent_version || "0.1 / نامشخص")}</span></span><span>${{ hot: "به‌روزرسانی زنده", restart: "اجرای کامل", rollback: "بازیابی تنظیمات" }[n.apply_mode] || "در انتظار همگام‌سازی"} · ${number(n.pending_usage || 0)} گزارش معوق</span></div>${n.error ? `<p class="node-error">${esc(n.error)}</p>` : ""}${owner() ? `<div class="compact-actions"><button class="secondary" data-action="rotate-node" data-id="${n.id}">تعویض کلید اتصال</button><button class="outline-button danger" data-action="delete-node" data-id="${n.id}">حذف نود</button></div>` : ""}</article>`).join("")}</div>${!data.nodes.length ? `<div class="card">${empty("زیرساختت را بساز", "نود جدید اضافه کن و عامل Donino را روی سرور اجرا کن.", "⌘")}</div>` : ""}`
+    `<div class="node-grid">${data.nodes.map((n) => `<article class="card"><div class="node-row"><span class="node-symbol">⌘</span><div><b>${esc(n.name)}</b><small>${esc(n.host)}</small></div>${badge(n.online ? "active" : "disabled", n.online ? "متصل" : "قطع")}</div><div class="node-meta"><span>${number(data.inbounds.filter((i) => i.node_id === n.id).length)} اتصال</span><span>آخرین ارتباط: ${n.last_seen ? new Date(n.last_seen * 1000).toLocaleTimeString("fa-IR") : "هنوز متصل نشده"}</span></div><div class="node-meta"><span>عامل: <span class="mono">${esc(n.agent_version || "0.1 / نامشخص")}</span></span><span>${{ hot: "به‌روزرسانی زنده", restart: "اجرای کامل", rollback: "بازیابی تنظیمات" }[n.apply_mode] || "در انتظار همگام‌سازی"} · ${number(n.pending_usage || 0)} گزارش معوق</span></div>${n.error ? `<p class="node-error">${esc(n.error)}</p>` : ""}${owner() ? `<div class="compact-actions"><button class="secondary" data-action="assignments" data-id="${n.id}">تخصیص کاربران</button><button class="secondary" data-action="rotate-node" data-id="${n.id}">تعویض کلید اتصال</button><button class="outline-button danger" data-action="delete-node" data-id="${n.id}">حذف نود</button></div>` : ""}</article>`).join("")}</div>${!data.nodes.length ? `<div class="card">${empty("زیرساختت را بساز", "نود جدید اضافه کن و عامل Donino را روی سرور اجرا کن.", "⌘")}</div>` : ""}`
   );
 }
 function renderInbounds() {
@@ -171,7 +171,7 @@ function renderInbounds() {
 function renderSettings() {
   return (
     heading("تنظیمات و نگهداری", "همه‌چیز برای مدیریت یک شبکهٔ مستقل.") +
-    `<div class="settings-grid"><article class="card"><h2>پشتیبان‌گیری</h2><p>یک نسخهٔ کامل از پایگاه داده، تنظیمات و حساب‌ها دریافت کن. فایل پشتیبان حاوی اطلاعات محرمانه است؛ آن را در فضای امن نگه دار.</p>${owner() ? '<a class="primary" href="/api/backup" download>دریافت نسخهٔ پشتیبان ↓</a>' : "<p>دریافت پشتیبان فقط برای مالک شبکه فعال است.</p>"}</article><article class="card"><h2>ظاهر پنل</h2><p>پوستهٔ روشن یا تیره را انتخاب کن. انتخاب روی همین دستگاه ذخیره می‌شود.</p><button class="secondary" data-action="theme">تغییر پوسته ◐</button></article><article class="card"><h2>حساب مدیریت</h2><p>نام کاربری: ${esc(account.username)}<br>سطح دسترسی: ${roles[account.role]}<br>برای ساخت مدیر یا تغییر رمز، از دستور <span class="mono">python -m app.cli admin USERNAME</span> روی سرور استفاده کن.</p></article><article class="card"><h2>Donino Panel <span class="mono">0.2.0</span></h2><p>نسخهٔ اولیهٔ مستقل، با رابط فارسی و مدیریت چند نود. امکانات در حال توسعه‌اند. راه‌اندازی واقعی به سرور نود، Xray و دامنهٔ مناسب نیاز دارد.</p><a class="subtle-link" href="https://github.com/danialrad04-sketch/donino-panel" target="_blank" rel="noopener">مستندات و کد منبع ↗︎</a></article></div>`
+    `<div class="settings-grid"><article class="card"><h2>پشتیبان‌گیری</h2><p>یک نسخهٔ کامل از پایگاه داده، تنظیمات و حساب‌ها دریافت کن. فایل پشتیبان حاوی اطلاعات محرمانه است؛ آن را امن نگه دار. برای بازیابی ورود دومرحله‌ای، کلید اصلی سرور (master.key) نیز باید جداگانه پشتیبان داشته باشد.</p>${owner() ? '<a class="primary" href="/api/backup" download>دریافت نسخهٔ پشتیبان ↓</a>' : "<p>دریافت پشتیبان فقط برای مالک شبکه فعال است.</p>"}</article><article class="card"><h2>ظاهر پنل</h2><p>پوستهٔ روشن یا تیره را انتخاب کن. انتخاب روی همین دستگاه ذخیره می‌شود.</p><button class="secondary" data-action="theme">تغییر پوسته ◐</button></article><article class="card"><h2>امنیت و دسترسی API</h2><p>ورود دومرحله‌ای، کدهای بازیابی و کلیدهای محدودِ اتوماسیون را مدیریت کن.</p><button class="secondary" data-action="security">مدیریت امنیت</button></article><article class="card"><h2>حساب مدیریت</h2><p>نام کاربری: ${esc(account.username)}<br>سطح دسترسی: ${roles[account.role]}<br>برای ساخت مدیر یا تغییر رمز، از دستور <span class="mono">python -m app.cli admin USERNAME</span> روی سرور استفاده کن.</p></article><article class="card"><h2>Donino Panel <span class="mono">1.0 alpha 1</span></h2><p>نسخهٔ اولیهٔ مستقل، با رابط فارسی و مدیریت چند نود. امکانات در حال توسعه‌اند. راه‌اندازی واقعی به سرور نود، Xray و دامنهٔ مناسب نیاز دارد.</p><a class="subtle-link" href="https://github.com/danialrad04-sketch/donino-panel" target="_blank" rel="noopener">مستندات و کد منبع ↗︎</a></article></div>`
   );
 }
 function render() {
@@ -407,6 +407,21 @@ async function confirmAction(title, description, action) {
   });
 }
 async function handleAction(action, id) {
+  if (
+    [
+      "devices",
+      "device-add",
+      "device-toggle",
+      "device-rotate",
+      "assignments",
+      "security",
+      "mfa-setup",
+      "mfa-disable",
+      "token-add",
+      "token-delete",
+    ].includes(action)
+  )
+    return foundationAction(action, id);
   const user = data.users.find((u) => u.id === id);
   if (action === "add-user") return editUser();
   if (action === "edit-user") return editUser(user);

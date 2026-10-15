@@ -4,15 +4,17 @@ import os
 import secrets
 import socket
 import subprocess
+import sys
 import tempfile
 import time
 import urllib.request
 from pathlib import Path
-import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from app.db import initialize, database, hash_password
 from playwright.sync_api import sync_playwright
+
+from app.db import database, hash_password, initialize
+from app.security import totp
 
 
 def main():
@@ -20,6 +22,8 @@ def main():
     output.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory() as folder:
         os.environ["DONINO_DB"] = folder + "/test.db"
+        os.environ["DONINO_DATABASE_URL"] = ""
+        os.environ["DONINO_KEY_FILE"] = folder + "/master.key"
         initialize()
         password = secrets.token_urlsafe(24)
         with database() as db:
@@ -95,6 +99,11 @@ def main():
                 page.locator("#secret-output").wait_for()
                 assert len(page.locator("#secret-output").input_value()) > 40
                 page.locator("#close-modal").click()
+                page.get_by_role("button", name="تخصیص کاربران").click()
+                page.locator("select[name=mode]").select_option("selected")
+                page.locator("select[name=user_ids]").select_option(index=0)
+                page.locator("#edit-form button[type=submit]").click()
+                page.locator("#modal").wait_for(state="hidden")
                 page.locator("a[data-page=inbounds]").click()
                 page.get_by_role("button", name="اتصال جدید").click()
                 page.locator("#edit-form button[type=submit]").click()
@@ -169,10 +178,54 @@ def main():
                 customer.locator("#portal-refresh").click()
                 customer.locator("#portal-content").wait_for(state="visible")
                 visitor.close()
+                # Exercise security in the browser without capturing secrets in screenshots.
+                page.locator("[name=username]").fill("admin")
+                page.locator("[name=password]").fill(password)
+                page.locator("#login-form button").click()
+                page.locator("#app-view").wait_for(state="visible")
+                page.locator("a[data-page=users]").click()
+                page.get_by_role("button", name="دستگاه‌ها", exact=True).click()
+                page.get_by_role("button", name="دستگاه جدید", exact=True).click()
+                page.locator("#edit-form [name=name]").fill("Phone")
+                page.locator("#edit-form button[type=submit]").click()
+                page.get_by_role("cell", name="Phone", exact=True).wait_for()
+                page.locator("#close-modal").click()
+                page.locator("a[data-page=settings]").click()
+                page.get_by_role("button", name="مدیریت امنیت").click()
+                page.get_by_role("button", name="کلید جدید", exact=True).click()
+                page.locator("#edit-form [name=name]").fill("browser-test")
+                page.locator("#edit-form select[name=scopes]").select_option(
+                    "users:read"
+                )
+                page.locator("#edit-form button[type=submit]").click()
+                page.locator("#secret-output").wait_for()
+                assert (
+                    page.locator("#secret-output").input_value().startswith("donino_")
+                )
+                page.locator("#close-modal").click()
+                page.get_by_role("button", name="مدیریت امنیت").click()
+                page.get_by_role("button", name="راه‌اندازی دومرحله‌ای").click()
+                page.locator("#edit-form [name=password]").fill(password)
+                page.locator("#edit-form button[type=submit]").click()
+                page.locator("#edit-form [name=code]").wait_for()
+                seed = page.locator("#edit-form textarea").input_value()
+                page.locator("#edit-form [name=code]").fill(totp(seed))
+                page.locator("#edit-form button[type=submit]").click()
+                page.locator("#secret-output").wait_for()
+                recovery = page.locator("#secret-output").input_value().splitlines()
+                assert len(recovery) == 10
+                page.locator("#close-modal").click()
+                page.locator("#login-view").wait_for(state="visible")
+                page.locator("#login-form summary").click()
+                page.locator("[name=username]").fill("admin")
+                page.locator("[name=password]").fill(password)
+                page.locator("[name=recovery_code]").fill(recovery[0])
+                page.locator("#login-form button").click()
+                page.locator("#app-view").wait_for(state="visible")
                 assert not errors, errors
                 browser.close()
             print(
-                "Browser acceptance passed: admin flows, inbound editing, guest portal, local QR images, zero third-party requests, mobile layouts, themes and logout. No JavaScript errors."
+                "Browser acceptance passed: admin flows, node assignments, devices, scoped API token, MFA setup/recovery login, inbound editing, guest portal, local QR images, zero third-party requests, mobile layouts, themes and logout. No JavaScript errors."
             )
         finally:
             process.terminate()
