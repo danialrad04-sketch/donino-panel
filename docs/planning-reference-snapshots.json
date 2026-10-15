@@ -1,0 +1,120 @@
+{
+  "schema_version": 1,
+  "review_date": "2026-10-15",
+  "product_baseline": {
+    "version": "0.2.0",
+    "commit": "fa9fe95a3b477249a27a55983ffbe514adc0279d"
+  },
+  "previous_inventory": "reference-snapshots.json",
+  "sources": [
+    {
+      "repository": "danialrad04-sketch/doctor-dns",
+      "commit": "a2b2ff843cb1fc8f0a5712a88149f5c379198ff1",
+      "url": "https://github.com/danialrad04-sketch/doctor-dns/tree/a2b2ff843cb1fc8f0a5712a88149f5c379198ff1",
+      "reviewed_files": [
+        "README.md",
+        "README.fa.md",
+        "LICENSE",
+        "templates/smartdns-panel",
+        "templates/smartdns-sync",
+        "templates/smartdns-acl",
+        "templates/smartdns-cert",
+        "templates/nftables-smartdns.conf",
+        "templates/relay-nginx.conf",
+        "templates/exit-nginx.conf"
+      ],
+      "scope": "read-only design research; no upstream installer executed; no upstream code imported",
+      "license": "MIT",
+      "license_review": "text-reviewed",
+      "upstream": "mehdi047/doctor-dns"
+    },
+    {
+      "repository": "PasarGuard/scripts",
+      "commit": "bba95f274216968542497a500c74a06802c48e88",
+      "url": "https://github.com/PasarGuard/scripts/tree/bba95f274216968542497a500c74a06802c48e88",
+      "reviewed_files": [
+        "README.md",
+        "pasarguard.sh"
+      ],
+      "scope": "read-only design research; no upstream installer executed; no upstream code imported",
+      "license": null,
+      "license_review": "not-cleared-for-code-reuse"
+    },
+    {
+      "repository": "PasarGuard/panel",
+      "commit": "b56ffe369f542152c52c69733205baeaf3f6e4cd",
+      "url": "https://github.com/PasarGuard/panel/tree/b56ffe369f542152c52c69733205baeaf3f6e4cd",
+      "reviewed_files": [
+        "README.md",
+        "LICENSE"
+      ],
+      "scope": "read-only design research; no upstream installer executed; no upstream code imported",
+      "license": "AGPL-3.0 reported by GitHub; not reuse approval",
+      "license_review": "modified-license-header-requires-review"
+    },
+    {
+      "repository": "MHSanaei/3x-ui",
+      "commit": "608ef4e4010bf83e2e78328e08f77efc051ad4d7",
+      "url": "https://github.com/MHSanaei/3x-ui/tree/608ef4e4010bf83e2e78328e08f77efc051ad4d7",
+      "reviewed_files": [
+        "README.md"
+      ],
+      "scope": "read-only design research; no upstream installer executed; no upstream code imported",
+      "license": "GPL-3.0 reported by GitHub",
+      "license_review": "metadata-only-see-original-snapshots"
+    },
+    {
+      "repository": "danialrad04-sketch/donino-tunnel",
+      "commit": "4c19214598d32bd2868f9f46030d8a5dbd494d97",
+      "url": "https://github.com/danialrad04-sketch/donino-tunnel/tree/4c19214598d32bd2868f9f46030d8a5dbd494d97",
+      "reviewed_files": [
+        "README.md"
+      ],
+      "scope": "README-only integration research; tests and implementation not independently verified",
+      "license": "MIT reported by GitHub",
+      "license_review": "metadata-only; inspect license before any code reuse"
+    }
+  ],
+  "living_documentation": [
+    {
+      "url": "https://xtls.github.io/en/config/inbound.html",
+      "version_pinned": false,
+      "note": "Design reference; pin engine/build/client at adapter implementation before claiming support"
+    },
+    {
+      "url": "https://sing-box.sagernet.org/configuration/inbound/",
+      "version_pinned": false,
+      "note": "Design reference; pin engine/build/client at adapter implementation before claiming support"
+    },
+    {
+      "url": "https://www.wireguard.com/quickstart/",
+      "version_pinned": false,
+      "note": "Design reference; pin engine/build/client at adapter implementation before claiming support"
+    },
+    {
+      "url": "https://openvpn.net/community-docs/management-interface.html",
+      "version_pinned": false,
+      "note": "Design reference; pin engine/build/client at adapter implementation before claiming support"
+    },
+    {
+      "url": "https://letsencrypt.org/docs/challenge-types/",
+      "version_pinned": false,
+      "note": "Design reference; pin engine/build/client at adapter implementation before claiming support"
+    },
+    {
+      "url": "https://unbound.docs.nlnetlabs.nl/en/latest/",
+      "version_pinned": false,
+      "note": "Design reference; pin engine/build/client at adapter implementation before claiming support"
+    },
+    {
+      "url": "https://www.dnsdist.org/guides/dns-over-https.html",
+      "version_pinned": false,
+      "note": "Design reference; pin engine/build/client at adapter implementation before claiming support"
+    },
+    {
+      "url": "https://www.dnsdist.org/guides/dns-over-quic.html",
+      "version_pinned": false,
+      "note": "Design reference; pin engine/build/client at adapter implementation before claiming support"
+    }
+  ]
+}

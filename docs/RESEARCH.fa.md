@@ -2,6 +2,19 @@
 
 تاریخ بررسی: ۲۰۲۶-۱۰-۱۵. این یک نمونه‌برداری از پروژه‌های شاخص است، نه ادعای شناسایی تمام پنل‌های اینترنت. ۱۴ مخزن از طریق GitHub API و README رسمی بررسی شدند؛ دو نشانی دیگر پاسخ ۴۰۴ دادند. SHA، شاخه و متادیتای هر درخواست در [reference-snapshots.json](reference-snapshots.json) ثبت شده است. نتایج جست‌وجوی وب با منابع اصلی تطبیق داده شدند.
 
+## پژوهش تکمیلی برنامهٔ ۱.۰
+
+نسخه‌های قفل‌شده، فایل‌های خوانده‌شده و حدود بررسی در [planning-reference-snapshots.json](planning-reference-snapshots.json) ثبت شده‌اند. در این مرحله هیچ نصب‌کنندهٔ مرجع اجرا و هیچ کد مرجع وارد محصول نشد.
+
+| منبع | یافتهٔ مرتبط | اثر در طراحی |
+|---|---|---|
+| [doctor-dns](https://github.com/danialrad04-sketch/doctor-dns)؛ fork از mehdi047/doctor-dns | relay/exit، ACL و شمارنده IP، quota/expiry، SQLite و قالب سرویس؛ دانلود Xbox در README حل‌نشده است | [طراحی DNS](DNS-GAMING-DESIGN.fa.md) و migration مستقل؛ پیش‌فرض ACL بسته؛ متن MIT و copyright اصلی هنگام بازاستفاده حفظ شود |
+| [PasarGuard Scripts](https://github.com/PasarGuard/scripts) | جریان ACME، نصب cert و hook تمدید؛ بررسی انتخاب‌شده از pasarguard.sh | [مشخصات installer](INSTALLER-SPEC.fa.md) با تکرارپذیری، حفظ cert معتبر و حل تعارض پورت؛ مجوز کپی این اسکریپت تأیید نشده است |
+| [donino-tunnel](https://github.com/danialrad04-sketch/donino-tunnel) | فقط README دربارهٔ Network Studio و backend Xray/adapterها خوانده شد | کنترل کاربر/موتور در Donino Panel و نقش carrier در پروژه تونل؛ ادعای تست‌های آن مستقلاً تأیید نشده است |
+| مستندات Xray، sing-box، WireGuard، OpenVPN، Unbound/dnsdist و Let’s Encrypt | نقش server/endpoint، مدیریت نشست، DNS رمزگذاری‌شده و challenge | [ماتریس پروتکل](PROTOCOL-MATRIX.fa.md) و معیارهای آزمون؛ نسخه موتور/کلاینت پیش از اعلام پشتیبانی باید قفل شود |
+
+[برنامهٔ جامع](MASTER-PLAN.fa.md) این پژوهش را به دامنهٔ اجرایی تبدیل می‌کند؛ این بخش ممیزی امنیت یا اثبات کارکرد production پروژه‌های مرجع نیست.
+
 ## خانوادهٔ Xray و sing-box
 
 | پروژه | قابلیت‌های شاخصِ بررسی‌شده | گزارش مجوز GitHub | تصمیم برای Donino |

@@ -10,7 +10,7 @@
 
 **نسخهٔ ۰.۲.۰ — ارتقای پایداری، افزودن زندهٔ کاربر و صفحهٔ اختصاصی اشتراک.**
 
-[راهنمای راه‌اندازی](docs/DEPLOYMENT.fa.md) · [ارتقا از ۰.۱](docs/UPGRADE-0.2.fa.md) · [تغییرات نسخه‌ها](CHANGELOG.md) · [نقشهٔ توسعه](docs/ROADMAP.fa.md) · [Architecture](docs/ARCHITECTURE.md)
+[راهنمای راه‌اندازی](docs/DEPLOYMENT.fa.md) · [ارتقا از ۰.۱](docs/UPGRADE-0.2.fa.md) · [تغییرات نسخه‌ها](CHANGELOG.md) · [برنامهٔ جامع ۱.۰](docs/MASTER-PLAN.fa.md) · [وضعیت امکانات](docs/ROADMAP.fa.md) · [Architecture](docs/ARCHITECTURE.md)
 
 </div>
 
@@ -36,6 +36,10 @@
 - آزمون API، آزمون انتقال واقعی با هر سه پروتکل، آزمون رابط در مرورگر و موبایل، GitHub Actions.
 
 **فعلاً وجود ندارد:** WireGuard، Hysteria2، TUIC، Shadowsocks، sing-box، اتصال مستقیم به PasarGuard Node، مهاجرت از پنل‌های دیگر، فروش/پرداخت، تلگرام، 2FA، محدودیت IP/HWID، صدور خودکار گواهی و تنظیمات مسیریابی پیشرفته. این نسخه برابری با تمام پنل‌های مرجع را ادعا نمی‌کند. [وضعیت دقیق امکانات](docs/ROADMAP.fa.md).
+
+## مسیر توسعهٔ ۱.۰
+
+[برنامهٔ جامع](docs/MASTER-PLAN.fa.md) در ۱۵ فاز تعریف شده است: زیرساخت و نصب خودکار، DNS گیمینگ و مهاجرت doctor-dns، WireGuard/OpenVPN، موتورهای بیشتر و مدیریت حرفه‌ای. اسناد [تطبیق امکانات](docs/FEATURE-PARITY.fa.md)، [ماتریس پروتکل](docs/PROTOCOL-MATRIX.fa.md)، [طراحی DNS گیمینگ](docs/DNS-GAMING-DESIGN.fa.md)، [نصب و SSL](docs/INSTALLER-SPEC.fa.md) و [معیارهای پذیرش](docs/ACCEPTANCE-TESTS.fa.md) مرجع اجرا هستند. این‌ها خروجی فاز صفر و برنامهٔ امکانات آینده‌اند؛ نسخهٔ اجرایی فعلی همچنان **۰.۲.۰** است و installer جدید یا قابلیت‌های هدف هنوز منتشر نشده‌اند.
 
 ![صفحهٔ اشتراک کاربر](docs/images/portal.png)
 
