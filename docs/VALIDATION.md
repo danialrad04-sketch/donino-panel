@@ -1,5 +1,13 @@
 # Validation record
 
+## Native installer development checkpoint — 2026-10-15
+
+All 54 local unit/integration checks passed with real PostgreSQL 16 and Xray. Added checks cover atomic first-owner enrollment, expiry/rate limiting, DB readiness without error-detail leakage, actual OpenSSL certificate identity/key validation and reload rollback, streaming backup authentication/tampering, DB+MFA-key restoration with admin-session revocation, and bounded source-archive integrity/extraction. Expanded Chromium acceptance also passed first-owner browser setup and the previous foundation/portal/mobile flows.
+
+Real OS service acceptance passed on isolated privileged systemd containers for Debian 12/PostgreSQL 15 and Ubuntu 24.04/PostgreSQL 16. Each performed install, repeated installation, container restart, verified HTTPS using a temporary local test CA, one-use bootstrap, user preservation, encrypted backup, recovery into a separate clean container with working TOTP, and data-preserving uninstall. These containers share the execution host's kernel; they are not independent VMs or proof of external VPS behavior. Public Let's Encrypt issuance/renewal, provider firewall reachability and real ISP/game tests remain unperformed. The same service acceptance is now part of CI; its remote result is recorded by GitHub separately.
+
+Python 3.11.17 also passed the 44-check foundation suite before the installer increment; the native Debian service runs its distribution Python 3.11.2. New CI executes the full unit suite on Python 3.11 and 3.12. No production server, domain, payment endpoint or customer data was used.
+
 ## Development foundation checkpoint — 2026-10-15
 
 The phase-one increment was checked locally with PostgreSQL 16 in an isolated Docker service, Xray v26.3.27 and Chromium. All 44 unit/integration checks passed, including three actual PostgreSQL scenarios: concurrent duplicate accounting and cascade deletion, SQLite-to-PostgreSQL identity/legacy-usage preservation, and consistent archive restore into another schema with sequence continuity. Seven new foundation scenarios cover device credentials and revocation views, selective assignment/subscription filtering, explicit late-period accounting, first-use validity, concurrent master-key creation, TOTP/recovery and scoped-token isolation, plus non-destructive SQLite import. The existing 34 checks remain passing.

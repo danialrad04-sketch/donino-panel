@@ -25,9 +25,10 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, field_validator, model_validator
 from qrcode.image.svg import SvgPathImage
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 from . import __version__
+from .bootstrap import mount_bootstrap
 from .core import compile_config, eligible, revision, status
 from .db import audit, database, digest, initialize, verify_password
 from .identity import (
@@ -289,6 +290,18 @@ def index():
 @app.get("/healthz")
 def health():
     return {"status": "ok", "version": __version__}
+
+
+@app.get("/readyz")
+def readiness():
+    try:
+        with database() as db:
+            db.execute("SELECT 1").fetchone()
+    except (SQLAlchemyError, OSError):
+        return JSONResponse(
+            {"status": "not-ready", "version": __version__}, status_code=503
+        )
+    return {"status": "ok", "database": "ok", "version": __version__}
 
 
 @app.post("/api/login")
@@ -849,3 +862,4 @@ def qr_code(
 
 
 mount_identity_routes(app, admin, writer, owner, one)
+mount_bootstrap(app)

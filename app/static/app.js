@@ -42,6 +42,10 @@ let account,
   timer,
   toastTimer,
   loading = false;
+let bootstrapToken = location.hash.startsWith("#setup=")
+  ? location.hash.slice(7)
+  : "";
+if (bootstrapToken) history.replaceState(null, "", location.pathname);
 document.documentElement.dataset.theme =
   localStorage.getItem("donino-theme") || "dark";
 
@@ -76,6 +80,8 @@ function showLogin() {
   account = null;
   $("#app-view").hidden = true;
   $("#login-view").hidden = false;
+  $("#login-form").hidden = Boolean(bootstrapToken);
+  $("#bootstrap-form").hidden = !bootstrapToken;
 }
 function writable() {
   return account && account.role !== "viewer";
@@ -171,7 +177,7 @@ function renderInbounds() {
 function renderSettings() {
   return (
     heading("تنظیمات و نگهداری", "همه‌چیز برای مدیریت یک شبکهٔ مستقل.") +
-    `<div class="settings-grid"><article class="card"><h2>پشتیبان‌گیری</h2><p>یک نسخهٔ کامل از پایگاه داده، تنظیمات و حساب‌ها دریافت کن. فایل پشتیبان حاوی اطلاعات محرمانه است؛ آن را امن نگه دار. برای بازیابی ورود دومرحله‌ای، کلید اصلی سرور (master.key) نیز باید جداگانه پشتیبان داشته باشد.</p>${owner() ? '<a class="primary" href="/api/backup" download>دریافت نسخهٔ پشتیبان ↓</a>' : "<p>دریافت پشتیبان فقط برای مالک شبکه فعال است.</p>"}</article><article class="card"><h2>ظاهر پنل</h2><p>پوستهٔ روشن یا تیره را انتخاب کن. انتخاب روی همین دستگاه ذخیره می‌شود.</p><button class="secondary" data-action="theme">تغییر پوسته ◐</button></article><article class="card"><h2>امنیت و دسترسی API</h2><p>ورود دومرحله‌ای، کدهای بازیابی و کلیدهای محدودِ اتوماسیون را مدیریت کن.</p><button class="secondary" data-action="security">مدیریت امنیت</button></article><article class="card"><h2>حساب مدیریت</h2><p>نام کاربری: ${esc(account.username)}<br>سطح دسترسی: ${roles[account.role]}<br>برای ساخت مدیر یا تغییر رمز، از دستور <span class="mono">python -m app.cli admin USERNAME</span> روی سرور استفاده کن.</p></article><article class="card"><h2>Donino Panel <span class="mono">1.0 alpha 1</span></h2><p>نسخهٔ اولیهٔ مستقل، با رابط فارسی و مدیریت چند نود. امکانات در حال توسعه‌اند. راه‌اندازی واقعی به سرور نود، Xray و دامنهٔ مناسب نیاز دارد.</p><a class="subtle-link" href="https://github.com/danialrad04-sketch/donino-panel" target="_blank" rel="noopener">مستندات و کد منبع ↗︎</a></article></div>`
+    `<div class="settings-grid"><article class="card"><h2>پشتیبان‌گیری</h2><p>یک نسخهٔ کامل از پایگاه داده، تنظیمات و حساب‌ها دریافت کن. فایل پشتیبان حاوی اطلاعات محرمانه است؛ آن را امن نگه دار. برای بازیابی ورود دومرحله‌ای، کلید اصلی سرور (master.key) نیز باید جداگانه پشتیبان داشته باشد.</p>${owner() ? '<a class="primary" href="/api/backup" download>دریافت نسخهٔ پشتیبان ↓</a>' : "<p>دریافت پشتیبان فقط برای مالک شبکه فعال است.</p>"}</article><article class="card"><h2>ظاهر پنل</h2><p>پوستهٔ روشن یا تیره را انتخاب کن. انتخاب روی همین دستگاه ذخیره می‌شود.</p><button class="secondary" data-action="theme">تغییر پوسته ◐</button></article><article class="card"><h2>امنیت و دسترسی API</h2><p>ورود دومرحله‌ای، کدهای بازیابی و کلیدهای محدودِ اتوماسیون را مدیریت کن.</p><button class="secondary" data-action="security">مدیریت امنیت</button></article><article class="card"><h2>حساب مدیریت</h2><p>نام کاربری: ${esc(account.username)}<br>سطح دسترسی: ${roles[account.role]}<br>برای ساخت مدیر یا تغییر رمز، از دستور <span class="mono">python -m app.cli admin USERNAME</span> روی سرور استفاده کن.</p></article><article class="card"><h2>Donino Panel <span class="mono">1.0 alpha 2</span></h2><p>نسخهٔ اولیهٔ مستقل، با رابط فارسی و مدیریت چند نود. امکانات در حال توسعه‌اند. راه‌اندازی واقعی به سرور نود، Xray و دامنهٔ مناسب نیاز دارد.</p><a class="subtle-link" href="https://github.com/danialrad04-sketch/donino-panel" target="_blank" rel="noopener">مستندات و کد منبع ↗︎</a></article></div>`
   );
 }
 function render() {

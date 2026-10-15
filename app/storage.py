@@ -82,7 +82,11 @@ def _check_empty(db):
             raise RuntimeError("Destination contains data; import refused")
 
 
-def _reset_sequences(db):
+def _finalize_import(db):
+    # Restoring an old authenticated session/token must not undo a later logout
+    # or administrative revocation. User connection/subscription secrets remain.
+    db.execute("DELETE FROM sessions")
+    db.execute("DELETE FROM api_tokens")
     if db.postgres:
         db.execute(
             "SELECT setval(pg_get_serial_sequence('audit','id'), COALESCE((SELECT MAX(id) FROM audit),0)+1, false)"
@@ -126,7 +130,7 @@ def import_sqlite(source_path):
                 cursor = source.execute(f'SELECT * FROM "{table.name}"')
                 while batch := cursor.fetchmany(500):
                     db.connection.execute(table.insert(), [dict(row) for row in batch])
-            _reset_sequences(db)
+            _finalize_import(db)
 
 
 def restore_archive(source_path):
@@ -162,4 +166,4 @@ def restore_archive(source_path):
                         batch = []
                 if batch:
                     db.connection.execute(table.insert(), batch)
-        _reset_sequences(db)
+        _finalize_import(db)

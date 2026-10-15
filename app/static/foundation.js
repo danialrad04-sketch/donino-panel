@@ -1,5 +1,43 @@
 "use strict";
 
+$("#bootstrap-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const fields = Object.fromEntries(new FormData(event.target));
+  const button = event.target.querySelector("button");
+  $("#bootstrap-error").textContent = "";
+  if (fields.owner_password !== fields.confirm) {
+    $("#bootstrap-error").textContent = "رمز و تکرار آن یکسان نیستند.";
+    return;
+  }
+  button.disabled = true;
+  try {
+    await api("/bootstrap", {
+      method: "POST",
+      body: JSON.stringify({
+        token: bootstrapToken,
+        username: fields.owner_username,
+        password: fields.owner_password,
+      }),
+    });
+    bootstrapToken = "";
+    event.target.reset();
+    showLogin();
+    const account = await api("/login", {
+      method: "POST",
+      body: JSON.stringify({
+        username: fields.owner_username,
+        password: fields.owner_password,
+      }),
+    });
+    await enter(account);
+  } catch (error) {
+    $("#bootstrap-error").textContent = error.message;
+    toast(error.message, true);
+  } finally {
+    button.disabled = false;
+  }
+});
+
 async function foundationAction(action, id) {
   if (action === "devices") {
     const devices = await api(`/users/${id}/devices`);

@@ -13,7 +13,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from playwright.sync_api import sync_playwright
 
-from app.db import database, hash_password, initialize
+from app.db import digest, initialize
 from app.security import totp
 
 
@@ -26,11 +26,9 @@ def main():
         os.environ["DONINO_KEY_FILE"] = folder + "/master.key"
         initialize()
         password = secrets.token_urlsafe(24)
-        with database() as db:
-            db.execute(
-                "INSERT INTO admins VALUES(?,?,?)",
-                ("admin", hash_password(password), "owner"),
-            )
+        setup_token = secrets.token_urlsafe(40)
+        os.environ["DONINO_BOOTSTRAP_TOKEN_HASH"] = digest(setup_token)
+        os.environ["DONINO_BOOTSTRAP_EXPIRES"] = str(int(time.time()) + 3600)
         with socket.socket() as sock:
             sock.bind(("127.0.0.1", 0))
             port = sock.getsockname()[1]
@@ -65,7 +63,15 @@ def main():
                 )
                 errors = []
                 page.on("pageerror", lambda e: errors.append(str(e)))
-                page.goto(url)
+                page.goto(url + "/#setup=" + setup_token)
+                page.locator("#bootstrap-form").wait_for(state="visible")
+                assert page.evaluate("location.hash") == ""
+                page.locator("[name=owner_username]").fill("admin")
+                page.locator("[name=owner_password]").fill(password)
+                page.locator("#bootstrap-form [name=confirm]").fill(password)
+                page.locator("#bootstrap-form button").click()
+                page.locator("#app-view").wait_for(state="visible")
+                page.locator("[data-action=logout]").click()
                 page.locator("#login-view").wait_for(state="visible")
                 page.evaluate("document.fonts.ready")
                 page.screenshot(path=str(output / "donino-login.png"), full_page=True)

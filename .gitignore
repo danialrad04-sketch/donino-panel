@@ -6,3 +6,6 @@ data/
 *.db*
 node-state/
 test-results/
+*.dnb
+master.key
+backup.key

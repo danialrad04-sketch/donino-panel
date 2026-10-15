@@ -23,6 +23,43 @@
         </div>
         <small>مستقل · متن‌باز · ساخته‌شده برای شما</small>
       </div>
+      <form id="bootstrap-form" class="login-form" hidden>
+        <span class="eyebrow">راه‌اندازی اولیه</span>
+        <h2>حساب مالک شبکه را بساز</h2>
+        <p class="muted">
+          این لینک یک‌بارمصرف است و پس از ساخت اولین مدیر بسته می‌شود.
+        </p>
+        <label
+          >نام کاربری<input
+            name="owner_username"
+            autocomplete="username"
+            required
+            maxlength="64"
+            dir="ltr"
+        /></label>
+        <label
+          >رمز جدید<input
+            name="owner_password"
+            type="password"
+            autocomplete="new-password"
+            required
+            minlength="12"
+            maxlength="256"
+            dir="ltr"
+        /></label>
+        <label
+          >تکرار رمز<input
+            name="confirm"
+            type="password"
+            autocomplete="new-password"
+            required
+            minlength="12"
+            maxlength="256"
+            dir="ltr"
+        /></label>
+        <p id="bootstrap-error" role="alert" class="error"></p>
+        <button class="primary" type="submit">ساخت حساب و ورود</button>
+      </form>
       <form id="login-form" class="login-form">
         <span class="eyebrow">خوش آمدید</span>
         <h2>ورود به دونینو</h2>
@@ -62,7 +99,7 @@
         </details>
         <p id="login-error" role="alert" class="error"></p>
         <button class="primary" type="submit">ورود به پنل <span>←</span></button
-        ><small class="muted">Donino Panel · نسخهٔ توسعه ۱.۰ alpha 1</small>
+        ><small class="muted">Donino Panel · نسخهٔ توسعه ۱.۰ alpha 2</small>
       </form>
     </section>
     <div id="app-view" class="shell" hidden>
@@ -84,7 +121,7 @@
         <div class="sidebar-bottom">
           <div class="version-card">
             <span class="status-dot"></span><b>Donino Core</b
-            ><small>نسخهٔ توسعه ۱.۰ alpha 1</small>
+            ><small>نسخهٔ توسعه ۱.۰ alpha 2</small>
           </div>
           <div class="account">
             <span class="avatar">D</span>

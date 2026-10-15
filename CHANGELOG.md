@@ -1,6 +1,15 @@
 # Donino releases
 
-## Unreleased — planning documentation
+## Unreleased — 1.0 development
+
+Development checkpoint `1.0.0a2` (not a stable release):
+
+- Native control-plane install/reinstall/upgrade, NGINX HTTPS, certificate validation/renewal hooks, DB readiness, doctor/repair and data-preserving uninstall.
+- Atomic first-owner bootstrap with an expiring fragment token and browser setup; no shared initial password.
+- Streaming AES-256-GCM backup bundles, matching MFA-key recovery, refusal of nonempty restore targets and service readiness after restoration. Restored admin sessions/API tokens are revoked.
+- Source manifests and a pinned downloader with bounded, verified product-file extraction before loading code.
+- Isolated Debian 12/PostgreSQL 15 and Ubuntu 24.04/PostgreSQL 16 service acceptance; public ACME, standalone VMs, external ISP tests and additional installation roles remain unverified or pending.
+
 
 Development checkpoint `1.0.0a1` (not a stable release):
 

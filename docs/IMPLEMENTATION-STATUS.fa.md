@@ -9,9 +9,9 @@
 | فاز | وضعیت | خروجی و شکاف |
 |---|---|---|
 | ۰ | انجام‌شده | شش سند و منابع ثابت؛ commit `484b13f` |
-| ۱ | برش زیرساخت پیاده‌شده؛ در حال نهایی‌سازی | SQLAlchemy/Alembic، PostgreSQL/SQLite، انتقال/backup/restore، device credentials، MFA، scoped tokens، assignment و آزمون واقعی؛ تکمیل قرارداد دوره با عامل جدید در ۳ |
-| ۲ | بعدی | نصب native، domain/SSL، backup و doctor؛ پذیرش عمومی SSL وابسته به زیرساخت خارجی |
-| ۳ | در صف وابستگی | SDK، mTLS، صف کار و budget lease؛ دوره مصرف end-to-end |
+| ۱ | برش زیرساخت پذیرفته‌شده در آزمایش | SQLAlchemy/Alembic، PostgreSQL/SQLite، انتقال/backup/restore، device credentials، MFA، scoped tokens، assignment و آزمون واقعی؛ تکمیل قرارداد دوره با عامل جدید در ۳ |
+| ۲ | کنترل‌پنل پیاده و در OSهای آزمایشی پذیرفته شد | نصب/تکرار/راه‌اندازی مجدد، HTTPS با CA محلی، bootstrap، backup رمزگذاری‌شده و restore در میزبان جدا؛ ACME عمومی/VM و نقش‌های DNS هنوز تأیید نشده‌اند |
+| ۳ | مرحله بعدی اجرا | SDK، mTLS، صف کار و budget lease؛ دوره مصرف end-to-end |
 | ۴، ۵ | در صف وابستگی | DNS و Gaming DNS، سپس importer doctor-dns |
 | ۶، ۷ | در صف وابستگی | WireGuard/AWG و OpenVPN با کلاینت واقعی |
 | ۸، ۹ | در صف وابستگی | Xray و موتورهای تکمیلی با ماتریس واقعی قابلیت |
@@ -35,3 +35,9 @@
 ## بررسی‌های برش اول
 
 آزمون‌های محلی PostgreSQL 16، انتقال SQLite→PostgreSQL، بازیابی PostgreSQL در schema مستقل، گزارش هم‌زمان و آزمون‌های API/عامل/Xray اجرا شدند. مرورگر واقعی ساخت دستگاه، assignment، scoped token، setup MFA و ورود recovery را اجرا کرد؛ خطای JavaScript نداشت. نتیجهٔ نهایی هر checkpoint با SHA و CI در گزارش انتشار همان checkpoint ثبت می‌شود؛ این شواهد به معنی تکمیل فازهای بعد یا پذیرش production نیست.
+
+## برش نصب — alpha 2
+
+[راهنمای اجرایی](INSTALLER-PREVIEW.fa.md) مرجع فرمان‌های قابل استفاده است. هر دو محیط OS جداشده با systemd، Debian 12/PostgreSQL 15 و Ubuntu 24.04/PostgreSQL 16، نصب، تکرار، restart، TLS با CA محلی معتبر، ساخت مالک، backup و بازیابی DB+MFA در نمونهٔ جدا و uninstall با حفظ داده را گذراندند. این محیط‌ها کانتینر با systemd و شبکه جدا هستند، نه VM مستقل یا VPS/دامنه عمومی. مسیر ACME واقعی و کیفیت ISP هنوز پذیرش نشده‌اند.
+
+لایهٔ بستهٔ سورس شامل manifest فایل‌ها، checksum، دانلود از ref نسخه‌دار و رد آرشیو نامعتبر پیش از import کد است. bundle رمزگذاری‌شده کلید MFA را همراه DB نگه می‌دارد؛ کلید بازکردن bundle جداست. import/restore، session و API token مدیریتی قبلی را برای جلوگیری از زنده‌شدن دسترسی لغوشده باطل می‌کند. صورت قبلی این سند دربارهٔ backup جداگانهٔ master.key همچنان برای backup خام DB/UI برقرار است.

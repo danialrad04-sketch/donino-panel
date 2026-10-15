@@ -11,6 +11,9 @@ def main():
     parser.add_argument("--version", action="version", version=__version__)
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("migrate", help="Back up and migrate an older supported database")
+    sub.add_parser(
+        "bootstrap-status", help="Report whether first-owner setup is still possible"
+    )
     create = sub.add_parser(
         "admin", help="Create/update an admin and invalidate their sessions"
     )
@@ -32,6 +35,20 @@ def main():
     restore.add_argument("source", type=Path)
     args = parser.parse_args()
     initialize()
+    if args.command == "bootstrap-status":
+        import json
+
+        with database() as db:
+            print(
+                json.dumps(
+                    {
+                        "administrators": db.execute(
+                            "SELECT COUNT(*) FROM admins"
+                        ).fetchone()[0]
+                    }
+                )
+            )
+        return
     if args.command == "migrate":
         print(
             f"Database ready at schema {SCHEMA_VERSION}. Older databases were backed up before migration."

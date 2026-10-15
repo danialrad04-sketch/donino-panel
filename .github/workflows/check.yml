@@ -4,21 +4,25 @@ permissions:
   contents: read
 jobs:
   api-and-xray:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        python: ["3.11", "3.12"]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
-          python-version: "3.12"
+          python-version: ${{ matrix.python }}
           cache: pip
       - run: pip install -r requirements.txt
+      - run: python scripts/release_manifest.py --check
       - run: python scripts/fetch_xray.py /tmp/donino-xray
       - run: DONINO_TEST_XRAY=/tmp/donino-xray/xray python -m unittest discover -s tests -v
       - run: node --check app/static/app.js
       - run: node --check app/static/portal.js
       - run: node --check app/static/foundation.js
   postgres:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     services:
       postgres:
         image: postgres:16-bookworm@sha256:0ea6700a3b4f0ae6ce746519073558aed4d88a79d8d07622a9a644946c7319c4
@@ -33,19 +37,35 @@ jobs:
     env:
       DONINO_TEST_POSTGRES: postgresql://postgres:donino-ci-only@127.0.0.1:5432/donino_test
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: "3.12"
       - run: pip install -r requirements.txt
       - run: python -m unittest discover -s tests -p test_postgres.py -v
   browser:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: "3.12"
       - run: pip install -r requirements.txt playwright==1.62.0
       - run: python -m playwright install --with-deps chromium
       - run: python tests/browser_smoke.py
+  native:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [debian12, ubuntu24]
+    env:
+      DOCKER_BUILDKIT: "1"
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - run: python tests/native_acceptance.py --os ${{ matrix.os }}
