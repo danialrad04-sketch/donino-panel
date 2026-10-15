@@ -1,0 +1,27 @@
+name: Check Donino
+on: [push, pull_request, workflow_dispatch]
+permissions:
+  contents: read
+jobs:
+  api-and-xray:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - run: python scripts/fetch_xray.py /tmp/donino-xray
+      - run: DONINO_TEST_XRAY=/tmp/donino-xray/xray python -m unittest discover -s tests -v
+      - run: node --check app/static/app.js
+  browser:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt playwright==1.62.0
+      - run: python -m playwright install --with-deps chromium
+      - run: python tests/browser_smoke.py

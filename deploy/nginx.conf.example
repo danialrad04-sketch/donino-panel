@@ -1,0 +1,25 @@
+# Replace domain and TLS certificate paths. Place inside nginx's http context.
+server {
+    listen 80;
+    server_name panel.example.com;
+    return 301 https://panel.example.com$request_uri;
+}
+server {
+    listen 443 ssl;
+    server_name panel.example.com;
+    ssl_certificate /etc/letsencrypt/live/panel.example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/panel.example.com/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    client_max_body_size 2m;
+    add_header Strict-Transport-Security "max-age=31536000" always;
+    location / {
+        proxy_pass http://127.0.0.1:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        # Overwrite, rather than append, incoming forwarded headers.
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header X-Real-IP $remote_addr;
+        # Subscription paths are bearer secrets: do not record them in access logs.
+        access_log off;
+    }
+}

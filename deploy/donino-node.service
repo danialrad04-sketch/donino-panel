@@ -1,0 +1,25 @@
+[Unit]
+Description=Donino Xray node agent
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=donino
+Group=donino
+WorkingDirectory=/opt/donino-panel
+EnvironmentFile=/etc/donino/node.env
+ExecStart=/opt/donino-panel/.venv/bin/python -m agent.main
+Restart=on-failure
+RestartSec=5
+StateDirectory=donino-node
+UMask=0077
+NoNewPrivileges=true
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/donino-node
+
+[Install]
+WantedBy=multi-user.target

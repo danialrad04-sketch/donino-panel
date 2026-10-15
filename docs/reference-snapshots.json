@@ -1,0 +1,123 @@
+[
+  {
+    "repository": "MHSanaei/3x-ui",
+    "url": "https://github.com/MHSanaei/3x-ui",
+    "branch": "main",
+    "license": "GPL-3.0",
+    "description": "Supporting multi-protocol multi-user(Vmess, Vless, Trojan, ShadowSocks, Wireguard, Hysteria, Tunnel, Mixed, HTTP, Tun, MTProto، AmneziaWG) ",
+    "commit": "608ef4e4010bf83e2e78328e08f77efc051ad4d7"
+  },
+  {
+    "repository": "PasarGuard/panel",
+    "url": "https://github.com/PasarGuard/panel",
+    "branch": "main",
+    "license": "AGPL-3.0",
+    "description": "PasarGuard | Unified GUI Censorship Resistant Solution",
+    "commit": "b56ffe369f542152c52c69733205baeaf3f6e4cd"
+  },
+  {
+    "repository": "PasarGuard/node",
+    "url": "https://github.com/PasarGuard/node",
+    "branch": "main",
+    "license": "GPL-3.0",
+    "description": "PasarGuard Node | Decentralized Censorship-Resistant Access Layer",
+    "commit": "e9a9ba286413c404854b80c847b588b620426660"
+  },
+  {
+    "repository": "Gozargah/Marzban",
+    "url": "https://github.com/Gozargah/Marzban",
+    "branch": "master",
+    "license": "AGPL-3.0",
+    "description": "Unified GUI Censorship Resistant Solution Powered by Xray",
+    "commit": "7f396db3e703d71a28060bc9ce4a532ec64cb1f4"
+  },
+  {
+    "repository": "hiddify/Hiddify-Manager",
+    "url": "https://github.com/hiddify/Hiddify-Manager",
+    "branch": "dev",
+    "license": "GPL-3.0",
+    "description": "Multi-user anti-filtering panel, with an effortless installation and supporting more than 20 protocols to circumvent filtering plus the telegram proxy. ",
+    "commit": "f4398aa39dbffe6c4e7e36a6357497b29f730f29"
+  },
+  {
+    "repository": "remnawave/panel",
+    "url": "https://github.com/remnawave/panel",
+    "branch": "main",
+    "license": "AGPL-3.0",
+    "description": "A powerful proxy management tool, built on top of Xray-core, with a focus on simplicity and ease of use.",
+    "commit": "79a7542f5929734a67b8bfb5c381261aff0d9584",
+    "LICENSE_error": "HTTP Error 404: Not Found"
+  },
+  {
+    "repository": "alireza0/s-ui",
+    "url": "https://github.com/alireza0/s-ui",
+    "branch": "main",
+    "license": "GPL-3.0",
+    "description": "An advanced Web Panel • Built for SagerNet/Sing-Box",
+    "commit": "21866906a0ba260a829366ad56881b6b58d199af"
+  },
+  {
+    "repository": "vaxilu/x-ui",
+    "url": "https://github.com/vaxilu/x-ui",
+    "branch": "main",
+    "license": "GPL-3.0",
+    "description": "支持多协议多用户的 xray 面板",
+    "commit": "9c1be8c57a53953b47ee7c09a93554e73816f907"
+  },
+  {
+    "repository": "alireza0/x-ui",
+    "url": "https://github.com/alireza0/x-ui",
+    "branch": "main",
+    "license": "GPL-3.0",
+    "description": "xray panel supporting multi-protocol multi-user expire day & traffic & IP-Limit (Vmess & Vless & Trojan & Shadowsocks & Hysteria)",
+    "commit": "59b7e4b38b71c6003f3c09e7dd753761e7933029"
+  },
+  {
+    "repository": "wg-easy/wg-easy",
+    "url": "https://github.com/wg-easy/wg-easy",
+    "branch": "master",
+    "license": "AGPL-3.0",
+    "description": "The easiest way to run WireGuard VPN + Web-based Admin UI.",
+    "commit": "1c8188d4a6a453580d767fb0be918843d648141d"
+  },
+  {
+    "repository": "pritunl/pritunl",
+    "url": "https://github.com/pritunl/pritunl",
+    "branch": "master",
+    "license": "NOASSERTION",
+    "description": "Enterprise VPN server",
+    "commit": "499f04990565ffb79e2531d62d24b7d512031e3d"
+  },
+  {
+    "repository": "netbirdio/netbird",
+    "url": "https://github.com/netbirdio/netbird",
+    "branch": "main",
+    "license": "NOASSERTION",
+    "description": "NetBird securely connects people, machines and AI agents across any network with one identity-based Zero Trust platform. Powered by peer-to-peer WireGuard®",
+    "commit": "afd5c6df6a26eec3c0a81df2374dfe1ce9983ea8"
+  },
+  {
+    "repository": "juanfont/headscale",
+    "url": "https://github.com/juanfont/headscale",
+    "branch": "main",
+    "license": "BSD-3-Clause",
+    "description": "An open source, self-hosted implementation of the Tailscale control server",
+    "commit": "fc97593bcea76c92fb3ad41a5b95076684ddc85a"
+  },
+  {
+    "repository": "firezone/firezone",
+    "error": "HTTP Error 404: Not Found"
+  },
+  {
+    "repository": "Jigsaw-Code/outline-server",
+    "url": "https://github.com/OutlineFoundation/outline-server",
+    "branch": "master",
+    "license": "Apache-2.0",
+    "description": "Outline Server, developed by Jigsaw. The Outline Server is a proxy server that runs a Shadowsocks instance and provides a REST API for access key management.",
+    "commit": "de566bfc9ff4429ae839e304b4d7e03b703ce415"
+  },
+  {
+    "repository": "ppanel-dev/ppanel",
+    "error": "HTTP Error 404: Not Found"
+  }
+]
