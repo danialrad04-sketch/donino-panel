@@ -34,13 +34,16 @@ def database():
         connection.close()
 
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
+MAX_DEVICES_PER_USER = 20
 
 
-def migration_backup():
+def migration_backup(tag="v2"):
     """Called before DDL, while another connection holds the writer reservation."""
     path = db_path()
-    destination = path.with_name(path.name + ".pre-v2-" + uuid.uuid4().hex[:12] + ".db")
+    destination = path.with_name(
+        path.name + ".pre-" + tag + "-" + uuid.uuid4().hex[:12] + ".db"
+    )
     fd = os.open(destination, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     os.close(fd)
     source, target = sqlite3.connect(path), sqlite3.connect(destination)
@@ -67,7 +70,8 @@ def initialize():
                 raise RuntimeError(
                     "Unrecognized database schema; automatic migration refused"
                 )
-            migration_backup()
+            # One backup per upgrade run, named after the oldest step being applied.
+            migration_backup("v2" if version < 2 else "v3")
         # execute() keeps all DDL and the version update inside the same transaction.
         schema = """
         CREATE TABLE IF NOT EXISTS admins (
@@ -120,6 +124,86 @@ def initialize():
                 "ALTER TABLE nodes ADD COLUMN pending_usage INTEGER NOT NULL DEFAULT 0"
             )
             db.execute("PRAGMA user_version=2")
+        if version < 3:
+            migrate_to_v3(db)
+            db.execute("PRAGMA user_version=3")
+
+
+def migrate_to_v3(db):
+    """Devices, scoped API tokens, TOTP state and session metadata.
+
+    Identity is preserved: every existing user receives one default device whose
+    id and secret equal the user's id and credential. Xray client emails (the
+    counter keys) therefore stay identical, so the compiled node configuration
+    and all stored counter baselines remain valid and no node restarts because
+    of the upgrade itself.
+    """
+    db.execute(
+        """CREATE TABLE devices (
+          id TEXT PRIMARY KEY,
+          user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          name TEXT NOT NULL, secret TEXT NOT NULL,
+          token TEXT UNIQUE,
+          enabled INTEGER NOT NULL DEFAULT 1,
+          is_default INTEGER NOT NULL DEFAULT 0,
+          uploaded INTEGER NOT NULL DEFAULT 0,
+          downloaded INTEGER NOT NULL DEFAULT 0,
+          created INTEGER NOT NULL,
+          UNIQUE(user_id,name))"""
+    )
+    db.execute("CREATE INDEX devices_user ON devices(user_id)")
+    db.execute(
+        "INSERT INTO devices(id,user_id,name,secret,token,enabled,is_default,created) "
+        "SELECT id,id,'default',credential,NULL,1,1,created FROM users"
+    )
+    # Counter baselines are per Xray client (device), not per user. Existing rows
+    # already use the default device id, which equals the user id.
+    db.execute(
+        """CREATE TABLE counters_v3 (
+          node_id TEXT NOT NULL REFERENCES nodes(id) ON DELETE CASCADE,
+          epoch TEXT NOT NULL,
+          device_id TEXT NOT NULL REFERENCES devices(id) ON DELETE CASCADE,
+          up INTEGER NOT NULL, down INTEGER NOT NULL,
+          PRIMARY KEY(node_id,epoch,device_id))"""
+    )
+    db.execute(
+        "INSERT INTO counters_v3 SELECT node_id,epoch,user_id,up,down FROM counters"
+    )
+    db.execute("DROP TABLE counters")
+    db.execute("ALTER TABLE counters_v3 RENAME TO counters")
+    for column, definition in (
+        ("sid", "TEXT"),
+        ("created", "INTEGER NOT NULL DEFAULT 0"),
+        ("address", "TEXT NOT NULL DEFAULT ''"),
+        ("agent", "TEXT NOT NULL DEFAULT ''"),
+    ):
+        db.execute(f"ALTER TABLE sessions ADD COLUMN {column} {definition}")
+    for row in db.execute("SELECT token,expires FROM sessions").fetchall():
+        db.execute(
+            "UPDATE sessions SET sid=?,created=? WHERE token=?",
+            (secrets.token_hex(8), row["expires"] - 43200, row["token"]),
+        )
+    db.execute("CREATE UNIQUE INDEX sessions_sid ON sessions(sid)")
+    db.execute(
+        """CREATE TABLE admin_mfa (
+          username TEXT PRIMARY KEY REFERENCES admins(username) ON DELETE CASCADE,
+          secret TEXT NOT NULL,
+          enabled INTEGER NOT NULL DEFAULT 0,
+          last_step INTEGER NOT NULL DEFAULT 0,
+          recovery TEXT NOT NULL DEFAULT '[]',
+          created INTEGER NOT NULL)"""
+    )
+    db.execute(
+        """CREATE TABLE api_tokens (
+          id TEXT PRIMARY KEY,
+          username TEXT NOT NULL REFERENCES admins(username) ON DELETE CASCADE,
+          name TEXT NOT NULL,
+          digest TEXT UNIQUE NOT NULL,
+          scope TEXT NOT NULL CHECK(scope IN ('read','users','full')),
+          expires INTEGER NOT NULL, created INTEGER NOT NULL,
+          last_used INTEGER)"""
+    )
+    db.execute("CREATE INDEX api_tokens_user ON api_tokens(username)")
 
 
 def digest(value):

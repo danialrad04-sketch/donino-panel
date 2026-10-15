@@ -23,6 +23,10 @@ flowchart LR
 - Subscription bearer tokens and protocol credentials are stored in plaintext because the panel needs to distribute them. REALITY private keys are also stored in SQLite. Files use restrictive permissions; backups are sensitive and there is no application-level database encryption.
 - Rotating a subscription token revokes the URL, not previously downloaded protocol credentials. `rotate-credentials` rotates both and changes the compiled node configs.
 
+Schema 3 adds devices. A device is one Xray client with its own secret, and its id is the Xray email and counter key. Each user has a default device whose id equals the user id, so pre-0.3 agents and configurations keep working. Subscriptions still belong to the user and list every enabled device. Per-device subscription links are not implemented.
+
+Administrators can enable TOTP two-factor authentication. Recovery codes are stored as digests. API tokens (`dnk_` prefix) are stored as digests, have scopes `read`, `users` and `full`, and never satisfy account-security endpoints. Sessions carry a `sid`, the creation time, the client address and the user agent, so they can be listed and revoked.
+
 ## Node lifecycle and live additions
 
 Every five seconds the agent samples Xray counters into a local SQLite journal, flushes pending reports, fetches desired config, and applies it when its SHA-256 revision changes. User eligibility is computed at fetch time from enabled flag, expiry and used/quota. REALITY server keys stay in authenticated node config; admin list responses omit private keys.
