@@ -8,6 +8,16 @@ Local verification passed: `git diff --check`, local Markdown file/image links a
 
 These document checks do not establish PostgreSQL, mTLS, gaming DNS, additional VPN engines, automatic SSL or production deployment. Existing runtime regression CI remains separate from the phase-zero document checks. See [the master plan](MASTER-PLAN.fa.md) and [future acceptance contract](ACCEPTANCE-TESTS.fa.md).
 
+## Phase 1 partial — working tree, 2026-10-16 (not yet committed)
+
+Changes: schema 3 with devices, admin TOTP and recovery codes, scoped API tokens, session management, paginated users and a device/security UI. Checks run locally on Python 3.13 with the pinned requirements:
+
+- `python -m unittest discover -s tests`: 59 tests passed (34 earlier checks, 25 new in `tests/test_accounts.py`, including a v3 upgrade test and a future-schema refusal).
+- `DONINO_TEST_XRAY=<pinned v26.3.27 binary> python -m unittest discover -s tests`: all 59 passed, including real VLESS/VMess/Trojan transfer and revocation.
+- `tests/browser_smoke.py` passed with the existing admin, portal, mobile and theme checks. A separate headless check of the new device list, device creation, security panel and one-time token display passed at 390px with no JavaScript errors.
+
+Not verified here: GitHub Actions, PostgreSQL, a real VPS, external TLS, and third-party client import. Node agents from 0.2 were not run against this panel.
+
 ## Version 0.2 runtime validation
 
 Version 0.2 was checked on 2026-10-15 with Python 3.12, Chromium via Playwright 1.62.0 and Xray v26.3.27 (pinned release asset SHA-256 in `scripts/fetch_xray.py`). All 34 API/agent/journal/migration/Xray checks passed using the repository dependencies; the expanded browser acceptance check also passed.

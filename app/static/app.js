@@ -171,7 +171,7 @@ function renderInbounds() {
 function renderSettings() {
   return (
     heading("تنظیمات و نگهداری", "همه‌چیز برای مدیریت یک شبکهٔ مستقل.") +
-    `<div class="settings-grid"><article class="card"><h2>پشتیبان‌گیری</h2><p>یک نسخهٔ کامل از پایگاه داده، تنظیمات و حساب‌ها دریافت کن. فایل پشتیبان حاوی اطلاعات محرمانه است؛ آن را در فضای امن نگه دار.</p>${owner() ? '<a class="primary" href="/api/backup" download>دریافت نسخهٔ پشتیبان ↓</a>' : "<p>دریافت پشتیبان فقط برای مالک شبکه فعال است.</p>"}</article><article class="card"><h2>ظاهر پنل</h2><p>پوستهٔ روشن یا تیره را انتخاب کن. انتخاب روی همین دستگاه ذخیره می‌شود.</p><button class="secondary" data-action="theme">تغییر پوسته ◐</button></article><article class="card"><h2>حساب مدیریت</h2><p>نام کاربری: ${esc(account.username)}<br>سطح دسترسی: ${roles[account.role]}<br>برای ساخت مدیر یا تغییر رمز، از دستور <span class="mono">python -m app.cli admin USERNAME</span> روی سرور استفاده کن.</p></article><article class="card"><h2>Donino Panel <span class="mono">0.2.0</span></h2><p>نسخهٔ اولیهٔ مستقل، با رابط فارسی و مدیریت چند نود. امکانات در حال توسعه‌اند. راه‌اندازی واقعی به سرور نود، Xray و دامنهٔ مناسب نیاز دارد.</p><a class="subtle-link" href="https://github.com/danialrad04-sketch/donino-panel" target="_blank" rel="noopener">مستندات و کد منبع ↗︎</a></article></div>`
+    `<div class="settings-grid"><article class="card"><h2>پشتیبان‌گیری</h2><p>یک نسخهٔ کامل از پایگاه داده، تنظیمات و حساب‌ها دریافت کن. فایل پشتیبان حاوی اطلاعات محرمانه است؛ آن را در فضای امن نگه دار.</p>${owner() ? '<a class="primary" href="/api/backup" download>دریافت نسخهٔ پشتیبان ↓</a>' : "<p>دریافت پشتیبان فقط برای مالک شبکه فعال است.</p>"}</article><article class="card"><h2>ظاهر پنل</h2><p>پوستهٔ روشن یا تیره را انتخاب کن. انتخاب روی همین دستگاه ذخیره می‌شود.</p><button class="secondary" data-action="theme">تغییر پوسته ◐</button></article><article class="card"><h2>حساب مدیریت</h2><p>نام کاربری: ${esc(account.username)}<br>سطح دسترسی: ${roles[account.role]}<br>برای ساخت مدیر یا تغییر رمز، از دستور <span class="mono">python -m app.cli admin USERNAME</span> روی سرور استفاده کن.</p></article><article class="card"><h2>Donino Panel <span class="mono">0.2.0</span></h2><p>نسخهٔ اولیهٔ مستقل، با رابط فارسی و مدیریت چند نود. امکانات در حال توسعه‌اند. راه‌اندازی واقعی به سرور نود، Xray و دامنهٔ مناسب نیاز دارد.</p><a class="subtle-link" href="https://github.com/danialrad04-sketch/donino-panel" target="_blank" rel="noopener">مستندات و کد منبع ↗︎</a></article></div><section id="account-security" class="settings-grid"></section>`
   );
 }
 function render() {
@@ -206,7 +206,10 @@ function render() {
         })
         .catch((e) => toast(e.message, true));
     else $("#audit-list").textContent = "دسترسی مالک لازم است.";
-  } else $("#main").innerHTML = (views[page] || renderOverview)();
+  } else {
+    $("#main").innerHTML = (views[page] || renderOverview)();
+    if (page === "settings") loadSecurity();
+  }
 }
 async function refresh(redraw = true) {
   if (loading || !account) return;
@@ -311,7 +314,7 @@ function editUser(user) {
       }) +
       `<label class="check full"><input name="enabled" type="checkbox" ${!user || user.enabled ? "checked" : ""}>دسترسی کاربر فعال باشد</label>` +
       (user
-        ? `<div class="full compact-actions"><button type="button" class="secondary" data-action="reset-traffic" data-id="${user.id}">صفر کردن مصرف</button><button type="button" class="secondary" data-action="rotate-subscription" data-id="${user.id}">تعویض لینک</button><button type="button" class="secondary" data-action="rotate-credentials" data-id="${user.id}">تعویض کلید کاربر</button></div>`
+        ? `<div class="full" id="device-box"></div><div class="full compact-actions"><button type="button" class="secondary" data-action="reset-traffic" data-id="${user.id}">صفر کردن مصرف</button><button type="button" class="secondary" data-action="rotate-subscription" data-id="${user.id}">تعویض لینک</button><button type="button" class="secondary" data-action="rotate-credentials" data-id="${user.id}">تعویض کلید کاربر</button></div>`
         : ""),
     async (f) => {
       await api("/users" + (user ? "/" + user.id : ""), {
@@ -328,6 +331,7 @@ function editUser(user) {
       await saved();
     },
   );
+  if (user) loadDevices(user.id);
 }
 function showNodeToken(token) {
   modal(
@@ -406,7 +410,53 @@ async function confirmAction(title, description, action) {
     await saved();
   });
 }
-async function handleAction(action, id) {
+async function loadDevices(uid) {
+  const box = $("#device-box");
+  if (!box) return;
+  try {
+    const devices = await api(`/users/${uid}/devices`);
+    box.innerHTML =
+      `<h3>دستگاه‌ها و کلیدها</h3><p class="note">هر دستگاه کلید جدا دارد و فقط همان را می‌توان باطل کرد. فعال/غیرفعال کردن یا چرخش کلید، هستهٔ نود را دوباره راه‌اندازی می‌کند.</p>` +
+      devices
+        .map(
+          (d) =>
+            `<div class="node-row"><div><b>${esc(d.name)}${d.is_default ? " · پیش‌فرض" : ""}</b><small>↑ ${bytes(d.uploaded)} · ↓ ${bytes(d.downloaded)}</small></div>${badge(d.enabled ? "active" : "disabled")}<div class="compact-actions">${d.enabled ? `<button type="button" class="secondary" data-action="disable-device" data-id="${d.id}" data-user="${uid}">غیرفعال</button>` : `<button type="button" class="secondary" data-action="enable-device" data-id="${d.id}" data-user="${uid}">فعال</button>`}<button type="button" class="secondary" data-action="rotate-device" data-id="${d.id}" data-user="${uid}">چرخش کلید</button>${d.is_default ? "" : `<button type="button" class="danger" data-action="delete-device" data-id="${d.id}" data-user="${uid}">حذف</button>`}</div></div>`,
+        )
+        .join("") +
+      `<div class="form-grid"><label class="full">نام دستگاه جدید<input id="new-device-name" maxlength="40"></label><div class="full compact-actions"><button type="button" class="primary" data-action="add-device" data-user="${uid}">افزودن دستگاه</button></div></div>`;
+  } catch (error) {
+    box.textContent = error.message;
+  }
+}
+async function loadSecurity() {
+  const box = $("#account-security");
+  if (!box) return;
+  try {
+    const info = await api("/account");
+    const sessions =
+      info.sessions
+        .map(
+          (s) =>
+            `<div class="node-row"><div><b>${esc(s.address || "نامشخص")}</b><small>${new Date(s.created * 1000).toLocaleString("fa-IR")} · ${esc((s.agent || "").slice(0, 60))}</small></div>${s.current ? badge("active", "این نشست") : `<button type="button" class="secondary" data-action="revoke-session" data-id="${esc(s.sid)}">خروج</button>`}</div>`,
+        )
+        .join("") || "<p class='muted'>نشست دیگری فعال نیست.</p>";
+    const tokens =
+      info.tokens
+        .map(
+          (t) =>
+            `<div class="node-row"><div><b>${esc(t.name)}</b><small>دامنه: ${esc(t.scope)} · انقضا: ${date(t.expires)} · آخرین استفاده: ${t.last_used ? new Date(t.last_used * 1000).toLocaleString("fa-IR") : "هرگز"}</small></div><button type="button" class="secondary" data-action="revoke-token" data-id="${esc(t.id)}">ابطال</button></div>`,
+        )
+        .join("") || "<p class='muted'>توکنی ساخته نشده است.</p>";
+    box.innerHTML =
+      `<article class="card"><h2>ورود دو مرحله‌ای</h2><p>${info.mfa_enabled ? "فعال است؛ ورود به پنل کد برنامهٔ احراز هویت می‌خواهد." : "غیرفعال است. فعال‌سازی آن امنیت حساب مدیریت را بالا می‌برد."}</p>${info.mfa_enabled ? '<button type="button" class="secondary" data-action="mfa-disable">غیرفعال‌سازی</button>' : '<button type="button" class="primary" data-action="mfa-setup">فعال‌سازی</button>'}</article>` +
+      `<article class="card"><h2>رمز عبور</h2><p>با تغییر رمز، نشست‌های دیگر و همهٔ توکن‌های API این حساب باطل می‌شوند.</p><button type="button" class="secondary" data-action="change-password">تغییر رمز</button></article>` +
+      `<article class="card"><h2>نشست‌های ورود</h2>${sessions}${info.sessions.length > 1 ? '<div class="compact-actions"><button type="button" class="outline-button danger" data-action="revoke-others">خروج از سایر نشست‌ها</button></div>' : ""}</article>` +
+      `<article class="card"><h2>توکن‌های API</h2><p>برای اتوماسیون. هر توکن فقط یک‌بار نمایش داده می‌شود و دامنهٔ آن محدود است.</p>${tokens}<div class="compact-actions"><button type="button" class="primary" data-action="token-create">ساخت توکن</button></div></article>`;
+  } catch (error) {
+    box.innerHTML = `<article class="card"><p class="error">${esc(error.message)}</p></article>`;
+  }
+}
+async function handleAction(action, id, element) {
   const user = data.users.find((u) => u.id === id);
   if (action === "add-user") return editUser();
   if (action === "edit-user") return editUser(user);
@@ -452,6 +502,147 @@ async function handleAction(action, id) {
         showNodeToken(result.token);
       },
     );
+  if (action === "mfa-setup") {
+    const setup = await api("/account/mfa/setup", { method: "POST" });
+    return form(
+      "فعال‌سازی ورود دو مرحله‌ای",
+      `<p class="note full">کلید زیر را در برنامهٔ احراز هویت (مثل Google Authenticator یا Aegis) به‌صورت دستی وارد کنید.</p><label class="full">کلید محرمانه<textarea readonly dir="ltr">${esc(setup.secret)}</textarea></label>` +
+        input("کد ۶ رقمی برنامه", "code", {
+          type: "text",
+          full: true,
+          extra: 'inputmode="numeric" autocomplete="one-time-code" dir="ltr" maxlength="6"',
+        }),
+      async (f) => {
+        const result = await api("/account/mfa/enable", {
+          method: "POST",
+          body: JSON.stringify({ code: f.code }),
+        });
+        modal(
+          "رمزهای بازیابی",
+          `<p class="note">این رمزها فقط همین یک بار نشان داده می‌شوند. هر کدام یک‌بار مصرف است و اگر دستگاه احراز هویت را از دست دادید، به‌جای کد ۶ رقمی وارد می‌شود.</p><label class="full">رمزهای بازیابی<textarea id="secret-output" readonly dir="ltr" rows="10">${esc(result.recovery_codes.join("\n"))}</textarea></label><div class="form-actions"><button type="button" class="primary" data-action="copy-secret">کپی رمزها</button></div>`,
+        );
+        await loadSecurity();
+      },
+    );
+  }
+  if (action === "mfa-disable")
+    return form(
+      "غیرفعال‌سازی ورود دو مرحله‌ای",
+      input("رمز عبور", "password", {
+        type: "password",
+        extra: 'autocomplete="current-password" dir="ltr"',
+      }) +
+        input("کد دو مرحله‌ای یا بازیابی", "code", {
+          extra: 'autocomplete="one-time-code" dir="ltr"',
+        }),
+      async (f) => {
+        await api("/account/mfa/disable", {
+          method: "POST",
+          body: JSON.stringify(f),
+        });
+        $("#modal").close();
+        toast("ورود دو مرحله‌ای غیرفعال شد");
+        await loadSecurity();
+      },
+    );
+  if (action === "change-password")
+    return form(
+      "تغییر رمز عبور",
+      input("رمز فعلی", "current", {
+        type: "password",
+        extra: 'autocomplete="current-password" dir="ltr"',
+      }) +
+        input("رمز جدید (حداقل ۱۲ نویسه)", "new", {
+          type: "password",
+          extra: 'autocomplete="new-password" minlength="12" dir="ltr"',
+        }),
+      async (f) => {
+        await api("/account/password", {
+          method: "POST",
+          body: JSON.stringify(f),
+        });
+        $("#modal").close();
+        toast("رمز تغییر کرد؛ نشست‌ها و توکن‌های دیگر باطل شدند");
+        await loadSecurity();
+      },
+    );
+  if (action === "revoke-session") {
+    await api(`/account/sessions/${id}`, { method: "DELETE" });
+    toast("نشست بسته شد");
+    return loadSecurity();
+  }
+  if (action === "revoke-others") {
+    await api("/account/sessions/revoke-others", { method: "POST" });
+    toast("سایر نشست‌ها بسته شدند");
+    return loadSecurity();
+  }
+  if (action === "revoke-token") {
+    await api(`/account/tokens/${id}`, { method: "DELETE" });
+    toast("توکن باطل شد");
+    return loadSecurity();
+  }
+  if (action === "token-create")
+    return form(
+      "توکن API جدید",
+      input("نام توکن", "name", { value: "automation" }) +
+        `<label>دامنه<select name="scope"><option value="read">فقط خواندن</option><option value="users">مدیریت کاربران</option><option value="full">کامل (فقط مالک)</option></select></label>` +
+        input("مدت (روز)", "days", {
+          type: "number",
+          value: 30,
+          extra: 'min="1" max="365" dir="ltr"',
+        }),
+      async (f) => {
+        const result = await api("/account/tokens", {
+          method: "POST",
+          body: JSON.stringify({
+            name: f.name,
+            scope: f.scope,
+            days: Number(f.days),
+          }),
+        });
+        modal(
+          "توکن API",
+          `<p class="note">این توکن فقط همین یک بار نمایش داده می‌شود. آن را در جای امنی ذخیره کنید.</p><label class="full">توکن<textarea id="secret-output" readonly dir="ltr">${esc(result.token)}</textarea></label><div class="form-actions"><button type="button" class="primary" data-action="copy-secret">کپی توکن</button></div>`,
+        );
+        await loadSecurity();
+      },
+    );
+  if (action === "add-device") {
+    const uid = element.dataset.user;
+    const name = $("#new-device-name").value.trim();
+    await api(`/users/${uid}/devices`, {
+      method: "POST",
+      body: JSON.stringify({ name, enabled: true }),
+    });
+    toast("دستگاه اضافه شد؛ کلید آن در لینک اشتراک همین کاربر است");
+    await loadDevices(uid);
+    return refresh(false);
+  }
+  if (action === "delete-device") {
+    await api(`/devices/${id}`, { method: "DELETE" });
+    toast("دستگاه حذف شد");
+    await loadDevices(element.dataset.user);
+    return refresh(false);
+  }
+  if (action === "rotate-device") {
+    await api(`/devices/${id}/rotate-secret`, { method: "POST" });
+    toast("کلید این دستگاه عوض شد؛ کلید قبلی باطل است و نود همگام می‌شود");
+    await loadDevices(element.dataset.user);
+    return refresh(false);
+  }
+  if (action === "enable-device" || action === "disable-device") {
+    const uid = element.dataset.user;
+    const current = (await api(`/users/${uid}/devices`)).find((d) => d.id === id);
+    await api(`/devices/${id}`, {
+      method: "PUT",
+      body: JSON.stringify({
+        name: current.name,
+        enabled: action === "enable-device",
+      }),
+    });
+    await loadDevices(uid);
+    return refresh(false);
+  }
   if (action === "copy-portal")
     return copyText($("[data-action=copy-portal]").dataset.url);
   if (action === "copy-secret") return copyText($("#secret-output").value);
@@ -508,7 +699,7 @@ async function handleAction(action, id) {
 document.addEventListener("click", (e) => {
   const target = e.target.closest("[data-action]");
   if (target)
-    handleAction(target.dataset.action, target.dataset.id).catch((error) =>
+    handleAction(target.dataset.action, target.dataset.id, target).catch((error) =>
       toast(error.message, true),
     );
 });
@@ -545,7 +736,15 @@ $("#login-form").addEventListener("submit", async (e) => {
       method: "POST",
       body: JSON.stringify(Object.fromEntries(new FormData(e.target))),
     });
+    if (user.mfa_required) {
+      $("#code-field").hidden = false;
+      $("#login-error").textContent =
+        "کد برنامهٔ احراز هویت یا یکی از رمزهای بازیابی را وارد کنید.";
+      $("#login-form [name=code]").focus();
+      return;
+    }
     e.target.reset();
+    $("#code-field").hidden = true;
     await enter(user);
   } catch (error) {
     $("#login-error").textContent = error.message;

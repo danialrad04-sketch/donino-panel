@@ -1,4 +1,10 @@
-"""Independent Xray compiler and client profile serializers."""
+"""Independent Xray compiler and client profile serializers.
+
+A "client" is one device credential. Its id is the Xray client email and the
+counter key. The default device of every user uses the user id as its id and the
+legacy user credential as its secret, so pre-0.3 configurations and counter
+baselines stay valid after upgrade.
+"""
 
 import base64
 import hashlib
@@ -26,8 +32,9 @@ def status(user):
     return "active"
 
 
-def compile_config(inbounds, users):
-    live = [u for u in users if eligible(u)]
+def compile_config(inbounds, clients):
+    """clients: dicts with id, secret and eligible (user and device both allowed)."""
+    live = [c for c in clients if c["eligible"]]
     result = {
         "log": {"loglevel": "warning"},
         "api": {"tag": "api", "services": ["StatsService", "HandlerService"]},
@@ -62,11 +69,11 @@ def compile_config(inbounds, users):
         protocol = inbound["protocol"]
         clients = [
             {
-                "email": u["id"],
+                "email": c["id"],
                 "level": 0,
-                ("password" if protocol == "trojan" else "id"): u["credential"],
+                ("password" if protocol == "trojan" else "id"): c["secret"],
             }
-            for u in live
+            for c in live
         ]
         if protocol == "vless":
             for client in clients:
@@ -114,7 +121,8 @@ def revision(config):
     return hashlib.sha256(json.dumps(config, sort_keys=True).encode()).hexdigest()
 
 
-def profiles(user, inbounds):
+def profiles(clients, inbounds):
+    """clients: dicts with id, secret, device_name, eligible (only eligible are emitted)."""
     links, clash = [], []
     for inbound in inbounds:
         if not inbound["enabled"] or not inbound["node_enabled"]:
@@ -123,78 +131,88 @@ def profiles(user, inbounds):
         host = inbound["host"]
         address = f"[{host}]" if ":" in host else host
         port = inbound["port"]
-        label = (
-            inbound["node_name"] + " · " + inbound["name"] + " · " + inbound["id"][:6]
-        )
         protocol = inbound["protocol"]
-        proxy = {
-            "name": label,
-            "type": protocol,
-            "server": host,
-            "port": port,
-            "tls": True,
-            "servername": s["sni"],
-            "udp": True,
-        }
-        if protocol == "vless":
-            query = {
-                "encryption": "none",
-                "security": "reality",
-                "sni": s["sni"],
-                "fp": "chrome",
-                "pbk": s["public_key"],
-                "sid": s["short_id"],
-                "type": "tcp",
-                "flow": "xtls-rprx-vision",
+        for client in clients:
+            if not client["eligible"]:
+                continue
+            secret = client["secret"]
+            label = (
+                inbound["node_name"]
+                + " · "
+                + inbound["name"]
+                + " · "
+                + client["device_name"]
+                + " · "
+                + inbound["id"][:6]
+            )
+            proxy = {
+                "name": label,
+                "type": protocol,
+                "server": host,
+                "port": port,
+                "tls": True,
+                "servername": s["sni"],
+                "udp": True,
             }
-            proxy.update(
-                {
-                    "uuid": user["credential"],
+            if protocol == "vless":
+                query = {
+                    "encryption": "none",
+                    "security": "reality",
+                    "sni": s["sni"],
+                    "fp": "chrome",
+                    "pbk": s["public_key"],
+                    "sid": s["short_id"],
+                    "type": "tcp",
                     "flow": "xtls-rprx-vision",
-                    "client-fingerprint": "chrome",
-                    "reality-opts": {
-                        "public-key": s["public_key"],
-                        "short-id": s["short_id"],
-                    },
                 }
-            )
-        elif protocol == "trojan":
-            query = {"security": "tls", "sni": s["sni"], "type": "tcp"}
-            proxy["password"] = user["credential"]
-        else:
-            vmess = {
-                "v": "2",
-                "ps": label,
-                "add": host,
-                "port": str(port),
-                "id": user["credential"],
-                "aid": "0",
-                "scy": "auto",
-                "net": "ws",
-                "type": "none",
-                "host": s["sni"],
-                "path": s["path"],
-                "tls": "tls",
-                "sni": s["sni"],
-            }
+                proxy.update(
+                    {
+                        "uuid": secret,
+                        "flow": "xtls-rprx-vision",
+                        "client-fingerprint": "chrome",
+                        "reality-opts": {
+                            "public-key": s["public_key"],
+                            "short-id": s["short_id"],
+                        },
+                    }
+                )
+            elif protocol == "trojan":
+                query = {"security": "tls", "sni": s["sni"], "type": "tcp"}
+                proxy["password"] = secret
+            else:
+                vmess = {
+                    "v": "2",
+                    "ps": label,
+                    "add": host,
+                    "port": str(port),
+                    "id": secret,
+                    "aid": "0",
+                    "scy": "auto",
+                    "net": "ws",
+                    "type": "none",
+                    "host": s["sni"],
+                    "path": s["path"],
+                    "tls": "tls",
+                    "sni": s["sni"],
+                }
+                links.append(
+                    "vmess://" + base64.b64encode(json.dumps(vmess).encode()).decode()
+                )
+                proxy.update(
+                    {
+                        "uuid": secret,
+                        "alterId": 0,
+                        "cipher": "auto",
+                        "network": "ws",
+                        "ws-opts": {"path": s["path"], "headers": {"Host": s["sni"]}},
+                    }
+                )
+                clash.append(proxy)
+                continue
             links.append(
-                "vmess://" + base64.b64encode(json.dumps(vmess).encode()).decode()
-            )
-            proxy.update(
-                {
-                    "uuid": user["credential"],
-                    "alterId": 0,
-                    "cipher": "auto",
-                    "network": "ws",
-                    "ws-opts": {"path": s["path"], "headers": {"Host": s["sni"]}},
-                }
+                f"{protocol}://{secret}@{address}:{port}?{urlencode(query)}#{quote(label)}"
             )
             clash.append(proxy)
-            continue
-        links.append(
-            f"{protocol}://{user['credential']}@{address}:{port}?{urlencode(query)}#{quote(label)}"
-        )
-        clash.append(proxy)
     return links, {
         "proxies": clash,
         "proxy-groups": [
