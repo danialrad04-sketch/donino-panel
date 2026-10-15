@@ -8,7 +8,11 @@ Local verification passed: `git diff --check`, local Markdown file/image links a
 
 These document checks do not establish PostgreSQL, mTLS, gaming DNS, additional VPN engines, automatic SSL or production deployment. Existing runtime regression CI remains separate from the phase-zero document checks. See [the master plan](MASTER-PLAN.fa.md) and [future acceptance contract](ACCEPTANCE-TESTS.fa.md).
 
-## Phase 1 partial — working tree, 2026-10-16 (not yet committed)
+## Phase 1 partial, second pass — 2026-10-16
+
+Added schema 4 (monthly periods), owner-only administrator management and server-side paging of users. Local checks: `python -m unittest discover -s tests` passed with 70 tests, including period rollover, reactivation after a period ends, the last-owner rules and token refusal for admin management. Browser checks at 390px confirmed paging (25 per page), search keeping focus, the period field, the admin card and admin creation, with no JavaScript errors. The real Xray test with the pinned v26.3.27 binary also passed on the same tree.
+
+## Phase 1 partial — working tree, 2026-10-16 (merged as PR #2)
 
 Changes: schema 3 with devices, admin TOTP and recovery codes, scoped API tokens, session management, paginated users and a device/security UI. Checks run locally on Python 3.13 with the pinned requirements:
 

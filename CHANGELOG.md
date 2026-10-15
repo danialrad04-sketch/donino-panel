@@ -10,7 +10,11 @@
 - Paginated `/api/users` with `limit`, `offset`, `q` (literal substring) and `state`, returning `X-Total-Count`. Without `limit` the legacy response is kept.
 - Node agents from 0.2 keep working: the heartbeat accepts the Xray client id, which is the device id for the default device.
 
-Not done in this entry: PostgreSQL, mTLS, node assignment, budget leases, per-device subscription links, admin management API, usage periods, and UI pagination (the interface still loads the newest 1000 users and filters them in the browser).
+- Schema 4: monthly usage periods. A period starts at the user's first recorded usage and resets used, uploaded and downloaded totals when it ends, keeping counter baselines so old bytes are not billed again. Period counter `period_no` increments on each reset. Switching the period clears the cycle start.
+- Administrator management for owners: list, create, change role, reset password and delete. The last owner cannot be demoted or deleted, and nobody can delete their own account. Role changes and password resets end that admin's sessions and API tokens. These endpoints require a browser session, not an API token.
+- Users page uses server-side search (literal substring), state filter and paging of 25 rows.
+
+Not done in this entry: PostgreSQL, mTLS, node assignment, budget leases, per-device subscription links, and late-report protection for periods. Late-report protection needs the agent to send the time each sample was taken; until then, bytes sampled before a reset but reported after it count toward the new period.
 
 
 - Add the Persian 1.0 master plan, feature parity and protocol matrices, gaming DNS/doctor-dns migration design, installer/SSL specification and acceptance contract.

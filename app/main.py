@@ -150,6 +150,8 @@ class UserInput(BaseModel):
     enabled: bool = True
     quota: int = Field(default=0, ge=0, le=9_000_000_000_000_000)
     expires: int | None = Field(default=None, gt=0, le=32_503_680_000)
+    period: str = Field(default="none", pattern=r"^(none|monthly)$")
+    period_days: int = Field(default=30, ge=1, le=366)
 
 
 class DeviceInput(BaseModel):
@@ -246,6 +248,33 @@ class TokenInput(BaseModel):
     name: str = Field(min_length=1, max_length=80)
     scope: str = Field(pattern=r"^(read|users|full)$")
     days: int = Field(default=30, ge=1, le=MAX_TOKEN_DAYS)
+
+
+def roll_periods(db, now=None):
+    """Reset usage of monthly users whose period has ended.
+
+    Baselines in `counters` are kept, so bytes already billed are never billed again.
+    Runs before usage is applied so a new period starts clean.
+    """
+    now = int(time.time()) if now is None else now
+    due = [
+        r["id"]
+        for r in db.execute(
+            "SELECT id FROM users WHERE period='monthly' AND period_start IS NOT NULL "
+            "AND period_start + period_days*86400 <= ?",
+            (now,),
+        )
+    ]
+    for uid in due:
+        db.execute(
+            "UPDATE users SET used=0,uploaded=0,downloaded=0,legacy_used=0,"
+            "period_no=period_no+1,period_start=? WHERE id=?",
+            (now, uid),
+        )
+        db.execute(
+            "UPDATE devices SET uploaded=0,downloaded=0 WHERE user_id=?", (uid,)
+        )
+    return len(due)
 
 
 def client_rows(db, where="", args=()):
@@ -538,6 +567,108 @@ def revoke_token(token_id: str, account=Depends(session_only)):
     return {"ok": True}
 
 
+# ---------- administrators (owner only; session login required) ----------
+
+
+class AdminInput(BaseModel):
+    username: str = Field(min_length=1, max_length=64, pattern=r"^[A-Za-z0-9_.-]+$")
+    password: str = Field(min_length=PASSWORD_MIN, max_length=PASSWORD_MAX)
+    role: str = Field(pattern=r"^(owner|operator|viewer)$")
+
+
+class AdminRoleInput(BaseModel):
+    role: str = Field(pattern=r"^(owner|operator|viewer)$")
+
+
+class AdminPasswordInput(BaseModel):
+    password: str = Field(min_length=PASSWORD_MIN, max_length=PASSWORD_MAX)
+
+
+def owner_count(db, exclude=None):
+    return db.execute(
+        "SELECT COUNT(*) FROM admins WHERE role='owner' AND username<>?",
+        (exclude or "",),
+    ).fetchone()[0]
+
+
+@app.get("/api/admins")
+def list_admins(account=Depends(owner)):
+    with database() as db:
+        return [
+            {
+                "username": r["username"],
+                "role": r["role"],
+                "mfa_enabled": bool(r["mfa"]),
+            }
+            for r in db.execute(
+                "SELECT a.username,a.role,COALESCE(m.enabled,0) AS mfa FROM admins a "
+                "LEFT JOIN admin_mfa m ON m.username=a.username ORDER BY a.username"
+            )
+        ]
+
+
+@app.post("/api/admins", status_code=201)
+def create_admin(body: AdminInput, account=Depends(owner), session=Depends(session_only)):
+    with database() as db:
+        if db.execute("SELECT 1 FROM admins WHERE username=?", (body.username,)).fetchone():
+            raise HTTPException(409, "این نام کاربری از قبل وجود دارد")
+        db.execute(
+            "INSERT INTO admins(username,password,role) VALUES(?,?,?)",
+            (body.username, hash_password(body.password), body.role),
+        )
+        audit(db, account["username"], "admin.create", body.username)
+    return {"username": body.username, "role": body.role}
+
+
+@app.put("/api/admins/{username}")
+def change_admin_role(
+    username: str, body: AdminRoleInput, account=Depends(owner), session=Depends(session_only)
+):
+    with database() as db:
+        row = db.execute("SELECT * FROM admins WHERE username=?", (username,)).fetchone()
+        if not row:
+            raise HTTPException(404, "مدیر پیدا نشد")
+        if row["role"] == "owner" and body.role != "owner" and owner_count(db, username) == 0:
+            raise HTTPException(409, "حداقل یک مالک باید باقی بماند")
+        db.execute("UPDATE admins SET role=? WHERE username=?", (body.role, username))
+        if row["role"] != body.role:
+            # The admin's permissions changed: end their sessions and tokens.
+            revoke_credentials(db, username, tokens=True)
+        audit(db, account["username"], "admin.role", f"{username}:{body.role}")
+    return {"username": username, "role": body.role}
+
+
+@app.post("/api/admins/{username}/password")
+def reset_admin_password(
+    username: str, body: AdminPasswordInput, account=Depends(owner), session=Depends(session_only)
+):
+    with database() as db:
+        if not db.execute("SELECT 1 FROM admins WHERE username=?", (username,)).fetchone():
+            raise HTTPException(404, "مدیر پیدا نشد")
+        db.execute(
+            "UPDATE admins SET password=? WHERE username=?",
+            (hash_password(body.password), username),
+        )
+        revoke_credentials(db, username, tokens=True)
+        audit(db, account["username"], "admin.password", username)
+    return {"ok": True}
+
+
+@app.delete("/api/admins/{username}")
+def delete_admin(username: str, account=Depends(owner), session=Depends(session_only)):
+    if username == account["username"]:
+        raise HTTPException(409, "حساب خودتان را نمی‌توانید حذف کنید")
+    with database() as db:
+        row = db.execute("SELECT role FROM admins WHERE username=?", (username,)).fetchone()
+        if not row:
+            raise HTTPException(404, "مدیر پیدا نشد")
+        if row["role"] == "owner" and owner_count(db, username) == 0:
+            raise HTTPException(409, "حداقل یک مالک باید باقی بماند")
+        db.execute("DELETE FROM admins WHERE username=?", (username,))
+        audit(db, account["username"], "admin.delete", username)
+    return {"ok": True}
+
+
 # ---------- overview, users, devices ----------
 
 
@@ -623,7 +754,8 @@ def add_user(body: UserInput, account=Depends(writer)):
     now = int(time.time())
     with database() as db:
         db.execute(
-            "INSERT INTO users(id,credential,name,enabled,quota,expires,token,created) VALUES(?,?,?,?,?,?,?,?)",
+            "INSERT INTO users(id,credential,name,enabled,quota,expires,token,created,period,period_days) "
+            "VALUES(?,?,?,?,?,?,?,?,?,?)",
             (
                 uid,
                 credential,
@@ -633,6 +765,8 @@ def add_user(body: UserInput, account=Depends(writer)):
                 body.expires,
                 secrets.token_urlsafe(32),
                 now,
+                body.period,
+                body.period_days,
             ),
         )
         # Every user starts with one default device whose id is the user id.
@@ -648,10 +782,25 @@ def add_user(body: UserInput, account=Depends(writer)):
 @app.put("/api/users/{uid}")
 def update_user(uid: str, body: UserInput, account=Depends(writer)):
     with database() as db:
-        one(db, "users", uid)
+        previous = one(db, "users", uid)
+        # Switching the period restarts the cycle at the next usage.
+        period_start = previous["period_start"]
+        if body.period != previous["period"] or body.period_days != previous["period_days"]:
+            period_start = None
+        if body.period == "none":
+            period_start = None
         db.execute(
-            "UPDATE users SET name=?,enabled=?,quota=?,expires=? WHERE id=?",
-            (body.name, body.enabled, body.quota, body.expires, uid),
+            "UPDATE users SET name=?,enabled=?,quota=?,expires=?,period=?,period_days=?,period_start=? WHERE id=?",
+            (
+                body.name,
+                body.enabled,
+                body.quota,
+                body.expires,
+                body.period,
+                body.period_days,
+                period_start,
+                uid,
+            ),
         )
         audit(db, account["username"], "user.update", uid)
         return public_user(one(db, "users", uid))
@@ -958,6 +1107,7 @@ def delete_inbound(iid: str, account=Depends(owner)):
 @app.get("/api/agent/config")
 def agent_config(node=Depends(node_auth)):
     with database() as db:
+        roll_periods(db)
         config = compile_config(
             list(
                 db.execute(
@@ -977,6 +1127,8 @@ def agent_config(node=Depends(node_auth)):
 @app.post("/api/agent/heartbeat")
 def heartbeat(body: Heartbeat, node=Depends(node_auth)):
     with database() as db:
+        now = int(time.time())
+        roll_periods(db, now)
         for sample in body.usage:
             device = db.execute(
                 "SELECT id,user_id FROM devices WHERE id=?", (sample.user_id,)
@@ -1008,6 +1160,12 @@ def heartbeat(body: Heartbeat, node=Depends(node_auth)):
                 "UPDATE devices SET uploaded=uploaded+?,downloaded=downloaded+? WHERE id=?",
                 (delta_up, delta_down, device["id"]),
             )
+            if delta_up + delta_down > 0:
+                db.execute(
+                    "UPDATE users SET period_start=COALESCE(period_start,?) "
+                    "WHERE id=? AND period='monthly'",
+                    (now, device["user_id"]),
+                )
             db.execute(
                 "INSERT OR REPLACE INTO counters VALUES(?,?,?,?,?)",
                 (node["id"], body.epoch, device["id"], up, down),
@@ -1094,6 +1252,7 @@ def subscription(token: str, format: str = "base64"):
     if format not in ("base64", "raw", "clash"):
         raise HTTPException(400, "Formats: base64, raw, clash")
     with database() as db:
+        roll_periods(db)
         user = db.execute("SELECT * FROM users WHERE token=?", (token,)).fetchone()
         if not user or not eligible(user):
             raise HTTPException(404, "Subscription unavailable")
@@ -1129,6 +1288,7 @@ def portal_page(token: str):
 @app.get("/api/portal/{token}")
 def portal_info(token: str, request: Request):
     with database() as db:
+        roll_periods(db)
         user = portal_user(db, token)
         active = eligible(user)
         links, clash = user_profiles(db, user) if active else ([], {"proxies": []})

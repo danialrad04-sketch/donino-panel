@@ -54,6 +54,8 @@ async function api(path, options = {}) {
       ...options.headers,
     },
   });
+  const total = response.headers.get("X-Total-Count");
+  if (total !== null) lastTotal = Number(total);
   if (!response.ok) {
     if (response.status === 401 && path !== "/login") showLogin();
     const result = await response.json().catch(() => ({}));
@@ -138,6 +140,38 @@ function renderOverview() {
   <section class="card table-card"><div class="table-toolbar"><h2>آخرین کاربران</h2><a class="subtle-link" href="#users">مدیریت کاربران ←</a></div>${usersTable(data.users.slice(0, 5), true)}<div class="table-bottom">هر کاربر، یک اشتراک برای تمام اتصال‌های شبکه.</div></section>`
   );
 }
+let usersView = { q: "", state: "", offset: 0, limit: 25, total: 0, rows: [] };
+let usersTimer;
+let lastTotal = 0;
+async function loadUsersPage() {
+  if (page !== "users") return;
+  const params = new URLSearchParams({
+    limit: usersView.limit,
+    offset: usersView.offset,
+  });
+  if (usersView.q) params.set("q", usersView.q);
+  if (usersView.state) params.set("state", usersView.state);
+  try {
+    usersView.rows = await api("/users?" + params);
+    usersView.total = lastTotal;
+  } catch (error) {
+    toast(error.message, true);
+    return;
+  }
+  paintUsers();
+}
+function paintUsers() {
+  if (page !== "users" || !$("#users-table")) return;
+  $("#users-count").textContent = number(usersView.total) + " کاربر";
+  $("#users-table").innerHTML = usersTable(usersView.rows);
+  $("#users-pager").innerHTML = pagerHtml();
+}
+function pagerHtml() {
+  if (!usersView.total) return "";
+  const from = usersView.offset + 1;
+  const to = Math.min(usersView.offset + usersView.limit, usersView.total);
+  return `<div class="pager"><button type="button" class="secondary" data-action="users-prev" ${usersView.offset <= 0 ? "disabled" : ""}>قبلی</button><span class="muted">${number(from)}–${number(to)} از ${number(usersView.total)}</span><button type="button" class="secondary" data-action="users-next" ${to >= usersView.total ? "disabled" : ""}>بعدی</button></div>`;
+}
 function renderUsers() {
   return (
     heading(
@@ -145,7 +179,7 @@ function renderUsers() {
       "دسترسی، حجم مصرفی و زمان اعتبار کاربران را مدیریت کن.",
       writable() ? addButton("user", "کاربر جدید") : "",
     ) +
-    `<section class="card table-card"><div class="table-toolbar"><h2>${number(data.users.length)} کاربر <small class="muted">· حداکثر ۱۰۰۰ رکورد اخیر</small></h2><input id="search-users" class="search" type="search" placeholder="جست‌وجوی کاربر…" aria-label="جست‌وجوی کاربر"></div><div id="users-table">${usersTable(data.users)}</div></section>`
+    `<section class="card table-card"><div class="table-toolbar"><h2 id="users-count">${number(usersView.total)} کاربر</h2><div class="filters"><input id="search-users" class="search" type="search" value="${esc(usersView.q)}" placeholder="جست‌وجوی کاربر…" aria-label="جست‌وجوی کاربر"><select id="filter-state" aria-label="فیلتر وضعیت"><option value="">همه</option>${Object.entries(states).map(([k, v]) => `<option value="${k}" ${usersView.state === k ? "selected" : ""}>${v}</option>`).join("")}</select></div></div><div id="users-table">${usersTable(usersView.rows)}</div><div id="users-pager">${pagerHtml()}</div></section>`
   );
 }
 function renderNodes() {
@@ -209,6 +243,7 @@ function render() {
   } else {
     $("#main").innerHTML = (views[page] || renderOverview)();
     if (page === "settings") loadSecurity();
+    if (page === "users") loadUsersPage();
   }
 }
 async function refresh(redraw = true) {
@@ -312,6 +347,14 @@ function editUser(user) {
         required: false,
         hint: "خالی = بدون انقضا",
       }) +
+      `<label class="full">دورهٔ مصرف<select name="period"><option value="none" ${!user || user.period !== "monthly" ? "selected" : ""}>بدون دوره (حجم یک‌باره)</option><option value="monthly" ${user?.period === "monthly" ? "selected" : ""}>ماهانه</option></select></label>` +
+      input("طول دوره (روز)", "period_days", {
+        type: "number",
+        value: user?.period_days || 30,
+        required: false,
+        extra: 'min="1" max="366" dir="ltr"',
+        hint: "فقط برای دورهٔ ماهانه. دوره از اولین مصرف شروع و حجم مصرف آن صفر می‌شود.",
+      }) +
       `<label class="check full"><input name="enabled" type="checkbox" ${!user || user.enabled ? "checked" : ""}>دسترسی کاربر فعال باشد</label>` +
       (user
         ? `<div class="full" id="device-box"></div><div class="full compact-actions"><button type="button" class="secondary" data-action="reset-traffic" data-id="${user.id}">صفر کردن مصرف</button><button type="button" class="secondary" data-action="rotate-subscription" data-id="${user.id}">تعویض لینک</button><button type="button" class="secondary" data-action="rotate-credentials" data-id="${user.id}">تعویض کلید کاربر</button></div>`
@@ -326,6 +369,8 @@ function editUser(user) {
             ? Math.floor(new Date(f.expires).getTime() / 1000)
             : null,
           enabled: f.enabled === "on",
+          period: f.period || "none",
+          period_days: Number(f.period_days) || 30,
         }),
       });
       await saved();
@@ -428,6 +473,24 @@ async function loadDevices(uid) {
     box.textContent = error.message;
   }
 }
+async function loadAdmins(box) {
+  try {
+    const admins = await api("/admins");
+    box.insertAdjacentHTML(
+      "beforeend",
+      `<article class="card"><h2>مدیران پنل</h2><p>فقط مالک می‌تواند مدیران را مدیریت کند. تغییر نقش یا رمز، نشست‌ها و توکن‌های آن مدیر را باطل می‌کند.</p>` +
+        admins
+          .map(
+            (a) =>
+              `<div class="node-row"><div><b>${esc(a.username)}${a.username === account.username ? " · شما" : ""}</b><small>${esc(roles[a.role])} · ورود دو مرحله‌ای: ${a.mfa_enabled ? "فعال" : "غیرفعال"}</small></div><div class="compact-actions"><button type="button" class="secondary" data-action="admin-role" data-id="${esc(a.username)}">نقش</button><button type="button" class="secondary" data-action="admin-password" data-id="${esc(a.username)}">رمز</button>${a.username === account.username ? "" : `<button type="button" class="danger" data-action="admin-delete" data-id="${esc(a.username)}">حذف</button>`}</div></div>`,
+          )
+          .join("") +
+        `<div class="compact-actions"><button type="button" class="primary" data-action="admin-create">مدیر جدید</button></div></article>`,
+    );
+  } catch (error) {
+    box.insertAdjacentHTML("beforeend", `<article class="card"><p class="error">${esc(error.message)}</p></article>`);
+  }
+}
 async function loadSecurity() {
   const box = $("#account-security");
   if (!box) return;
@@ -452,6 +515,7 @@ async function loadSecurity() {
       `<article class="card"><h2>رمز عبور</h2><p>با تغییر رمز، نشست‌های دیگر و همهٔ توکن‌های API این حساب باطل می‌شوند.</p><button type="button" class="secondary" data-action="change-password">تغییر رمز</button></article>` +
       `<article class="card"><h2>نشست‌های ورود</h2>${sessions}${info.sessions.length > 1 ? '<div class="compact-actions"><button type="button" class="outline-button danger" data-action="revoke-others">خروج از سایر نشست‌ها</button></div>' : ""}</article>` +
       `<article class="card"><h2>توکن‌های API</h2><p>برای اتوماسیون. هر توکن فقط یک‌بار نمایش داده می‌شود و دامنهٔ آن محدود است.</p>${tokens}<div class="compact-actions"><button type="button" class="primary" data-action="token-create">ساخت توکن</button></div></article>`;
+    if (owner()) await loadAdmins(box);
   } catch (error) {
     box.innerHTML = `<article class="card"><p class="error">${esc(error.message)}</p></article>`;
   }
@@ -501,6 +565,67 @@ async function handleAction(action, id, element) {
         await saved();
         showNodeToken(result.token);
       },
+    );
+  if (action === "users-prev") {
+    usersView.offset = Math.max(0, usersView.offset - usersView.limit);
+    return loadUsersPage();
+  }
+  if (action === "users-next") {
+    usersView.offset += usersView.limit;
+    return loadUsersPage();
+  }
+  if (action === "admin-create")
+    return form(
+      "مدیر جدید",
+      input("نام کاربری", "username", { extra: 'dir="ltr" maxlength="64"' }) +
+        input("رمز عبور (حداقل ۱۲ نویسه)", "password", {
+          type: "password",
+          extra: 'autocomplete="new-password" minlength="12" dir="ltr"',
+        }) +
+        `<label>نقش<select name="role"><option value="viewer">مشاهده‌گر</option><option value="operator">مدیر کاربران</option><option value="owner">مالک</option></select></label>`,
+      async (f) => {
+        await api("/admins", { method: "POST", body: JSON.stringify(f) });
+        $("#modal").close();
+        toast("مدیر ساخته شد");
+        await loadSecurity();
+      },
+    );
+  if (action === "admin-role")
+    return form(
+      "تغییر نقش مدیر",
+      `<label class="full">نقش<select name="role"><option value="viewer">مشاهده‌گر</option><option value="operator">مدیر کاربران</option><option value="owner">مالک</option></select></label>`,
+      async (f) => {
+        await api(`/admins/${encodeURIComponent(id)}`, {
+          method: "PUT",
+          body: JSON.stringify({ role: f.role }),
+        });
+        $("#modal").close();
+        toast("نقش تغییر کرد");
+        await loadSecurity();
+      },
+    );
+  if (action === "admin-password")
+    return form(
+      "تغییر رمز مدیر",
+      input("رمز جدید (حداقل ۱۲ نویسه)", "password", {
+        type: "password",
+        extra: 'autocomplete="new-password" minlength="12" dir="ltr"',
+      }),
+      async (f) => {
+        await api(`/admins/${encodeURIComponent(id)}/password`, {
+          method: "POST",
+          body: JSON.stringify({ password: f.password }),
+        });
+        $("#modal").close();
+        toast("رمز مدیر تغییر کرد و نشست‌هایش باطل شدند");
+        await loadSecurity();
+      },
+    );
+  if (action === "admin-delete")
+    return confirmAction(
+      "حذف مدیر",
+      "این مدیر و نشست‌ها و توکن‌هایش حذف می‌شوند.",
+      () => api(`/admins/${encodeURIComponent(id)}`, { method: "DELETE" }),
     );
   if (action === "mfa-setup") {
     const setup = await api("/account/mfa/setup", { method: "POST" });
@@ -704,12 +829,17 @@ document.addEventListener("click", (e) => {
     );
 });
 document.addEventListener("input", (e) => {
-  if (e.target.id === "search-users")
-    $("#users-table").innerHTML = usersTable(
-      data.users.filter((u) =>
-        u.name.toLocaleLowerCase().includes(e.target.value.toLocaleLowerCase()),
-      ),
-    );
+  if (e.target.id !== "search-users") return;
+  usersView.q = e.target.value.trim();
+  usersView.offset = 0;
+  clearTimeout(usersTimer);
+  usersTimer = setTimeout(loadUsersPage, 250);
+});
+document.addEventListener("change", (e) => {
+  if (e.target.id !== "filter-state") return;
+  usersView.state = e.target.value;
+  usersView.offset = 0;
+  loadUsersPage();
 });
 $("#close-modal").onclick = () => $("#modal").close();
 $("#theme").onclick = () => handleAction("theme");
