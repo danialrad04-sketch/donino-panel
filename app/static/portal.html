@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="fa" dir="rtl" data-theme="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="referrer" content="no-referrer" />
+    <meta name="robots" content="noindex,nofollow" />
+    <title>اشتراک من | Donino</title>
+    <link rel="icon" href="/static/logo.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="/static/style.css" />
+    <script src="/static/portal.js" defer></script>
+  </head>
+  <body class="portal-body">
+    <div class="portal-wrap">
+      <header class="portal-header">
+        <div class="brand">
+          <img src="/static/logo.svg" alt="Donino" /><span
+            >DONINO<small>YOUR CONNECTION SPACE</small></span
+          >
+        </div>
+        <div>
+          <button
+            id="portal-refresh"
+            class="icon-button"
+            aria-label="به‌روزرسانی"
+          >
+            ↻</button
+          ><button
+            id="portal-theme"
+            class="icon-button"
+            aria-label="تغییر پوسته"
+          >
+            ◐
+          </button>
+        </div>
+      </header>
+      <main class="portal-main">
+        <div class="page-heading">
+          <div>
+            <span class="eyebrow">MY DONINO / 02</span>
+            <h1>فضای اتصال شما</h1>
+            <p id="portal-greeting">در حال دریافت اطلاعات اشتراک…</p>
+          </div>
+          <span id="portal-status" class="badge">…</span>
+        </div>
+        <div id="portal-error" class="notice error" role="alert" hidden></div>
+        <section id="portal-content" hidden>
+          <div class="stats portal-stats">
+            <article class="stat featured">
+              <span>حجم باقی‌مانده</span><strong id="remaining" dir="auto">—</strong
+              ><small id="quota">—</small>
+            </article>
+            <article class="stat">
+              <span>مصرف کل</span><strong id="used" dir="ltr">—</strong
+              ><small id="traffic-detail">—</small>
+            </article>
+            <article class="stat">
+              <span>اعتبار اشتراک</span><strong id="expiry">—</strong
+              ><small id="days-left">—</small>
+            </article>
+          </div>
+          <div class="portal-connect card">
+            <div>
+              <span class="eyebrow">ONE LINK. ALL CONNECTIONS.</span>
+              <h2>همیشه یک راه برای اتصال</h2>
+              <p class="muted">
+                لینک اشتراک را در برنامهٔ سازگار وارد کنید یا کد را اسکن کنید.
+                این لینک خصوصی است؛ فقط روی دستگاه‌های خودتان استفاده کنید.
+              </p>
+              <label
+                >لینک اشتراک<textarea
+                  id="subscription-link"
+                  readonly
+                  dir="ltr"
+                ></textarea>
+              </label>
+              <div class="compact-actions">
+                <button class="primary" id="copy-subscription">
+                  کپی اشتراک</button
+                ><button class="secondary" id="copy-clash">
+                  کپی Clash / Mihomo</button
+                ><a class="outline-button" id="download-profile" download
+                  >دریافت تنظیمات ↓</a
+                >
+              </div>
+            </div>
+            <figure class="portal-qr">
+              <img id="subscription-qr" alt="QR اشتراک" />
+              <figcaption>اسکن برای افزودن اشتراک</figcaption>
+            </figure>
+          </div>
+          <div id="inactive-notice" class="notice" hidden>
+            اشتراک شما در حال حاضر فعال نیست. برای تمدید یا بررسی دسترسی با مدیر
+            شبکه تماس بگیرید.
+          </div>
+          <section class="portal-profiles">
+            <div class="card-head">
+              <h2>اتصال‌های شما</h2>
+              <small id="profile-count"></small>
+            </div>
+            <div id="profile-list"></div>
+          </section>
+          <p id="legacy-note" class="note" hidden>
+            بخشی از مصرف از نسخهٔ قبل منتقل شده و تفکیک ارسال و دریافت آن موجود
+            نیست.
+          </p>
+        </section>
+      </main>
+      <footer>
+        <span>DONINO PANEL / 0.2</span
+        ><span>دسترسی ساده. فضای اختصاصی شما.</span
+        ><a
+          href="https://github.com/danialrad04-sketch/donino-panel"
+          rel="noopener"
+          target="_blank"
+          >کد منبع ↗︎</a
+        >
+      </footer>
+    </div>
+    <div id="toast" class="toast" role="status" hidden></div>
+  </body>
+</html>

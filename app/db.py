@@ -4,12 +4,13 @@ import os
 import secrets
 import sqlite3
 import time
+import uuid
 from contextlib import contextmanager
 from pathlib import Path
 
 
 def db_path():
-    return Path(os.environ.get('DONINO_DB', 'data/donino.db'))
+    return Path(os.environ.get("DONINO_DB", "data/donino.db"))
 
 
 @contextmanager
@@ -19,11 +20,11 @@ def database():
     connection = sqlite3.connect(path, timeout=20)
     os.chmod(path, 0o600)
     connection.row_factory = sqlite3.Row
-    connection.execute('PRAGMA foreign_keys=ON')
-    connection.execute('PRAGMA busy_timeout=20000')
+    connection.execute("PRAGMA foreign_keys=ON")
+    connection.execute("PRAGMA busy_timeout=20000")
     try:
         # Serialize read-modify-write operations across requests/workers.
-        connection.execute('BEGIN IMMEDIATE')
+        connection.execute("BEGIN IMMEDIATE")
         yield connection
         connection.commit()
     except BaseException:
@@ -33,9 +34,42 @@ def database():
         connection.close()
 
 
+SCHEMA_VERSION = 2
+
+
+def migration_backup():
+    """Called before DDL, while another connection holds the writer reservation."""
+    path = db_path()
+    destination = path.with_name(path.name + ".pre-v2-" + uuid.uuid4().hex[:12] + ".db")
+    fd = os.open(destination, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    os.close(fd)
+    source, target = sqlite3.connect(path), sqlite3.connect(destination)
+    try:
+        source.backup(target)
+    finally:
+        source.close()
+        target.close()
+
+
 def initialize():
     with database() as db:
-        db.executescript('''
+        version = db.execute("PRAGMA user_version").fetchone()[0]
+        if version > SCHEMA_VERSION:
+            raise RuntimeError(
+                "Database is newer than this Donino version; refusing to open it"
+            )
+        existing = db.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='users'"
+        ).fetchone()
+        if existing and version < SCHEMA_VERSION:
+            columns = {r["name"] for r in db.execute("PRAGMA table_info(users)")}
+            if not {"id", "credential", "used", "token"}.issubset(columns):
+                raise RuntimeError(
+                    "Unrecognized database schema; automatic migration refused"
+                )
+            migration_backup()
+        # execute() keeps all DDL and the version update inside the same transaction.
+        schema = """
         CREATE TABLE IF NOT EXISTS admins (
           username TEXT PRIMARY KEY, password TEXT NOT NULL,
           role TEXT NOT NULL CHECK(role IN ('owner','operator','viewer')));
@@ -65,7 +99,27 @@ def initialize():
         CREATE TABLE IF NOT EXISTS audit (
           id INTEGER PRIMARY KEY AUTOINCREMENT, at INTEGER NOT NULL,
           actor TEXT NOT NULL, action TEXT NOT NULL, target TEXT NOT NULL);
-        ''')
+        """
+        for statement in schema.split(";"):
+            if statement.strip():
+                db.execute(statement)
+        if version < 2:
+            for column in ("uploaded", "downloaded", "legacy_used"):
+                db.execute(
+                    f"ALTER TABLE users ADD COLUMN {column} INTEGER NOT NULL DEFAULT 0"
+                )
+            db.execute("UPDATE users SET legacy_used=used")
+            db.execute(
+                "ALTER TABLE nodes ADD COLUMN agent_version TEXT NOT NULL DEFAULT ''"
+            )
+            db.execute(
+                "ALTER TABLE nodes ADD COLUMN apply_mode TEXT NOT NULL DEFAULT ''"
+            )
+            db.execute("ALTER TABLE nodes ADD COLUMN core_running INTEGER")
+            db.execute(
+                "ALTER TABLE nodes ADD COLUMN pending_usage INTEGER NOT NULL DEFAULT 0"
+            )
+            db.execute("PRAGMA user_version=2")
 
 
 def digest(value):
@@ -75,15 +129,17 @@ def digest(value):
 def hash_password(password):
     salt = secrets.token_hex(16)
     hashed = hashlib.scrypt(password.encode(), salt=salt.encode(), n=16384, r=8, p=1)
-    return salt + ':' + hashed.hex()
+    return salt + ":" + hashed.hex()
 
 
 def verify_password(password, stored):
-    salt, expected = stored.split(':')
+    salt, expected = stored.split(":")
     actual = hashlib.scrypt(password.encode(), salt=salt.encode(), n=16384, r=8, p=1)
     return hmac.compare_digest(actual.hex(), expected)
 
 
-def audit(db, actor, action, target=''):
-    db.execute('INSERT INTO audit(at,actor,action,target) VALUES(?,?,?,?)',
-               (int(time.time()), actor, action, target))
+def audit(db, actor, action, target=""):
+    db.execute(
+        "INSERT INTO audit(at,actor,action,target) VALUES(?,?,?,?)",
+        (int(time.time()), actor, action, target),
+    )

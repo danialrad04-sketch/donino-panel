@@ -155,7 +155,7 @@ function renderNodes() {
       "سرورهای مستقل، یک نقطهٔ کنترل.",
       owner() ? addButton("node", "نود جدید") : "",
     ) +
-    `<div class="node-grid">${data.nodes.map((n) => `<article class="card"><div class="node-row"><span class="node-symbol">⌘</span><div><b>${esc(n.name)}</b><small>${esc(n.host)}</small></div>${badge(n.online ? "active" : "disabled", n.online ? "متصل" : "قطع")}</div><div class="node-meta"><span>${number(data.inbounds.filter((i) => i.node_id === n.id).length)} اتصال</span><span>آخرین ارتباط: ${n.last_seen ? new Date(n.last_seen * 1000).toLocaleTimeString("fa-IR") : "هنوز متصل نشده"}</span></div>${n.error ? `<p class="node-error">${esc(n.error)}</p>` : ""}${owner() ? `<div class="compact-actions"><button class="secondary" data-action="rotate-node" data-id="${n.id}">تعویض کلید اتصال</button><button class="outline-button danger" data-action="delete-node" data-id="${n.id}">حذف نود</button></div>` : ""}</article>`).join("")}</div>${!data.nodes.length ? `<div class="card">${empty("زیرساختت را بساز", "نود جدید اضافه کن و عامل Donino را روی سرور اجرا کن.", "⌘")}</div>` : ""}`
+    `<div class="node-grid">${data.nodes.map((n) => `<article class="card"><div class="node-row"><span class="node-symbol">⌘</span><div><b>${esc(n.name)}</b><small>${esc(n.host)}</small></div>${badge(n.online ? "active" : "disabled", n.online ? "متصل" : "قطع")}</div><div class="node-meta"><span>${number(data.inbounds.filter((i) => i.node_id === n.id).length)} اتصال</span><span>آخرین ارتباط: ${n.last_seen ? new Date(n.last_seen * 1000).toLocaleTimeString("fa-IR") : "هنوز متصل نشده"}</span></div><div class="node-meta"><span>عامل: <span class="mono">${esc(n.agent_version || "0.1 / نامشخص")}</span></span><span>${{ hot: "به‌روزرسانی زنده", restart: "اجرای کامل", rollback: "بازیابی تنظیمات" }[n.apply_mode] || "در انتظار همگام‌سازی"} · ${number(n.pending_usage || 0)} گزارش معوق</span></div>${n.error ? `<p class="node-error">${esc(n.error)}</p>` : ""}${owner() ? `<div class="compact-actions"><button class="secondary" data-action="rotate-node" data-id="${n.id}">تعویض کلید اتصال</button><button class="outline-button danger" data-action="delete-node" data-id="${n.id}">حذف نود</button></div>` : ""}</article>`).join("")}</div>${!data.nodes.length ? `<div class="card">${empty("زیرساختت را بساز", "نود جدید اضافه کن و عامل Donino را روی سرور اجرا کن.", "⌘")}</div>` : ""}`
   );
 }
 function renderInbounds() {
@@ -165,13 +165,13 @@ function renderInbounds() {
       "مسیرهای امن اتصال برای تمام کاربران فعال.",
       owner() ? addButton("inbound", "اتصال جدید") : "",
     ) +
-    `<div class="notice">VLESS با REALITY · VMess با WebSocket و TLS · Trojan با TLS. گواهی‌های TLS باید روی سرور نود قرار داشته باشند.</div><section class="card table-card">${data.inbounds.length ? `<div class="table-scroll"><table><thead><tr><th>نام اتصال</th><th>پروتکل</th><th>نود</th><th>پورت</th><th>دامنه</th>${owner() ? "<th>عملیات</th>" : ""}</tr></thead><tbody>${data.inbounds.map((i) => `<tr><td>${esc(i.name)}</td><td><span class="badge active mono">${esc(i.protocol.toUpperCase())}</span></td><td>${esc(i.node_name)}</td><td class="mono">${i.port}</td><td><span class="mono">${esc(i.settings.sni)}</span></td>${owner() ? `<td><button class="danger" data-action="delete-inbound" data-id="${i.id}">حذف</button></td>` : ""}</tr>`).join("")}</tbody></table></div>` : empty("یک مسیر تازه بساز", "ابتدا نود را اضافه کن، سپس اولین اتصال را بساز.", "⇄")}</section>`
+    `<div class="notice">VLESS با REALITY · VMess با WebSocket و TLS · Trojan با TLS. گواهی‌های TLS باید روی سرور نود قرار داشته باشند.</div><section class="card table-card">${data.inbounds.length ? `<div class="table-scroll"><table><thead><tr><th>نام اتصال</th><th>پروتکل</th><th>نود</th><th>پورت</th><th>دامنه</th>${owner() ? "<th>عملیات</th>" : ""}</tr></thead><tbody>${data.inbounds.map((i) => `<tr><td>${esc(i.name)}</td><td><span class="badge ${i.enabled ? "active" : "disabled"} mono">${esc(i.protocol.toUpperCase())} · ${i.enabled ? "فعال" : "خاموش"}</span></td><td>${esc(i.node_name)}</td><td class="mono">${i.port}</td><td><span class="mono">${esc(i.settings.sni)}</span></td>${owner() ? `<td><button data-action="edit-inbound" data-id="${i.id}">ویرایش</button> <button class="danger" data-action="delete-inbound" data-id="${i.id}">حذف</button></td>` : ""}</tr>`).join("")}</tbody></table></div>` : empty("یک مسیر تازه بساز", "ابتدا نود را اضافه کن، سپس اولین اتصال را بساز.", "⇄")}</section>`
   );
 }
 function renderSettings() {
   return (
     heading("تنظیمات و نگهداری", "همه‌چیز برای مدیریت یک شبکهٔ مستقل.") +
-    `<div class="settings-grid"><article class="card"><h2>پشتیبان‌گیری</h2><p>یک نسخهٔ کامل از پایگاه داده، تنظیمات و حساب‌ها دریافت کن. فایل پشتیبان حاوی اطلاعات محرمانه است؛ آن را در فضای امن نگه دار.</p>${owner() ? '<a class="primary" href="/api/backup" download>دریافت نسخهٔ پشتیبان ↓</a>' : "<p>دریافت پشتیبان فقط برای مالک شبکه فعال است.</p>"}</article><article class="card"><h2>ظاهر پنل</h2><p>پوستهٔ روشن یا تیره را انتخاب کن. انتخاب روی همین دستگاه ذخیره می‌شود.</p><button class="secondary" data-action="theme">تغییر پوسته ◐</button></article><article class="card"><h2>حساب مدیریت</h2><p>نام کاربری: ${esc(account.username)}<br>سطح دسترسی: ${roles[account.role]}<br>برای ساخت مدیر یا تغییر رمز، از دستور <span class="mono">python -m app.cli admin USERNAME</span> روی سرور استفاده کن.</p></article><article class="card"><h2>Donino Panel <span class="mono">0.1.0</span></h2><p>نسخهٔ اولیهٔ مستقل، با رابط فارسی و مدیریت چند نود. امکانات در حال توسعه‌اند. راه‌اندازی واقعی به سرور نود، Xray و دامنهٔ مناسب نیاز دارد.</p><a class="subtle-link" href="https://github.com/danialrad04-sketch/donino-panel" target="_blank" rel="noopener">مستندات و کد منبع ↗︎</a></article></div>`
+    `<div class="settings-grid"><article class="card"><h2>پشتیبان‌گیری</h2><p>یک نسخهٔ کامل از پایگاه داده، تنظیمات و حساب‌ها دریافت کن. فایل پشتیبان حاوی اطلاعات محرمانه است؛ آن را در فضای امن نگه دار.</p>${owner() ? '<a class="primary" href="/api/backup" download>دریافت نسخهٔ پشتیبان ↓</a>' : "<p>دریافت پشتیبان فقط برای مالک شبکه فعال است.</p>"}</article><article class="card"><h2>ظاهر پنل</h2><p>پوستهٔ روشن یا تیره را انتخاب کن. انتخاب روی همین دستگاه ذخیره می‌شود.</p><button class="secondary" data-action="theme">تغییر پوسته ◐</button></article><article class="card"><h2>حساب مدیریت</h2><p>نام کاربری: ${esc(account.username)}<br>سطح دسترسی: ${roles[account.role]}<br>برای ساخت مدیر یا تغییر رمز، از دستور <span class="mono">python -m app.cli admin USERNAME</span> روی سرور استفاده کن.</p></article><article class="card"><h2>Donino Panel <span class="mono">0.2.0</span></h2><p>نسخهٔ اولیهٔ مستقل، با رابط فارسی و مدیریت چند نود. امکانات در حال توسعه‌اند. راه‌اندازی واقعی به سرور نود، Xray و دامنهٔ مناسب نیاز دارد.</p><a class="subtle-link" href="https://github.com/danialrad04-sketch/donino-panel" target="_blank" rel="noopener">مستندات و کد منبع ↗︎</a></article></div>`
   );
 }
 function render() {
@@ -335,29 +335,43 @@ function showNodeToken(token) {
     `<p class="note">این کلید فقط همین یک بار نمایش داده می‌شود. آن را به‌عنوان متغیر <span class="mono">DONINO_NODE_TOKEN</span> در فایل تنظیمات عامل نود ذخیره کن. راهنمای نصب در مخزن پروژه قرار دارد.</p><label class="full">کلید محرمانه<textarea id="secret-output" readonly dir="ltr">${esc(token)}</textarea></label><div class="form-actions"><button class="primary" data-action="copy-secret">کپی کلید</button></div>`,
   );
 }
-function addInbound() {
+function editInbound(inbound) {
   if (!data.nodes.length) return toast("ابتدا یک نود اضافه کن.", true);
+  const settings = inbound?.settings || {};
   form(
-    "اتصال جدید",
-    `<label>نود<select name="node_id">${data.nodes.map((n) => `<option value="${n.id}">${esc(n.name)}</option>`).join("")}</select></label><label>پروتکل<select name="protocol" id="protocol"><option value="vless">VLESS + REALITY</option><option value="vmess">VMess + WS/TLS</option><option value="trojan">Trojan + TLS</option></select></label>` +
-      input("نام اتصال", "name", { value: "اتصال اصلی" }) +
+    inbound ? "ویرایش اتصال" : "اتصال جدید",
+    `<label>نود<select name="node_id">${data.nodes.map((n) => `<option value="${n.id}" ${inbound?.node_id === n.id ? "selected" : ""}>${esc(n.name)}</option>`).join("")}</select></label><label>پروتکل<select name="protocol" id="protocol">${[
+      ["vless", "VLESS + REALITY"],
+      ["vmess", "VMess + WS/TLS"],
+      ["trojan", "Trojan + TLS"],
+    ]
+      .map(
+        ([value, label]) =>
+          `<option value="${value}" ${inbound?.protocol === value ? "selected" : ""}>${label}</option>`,
+      )
+      .join("")}</select></label>` +
+      input("نام اتصال", "name", { value: inbound?.name || "اتصال اصلی" }) +
       input("پورت", "port", {
         type: "number",
-        value: 443,
+        value: inbound?.port || 443,
         extra: 'min="1" max="65535" dir="ltr"',
       }) +
       input("دامنهٔ SNI", "sni", {
-        value: "www.microsoft.com",
+        value: settings.sni || "www.microsoft.com",
         full: true,
         extra: 'dir="ltr"',
       }) +
-      `<div id="reality-fields" class="full">${input("مقصد REALITY", "target", { value: "www.microsoft.com:443", extra: 'dir="ltr"' })}</div><div id="tls-fields" class="full" hidden><div class="form-grid">${input("مسیر گواهی روی نود", "cert_file", { required: false, extra: 'dir="ltr"', hint: "مثال: /etc/donino/tls/fullchain.pem" })}${input("مسیر کلید روی نود", "key_file", { required: false, extra: 'dir="ltr"', hint: "مثال: /etc/donino/tls/privkey.pem" })}${input("مسیر WebSocket", "path", { value: "/donino", extra: 'dir="ltr"', required: false, full: true })}</div></div>`,
+      `<div id="reality-fields" class="full">${input("مقصد REALITY", "target", { value: settings.target || "www.microsoft.com:443", extra: 'dir="ltr"' })}</div><div id="tls-fields" class="full"><div class="form-grid">${input("مسیر گواهی روی نود", "cert_file", { value: settings.cert_file || "", required: false, extra: 'dir="ltr"', hint: "مثال: /etc/donino/tls/fullchain.pem" })}${input("مسیر کلید روی نود", "key_file", { value: settings.key_file || "", required: false, extra: 'dir="ltr"', hint: "مثال: /etc/donino/tls/privkey.pem" })}${input("مسیر WebSocket", "path", { value: settings.path || "/donino", extra: 'dir="ltr"', required: false, full: true })}</div></div><label class="check full"><input type="checkbox" name="enabled" ${!inbound || inbound.enabled ? "checked" : ""}>اتصال فعال باشد</label>` +
+      (inbound
+        ? '<p class="note full">تغییر پورت یا تنظیمات انتقال باعث راه‌اندازی مجدد هستهٔ نود می‌شود. کلید REALITY هنگام ویرایش همین پروتکل حفظ می‌شود.</p>'
+        : ""),
     async (f) => {
-      await api("/inbounds", {
-        method: "POST",
+      await api("/inbounds" + (inbound ? "/" + inbound.id : ""), {
+        method: inbound ? "PUT" : "POST",
         body: JSON.stringify({
           ...f,
           port: Number(f.port),
+          enabled: f.enabled === "on",
           target: f.target || "www.microsoft.com:443",
           path: f.path || "/donino",
         }),
@@ -365,11 +379,18 @@ function addInbound() {
       await saved();
     },
   );
-  $("#protocol").addEventListener("change", (e) => {
-    const reality = e.target.value === "vless";
-    $("#reality-fields").hidden = !reality;
-    $("#tls-fields").hidden = reality;
-  });
+  const updateFields = () => {
+    const protocol = $("#protocol").value;
+    $("#reality-fields").hidden = protocol !== "vless";
+    $("#tls-fields").hidden = protocol === "vless";
+    document
+      .querySelectorAll(
+        "#tls-fields [name=cert_file],#tls-fields [name=key_file]",
+      )
+      .forEach((e) => (e.required = protocol !== "vless"));
+  };
+  $("#protocol").addEventListener("change", updateFields);
+  updateFields();
 }
 async function copyText(text) {
   try {
@@ -431,13 +452,17 @@ async function handleAction(action, id) {
         showNodeToken(result.token);
       },
     );
+  if (action === "copy-portal")
+    return copyText($("[data-action=copy-portal]").dataset.url);
   if (action === "copy-secret") return copyText($("#secret-output").value);
-  if (action === "add-inbound") return addInbound();
+  if (action === "add-inbound") return editInbound();
+  if (action === "edit-inbound")
+    return editInbound(data.inbounds.find((i) => i.id === id));
   if (action === "share") {
     const result = await api(`/users/${id}/subscription`);
     modal(
       "اشتراک " + user.name,
-      `<p class="note">این لینک محرمانه را در برنامهٔ سازگار وارد کن. برای دریافت خروجی Clash/Mihomo، گزینهٔ مربوط را کپی کن.</p><label>لینک اشتراک<textarea id="secret-output" dir="ltr" readonly>${esc(result.url)}</textarea></label><div class="form-actions"><button class="secondary" data-action="copy-clash">کپی Clash</button><button class="primary" data-action="copy-secret">کپی اشتراک</button></div>`,
+      `<p class="note">لینک خصوصی کاربر را کپی کن یا صفحهٔ اختصاصی او را باز کن. QR روی همین سرور تولید می‌شود.</p><img class="share-qr" src="${esc(result.qr_url)}" alt="QR اشتراک"><label>لینک اشتراک<textarea id="secret-output" dir="ltr" readonly>${esc(result.url)}</textarea></label><div class="form-actions"><a class="outline-button" id="open-portal" href="${esc(result.portal_url)}" target="_blank" rel="noopener">صفحهٔ کاربر ↗︎</a><button class="secondary" data-action="copy-portal" data-url="${esc(result.portal_url)}">کپی صفحه</button><button class="secondary" data-action="copy-clash">Clash</button><button class="primary" data-action="copy-secret">کپی اشتراک</button></div>`,
     );
     return;
   }
