@@ -34,7 +34,7 @@ def database():
         connection.close()
 
 
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 MAX_DEVICES_PER_USER = 20
 
 
@@ -71,7 +71,7 @@ def initialize():
                     "Unrecognized database schema; automatic migration refused"
                 )
             # One backup per upgrade run, named after the oldest step being applied.
-            migration_backup("v2" if version < 2 else "v3")
+            migration_backup("v2" if version < 2 else f"v{SCHEMA_VERSION}")
         # execute() keeps all DDL and the version update inside the same transaction.
         schema = """
         CREATE TABLE IF NOT EXISTS admins (
@@ -127,6 +127,22 @@ def initialize():
         if version < 3:
             migrate_to_v3(db)
             db.execute("PRAGMA user_version=3")
+        if version < 4:
+            migrate_to_v4(db)
+            db.execute("PRAGMA user_version=4")
+
+
+def migrate_to_v4(db):
+    """Monthly usage periods. Existing users keep unlimited-period behaviour."""
+    db.execute(
+        "ALTER TABLE users ADD COLUMN period TEXT NOT NULL DEFAULT 'none' "
+        "CHECK(period IN ('none','monthly'))"
+    )
+    db.execute("ALTER TABLE users ADD COLUMN period_days INTEGER NOT NULL DEFAULT 30")
+    # Starts on the first recorded usage, not at creation: a new user does not lose
+    # the first days of the cycle while the device is not yet connected.
+    db.execute("ALTER TABLE users ADD COLUMN period_start INTEGER")
+    db.execute("ALTER TABLE users ADD COLUMN period_no INTEGER NOT NULL DEFAULT 0")
 
 
 def migrate_to_v3(db):

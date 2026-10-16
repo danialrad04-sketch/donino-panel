@@ -22,7 +22,7 @@ def current_code(secret, offset=0):
     return hotp(secret, step)
 
 
-class AccountTest(unittest.TestCase):
+class PanelBase(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.old = dict(os.environ)
@@ -65,6 +65,9 @@ class AccountTest(unittest.TestCase):
         self.assertEqual(result.status_code, 200, result.text)
         return setup["secret"], result.json()["recovery_codes"]
 
+
+
+class AccountTest(PanelBase):
     # --- 2FA -------------------------------------------------------------
 
     def test_totp_rfc6238_vector_and_replay_protection(self):
@@ -454,7 +457,7 @@ class MigrationV3Test(unittest.TestCase):
             self.assertIsNotNone(session["sid"])
             user = db.execute("SELECT used, legacy_used, token FROM users").fetchone()
             self.assertEqual((user["used"], user["legacy_used"], user["token"]), (321, 321, "tok-1"))
-        backups = list(self.path.parent.glob("*.pre-v3-*.db"))
+        backups = list(self.path.parent.glob("*.pre-v%d-*.db" % SCHEMA_VERSION))
         self.assertEqual(len(backups), 1)
 
     def test_future_schema_still_refused(self):
@@ -464,6 +467,104 @@ class MigrationV3Test(unittest.TestCase):
             db.execute(f"PRAGMA user_version={SCHEMA_VERSION + 1}")
         with self.assertRaises(RuntimeError):
             initialize()
+
+
+class AdminManagementTest(PanelBase):
+    def test_owner_can_create_operator_and_change_role(self):
+        created = self.post("/admins", {"username": "ops", "password": "operator-password-1", "role": "operator"})
+        self.assertEqual(created.status_code, 201, created.text)
+        listing = {a["username"]: a for a in self.client.get("/api/admins").json()}
+        self.assertEqual(listing["ops"]["role"], "operator")
+        changed = self.client.put("/api/admins/ops", headers=self.headers, json={"role": "viewer"})
+        self.assertEqual(changed.status_code, 200, changed.text)
+
+    def test_role_change_ends_that_admins_sessions(self):
+        self.post("/admins", {"username": "ops", "password": "operator-password-1", "role": "operator"})
+        ops = TestClient(app)
+        ops_login = ops.post("/api/login", headers=self.headers, json={"username": "operator", "password": PASSWORD})
+        self.assertEqual(ops_login.status_code, 200, ops_login.text)
+        self.client.put("/api/admins/operator", headers=self.headers, json={"role": "viewer"})
+        self.assertEqual(ops.get("/api/me").status_code, 401)
+
+    def test_last_owner_cannot_be_demoted_or_deleted(self):
+        self.assertEqual(
+            self.client.put("/api/admins/owner", headers=self.headers, json={"role": "viewer"}).status_code, 409
+        )
+        self.assertEqual(self.client.delete("/api/admins/owner", headers=self.headers).status_code, 409)
+
+    def test_cannot_delete_own_account(self):
+        self.post("/admins", {"username": "second", "password": "second-owner-pass-1", "role": "owner"})
+        self.assertEqual(self.client.delete("/api/admins/owner", headers=self.headers).status_code, 409)
+
+    def test_non_owner_cannot_manage_admins(self):
+        self.post("/admins", {"username": "ops", "password": "operator-password-1", "role": "operator"})
+        ops = TestClient(app)
+        self.login("operator", client=ops)
+        self.assertEqual(ops.get("/api/admins").status_code, 403)
+
+    def test_token_cannot_manage_admins(self):
+        token = self.post("/account/tokens", {"name": "full", "scope": "full", "days": 3}).json()["token"]
+        api = TestClient(app)
+        self.assertEqual(
+            api.post("/api/admins", json={"username": "x", "password": "another-long-pass-1", "role": "owner"},
+                     headers={"Authorization": "Bearer " + token}).status_code, 403)
+
+    def test_password_reset_revokes_that_admin(self):
+        self.post("/admins", {"username": "ops", "password": "operator-password-1", "role": "operator"})
+        ops = TestClient(app)
+        ops.post("/api/login", headers=self.headers, json={"username": "operator", "password": PASSWORD})
+        result = self.post("/admins/operator/password", {"password": "reset-password-123"})
+        self.assertEqual(result.status_code, 200, result.text)
+        self.assertEqual(ops.get("/api/me").status_code, 401)
+
+
+class PeriodTest(PanelBase):
+    def test_monthly_period_starts_on_first_usage_and_resets(self):
+        user = self.post("/users", {"name": "monthly", "quota": 1000, "period": "monthly", "period_days": 30}).json()
+        node = self.post("/nodes", {"name": "n", "host": "example.com"}).json()
+        auth = {"Authorization": "Bearer " + node["token"]}
+        self.assertIsNone(self.client.get("/api/users").json()[0].get("period_start"))
+        self.client.post("/api/agent/heartbeat", headers=auth,
+                         json={"epoch": "e", "usage": [{"user_id": user["id"], "up": 300, "down": 0}]})
+        with database() as db:
+            start = db.execute("SELECT period_start FROM users WHERE id=?", (user["id"],)).fetchone()[0]
+        self.assertIsNotNone(start)
+        # Simulate the period ending.
+        with database() as db:
+            db.execute("UPDATE users SET period_start=? WHERE id=?", (start - 31 * 86400, user["id"]))
+        self.client.post("/api/agent/heartbeat", headers=auth,
+                         json={"epoch": "e", "usage": [{"user_id": user["id"], "up": 300, "down": 0}]})
+        row = self.client.get("/api/users").json()[0]
+        # Counter baseline is kept: the unchanged cumulative value bills nothing again.
+        self.assertEqual(row["used"], 0)
+        self.assertEqual(row["period_no"], 1)
+
+    def test_period_end_reactivates_limited_user(self):
+        user = self.post("/users", {"name": "limited", "quota": 100, "period": "monthly", "period_days": 30}).json()
+        node = self.post("/nodes", {"name": "n", "host": "example.com"}).json()
+        auth = {"Authorization": "Bearer " + node["token"]}
+        self.client.post("/api/agent/heartbeat", headers=auth,
+                         json={"epoch": "e", "usage": [{"user_id": user["id"], "up": 150, "down": 0}]})
+        self.assertEqual(self.client.get("/api/users").json()[0]["status"], "limited")
+        with database() as db:
+            db.execute("UPDATE users SET period_start=? WHERE id=?", (int(time.time()) - 31 * 86400, user["id"]))
+        from app.main import roll_periods
+        with database() as db:
+            self.assertEqual(roll_periods(db), 1)
+        self.assertEqual(self.client.get("/api/users").json()[0]["status"], "active")
+
+    def test_switching_to_none_clears_period_start(self):
+        user = self.post("/users", {"name": "p", "period": "monthly", "period_days": 30}).json()
+        with database() as db:
+            db.execute("UPDATE users SET period_start=123 WHERE id=?", (user["id"],))
+        self.client.put("/api/users/" + user["id"], headers=self.headers,
+                        json={"name": "p", "period": "none", "period_days": 30})
+        with database() as db:
+            self.assertIsNone(db.execute("SELECT period_start FROM users WHERE id=?", (user["id"],)).fetchone()[0])
+
+    def test_legacy_user_body_defaults_to_no_period(self):
+        user = self.post("/users", {"name": "legacy"}).json()
+        self.assertEqual(user.get("period"), "none")
 
 
 if __name__ == "__main__":
