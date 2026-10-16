@@ -2,8 +2,9 @@ import argparse
 import getpass
 import sqlite3
 from pathlib import Path
-from .db import initialize, database, hash_password, audit, db_path, SCHEMA_VERSION
+from .db import initialize, database, hash_password, audit, SCHEMA_VERSION
 from . import __version__
+from . import ops
 
 
 def main():
@@ -18,9 +19,42 @@ def main():
     create.add_argument(
         "--role", choices=["owner", "operator", "viewer"], default="owner"
     )
-    backup = sub.add_parser("backup", help="Create a consistent SQLite backup")
+    backup = sub.add_parser(
+        "backup", help="Create a consistent SQLite backup with a SHA-256 manifest"
+    )
     backup.add_argument("destination", type=Path)
+    sub.add_parser("doctor", help="Read-only health check; exit 1 on failures")
+    restore = sub.add_parser(
+        "restore", help="Restore a verified backup (stop the panel first)"
+    )
+    restore.add_argument("source", type=Path)
+    restore.add_argument(
+        "--replace",
+        action="store_true",
+        help="Overwrite the current database; a safety copy is kept first",
+    )
     args = parser.parse_args()
+    if args.command == "doctor":
+        rows, code = ops.doctor()
+        for level, name, detail in rows:
+            print(f"{level:4} {name}: {detail}")
+        raise SystemExit(code)
+    if args.command == "restore":
+        try:
+            result = ops.restore(args.source, replace=args.replace)
+        except (FileNotFoundError, FileExistsError, ValueError) as error:
+            parser.exit(2, f"restore refused: {error}\n")
+        print(f"Restored schema {result['schema_version']} from {result['restored_from']}.")
+        if result["safety_copy"]:
+            print(f"Previous database kept at {result['safety_copy']}.")
+        return
+    if args.command == "backup":
+        try:
+            manifest = ops.backup(args.destination)
+        except (FileExistsError, FileNotFoundError) as error:
+            parser.exit(2, f"backup refused: {error}\n")
+        print(f"Backup saved. sha256={manifest['sha256']} schema={manifest['schema_version']}")
+        return
     initialize()
     if args.command == "migrate":
         print(
@@ -50,20 +84,7 @@ def main():
             audit(db, "local-cli", "admin.upsert", args.username)
         print("Admin saved; previous sessions revoked.")
     else:
-        if args.destination.exists():
-            parser.error("Destination already exists")
-        args.destination.parent.mkdir(parents=True, exist_ok=True)
-        import os
-
-        fd = os.open(args.destination, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-        os.close(fd)
-        source, target = sqlite3.connect(db_path()), sqlite3.connect(args.destination)
-        try:
-            source.backup(target)
-        finally:
-            source.close()
-            target.close()
-        print("Backup saved.")
+        parser.error("unknown command")
 
 
 if __name__ == "__main__":
