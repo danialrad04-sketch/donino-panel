@@ -10,7 +10,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from fastapi.testclient import TestClient
-from support import configure, postgres_url, sqlite_only
+from support import configure, postgres_url
 from app.main import app
 from app.db import database, hash_password
 from agent.main import parse_stats

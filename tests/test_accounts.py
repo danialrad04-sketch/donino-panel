@@ -13,7 +13,7 @@ from fastapi.testclient import TestClient
 from support import configure, sqlite_only
 from app.db import database, hash_password, SCHEMA_VERSION
 from app.main import app
-from app.security import hotp, totp_verify, new_totp_secret, normalize_recovery
+from app.security import hotp, totp_verify, normalize_recovery
 
 PASSWORD = "long-test-password"
 
@@ -60,7 +60,7 @@ class PanelBase(unittest.TestCase):
         )
 
     def enable_mfa(self):
-        setup = self.post("/account/mfa/setup").json()
+        setup = self.post("/account/mfa/setup", {"password": PASSWORD}).json()
         code = current_code(setup["secret"])
         result = self.post("/account/mfa/enable", {"code": code})
         self.assertEqual(result.status_code, 200, result.text)
@@ -414,7 +414,7 @@ class MigrationV3Test(unittest.TestCase):
         self.tmp.cleanup()
 
     def test_v3_upgrade_preserves_identity_counters_and_sessions(self):
-        from app.db import initialize, migrate_to_v3
+        from app.db import initialize
 
         with sqlite3.connect(self.path) as db:
             db.executescript((Path(__file__).parent / "fixtures/v0.1.sql").read_text())

@@ -16,12 +16,14 @@ try:  # PostgreSQL is optional; SQLite stays the default backend.
 except ImportError:  # pragma: no cover - exercised only without the postgres extra
     psycopg = None
 
-SCHEMA_VERSION = 4
+SCHEMA_VERSION = 6
 MAX_DEVICES_PER_USER = 20
 # Arbitrary constant key for the PostgreSQL writer lock (serializes writers, like BEGIN IMMEDIATE).
 _PG_WRITER_LOCK = 4541776
 
-IntegrityErrors = (sqlite3.IntegrityError,) + ((psycopg.IntegrityError,) if psycopg else ())
+IntegrityErrors = (sqlite3.IntegrityError,) + (
+    (psycopg.IntegrityError,) if psycopg else ()
+)
 
 
 def database_url():
@@ -64,7 +66,9 @@ class Row:
 class PgResult:
     def __init__(self, cursor):
         self._cursor = cursor
-        self._names = [column.name for column in cursor.description] if cursor.description else []
+        self._names = (
+            [column.name for column in cursor.description] if cursor.description else []
+        )
 
     @property
     def rowcount(self):
@@ -115,7 +119,14 @@ class PgConnection:
 
 @contextmanager
 def database():
+    url = database_url()
+    if url and not is_postgres():
+        raise RuntimeError(
+            "Unsupported DONINO_DATABASE_URL; use postgresql:// or leave it empty for SQLite"
+        )
     if is_postgres():
+        if psycopg is None:
+            raise RuntimeError("PostgreSQL requires requirements-postgres.txt")
         connection = PgConnection(psycopg.connect(database_url(), connect_timeout=10))
     else:
         path = db_path()
@@ -145,14 +156,18 @@ def schema_version(db):
     if is_postgres():
         if not table_exists(db, "donino_meta"):
             return 0
-        row = db.execute("SELECT value FROM donino_meta WHERE key='schema_version'").fetchone()
+        row = db.execute(
+            "SELECT value FROM donino_meta WHERE key='schema_version'"
+        ).fetchone()
         return row[0] if row else 0
     return db.execute("PRAGMA user_version").fetchone()[0]
 
 
 def set_schema_version(db, version):
     if is_postgres():
-        upsert(db, "donino_meta", ["key", "value"], ["schema_version", version], ["key"])
+        upsert(
+            db, "donino_meta", ["key", "value"], ["schema_version", version], ["key"]
+        )
     else:
         db.execute(f"PRAGMA user_version={int(version)}")
 
@@ -199,16 +214,43 @@ def pg_dump(destination):
     """Write a custom-format PostgreSQL dump. Requires the pg_dump client tool."""
     tool = shutil.which("pg_dump")
     if not tool:
-        raise RuntimeError("pg_dump is not installed; install the postgresql-client package")
+        raise RuntimeError(
+            "pg_dump is not installed; install the postgresql-client package"
+        )
+    connection, environment = pg_client_connection()
     result = subprocess.run(
-        [tool, "--format=custom", "--no-owner", "--no-privileges", "--file", str(destination), "--dbname", database_url()],
+        [
+            tool,
+            "--format=custom",
+            "--no-owner",
+            "--no-privileges",
+            "--file",
+            str(destination),
+            "--dbname",
+            connection,
+        ],
+        env=environment,
         capture_output=True,
         text=True,
         timeout=900,
     )
     if result.returncode != 0:
-        raise RuntimeError("pg_dump failed: " + result.stderr.strip()[:500])
+        raise RuntimeError(
+            "pg_dump failed; inspect database connectivity and client/server versions"
+        )
     os.chmod(destination, 0o600)
+
+
+def pg_client_connection():
+    """Keep the database password out of command arguments and exception text."""
+    from psycopg.conninfo import conninfo_to_dict, make_conninfo
+
+    options = conninfo_to_dict(database_url())
+    environment = dict(os.environ)
+    password = options.pop("password", None)
+    if password is not None:
+        environment["PGPASSWORD"] = password
+    return make_conninfo(**options), environment
 
 
 def migration_backup(tag="v2"):
@@ -233,6 +275,8 @@ def migration_backup(tag="v2"):
 
 def initialize():
     with database() as db:
+        if table_exists(db, "alembic_version"):
+            raise RuntimeError("This database belongs to the earlier development/1.0 schema; an explicit migration is required")
         if is_postgres():
             db.execute(
                 "CREATE TABLE IF NOT EXISTS donino_meta(key TEXT PRIMARY KEY, value INTEGER NOT NULL)"
@@ -309,6 +353,42 @@ def initialize():
         if version < 4:
             migrate_to_v4(db)
             set_schema_version(db, 4)
+        if version < 5:
+            from .secrets import PREFIX, seal
+
+            for row in db.execute("SELECT username,secret FROM admin_mfa").fetchall():
+                if not row["secret"].startswith(PREFIX):
+                    db.execute(
+                        "UPDATE admin_mfa SET secret=? WHERE username=?",
+                        (seal(row["secret"]), row["username"]),
+                    )
+            set_schema_version(db, 5)
+        if version < 6:
+            db.execute("""CREATE TABLE usage_periods (
+                user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                period_no INTEGER NOT NULL, started INTEGER, ended INTEGER,
+                uploaded INTEGER NOT NULL DEFAULT 0, downloaded INTEGER NOT NULL DEFAULT 0,
+                legacy_used INTEGER NOT NULL DEFAULT 0,
+                PRIMARY KEY(user_id,period_no))""")
+            db.execute("""INSERT INTO usage_periods(user_id,period_no,started,uploaded,downloaded,legacy_used)
+                SELECT id,period_no,CASE WHEN period='monthly' THEN period_start ELSE created END,uploaded,downloaded,legacy_used FROM users""")
+            db.execute("ALTER TABLE counters ADD COLUMN period_no INTEGER")
+            db.execute(
+                "ALTER TABLE users ADD COLUMN node_mode TEXT NOT NULL DEFAULT 'all' CHECK(node_mode IN ('all','selected'))"
+            )
+            db.execute("""CREATE TABLE user_nodes (
+                user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                node_id TEXT NOT NULL REFERENCES nodes(id) ON DELETE CASCADE,
+                PRIMARY KEY(user_id,node_id))""")
+            db.execute("ALTER TABLE nodes ADD COLUMN desired_job TEXT")
+            db.execute("""CREATE TABLE deployments (
+                id TEXT PRIMARY KEY, node_id TEXT NOT NULL REFERENCES nodes(id) ON DELETE CASCADE,
+                revision TEXT NOT NULL, engine TEXT NOT NULL,
+                state TEXT NOT NULL CHECK(state IN ('pending','applied','failed','superseded')),
+                payload TEXT NOT NULL, created INTEGER NOT NULL, updated INTEGER NOT NULL,
+                error TEXT NOT NULL DEFAULT '')""")
+            db.execute("CREATE INDEX deployments_node ON deployments(node_id,created)")
+            set_schema_version(db, 6)
 
 
 def migrate_to_v4(db):

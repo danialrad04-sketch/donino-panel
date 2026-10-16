@@ -86,12 +86,14 @@ class NodeAgent:
         self.epoch = str(uuid.uuid4())
         self.revision = ""
         self.config = None
+        self.periods = {}
         self.apply_mode = ""
         self.last_contact = time.monotonic()
         self.stop_requested = False
         self.interval = 5
         self.usage = []
         self.failed_revision = ""
+        self.job_id = ""
         self.retry_at = 0
 
     def running(self):
@@ -124,6 +126,9 @@ class NodeAgent:
                 check=True,
             )
             self.usage = parse_stats(json.loads(result.stdout))
+            for sample in self.usage:
+                if sample["user_id"] in self.periods:
+                    sample["period_no"] = self.periods[sample["user_id"]]
         self.journal.record(self.epoch, self.usage)
         return self.usage
 
@@ -177,6 +182,18 @@ class NodeAgent:
 
     def apply(self, desired):
         config = desired["config"]
+        periods = desired.get("periods", {})
+        previous_periods = self.periods
+        if not isinstance(periods, dict) or any(
+            not isinstance(key, str) or type(value) is not int or value < 0
+            for key, value in periods.items()
+        ):
+            raise ValueError("Invalid usage period map")
+        changed_period = any(
+            periods.get(key) != value
+            for key, value in self.periods.items()
+            if key in periods
+        )
         api = next((i for i in config["inbounds"] if i.get("tag") == "api"), None)
         if not api or api.get("listen") != "127.0.0.1" or api.get("port") != 10085:
             raise ValueError("Invalid local management endpoint")
@@ -194,14 +211,16 @@ class NodeAgent:
         self.report()
         changes = (
             user_additions(self.config, config)
-            if self.config and self.running()
+            if self.config and self.running() and not changed_period
             else None
         )
         if changes is not None:
             try:
+                self.periods = dict(periods)
                 self.hot_apply(changes)
                 self.write_config(self.directory / "config.json", config)
                 self.config = copy.deepcopy(config)
+                self.periods = dict(periods)
                 self.revision = desired["revision"]
                 self.apply_mode = "hot"
                 log.info("Applied live user update %s", self.revision[:12])
@@ -221,6 +240,7 @@ class NodeAgent:
                 try:
                     self.start_core(previous)
                     self.config = previous
+                    self.periods = previous_periods
                     self.revision = previous_revision
                     self.apply_mode = "rollback"
                 except Exception:
@@ -235,6 +255,7 @@ class NodeAgent:
             self.revision = ""
             raise
         self.config = copy.deepcopy(config)
+        self.periods = dict(periods)
         self.revision = desired["revision"]
         self.apply_mode = "restart"
         log.info("Applied revision %s", self.revision[:12])
@@ -262,6 +283,8 @@ class NodeAgent:
                 json={
                     "epoch": epoch,
                     "applied_revision": self.revision,
+                    "job_id": self.job_id,
+                    "rejected_revision": self.failed_revision,
                     "usage": samples,
                     "error": error,
                     "agent_version": __version__,
@@ -281,6 +304,7 @@ class NodeAgent:
         response = self.client.get("/api/agent/config")
         response.raise_for_status()
         desired = response.json()
+        self.job_id = desired.get("job_id", "")
         if desired["revision"] != self.revision or not self.running():
             if (
                 desired["revision"] == self.failed_revision
@@ -289,6 +313,7 @@ class NodeAgent:
                 raise RuntimeError("Waiting before retrying rejected Xray revision")
             try:
                 self.apply(desired)
+                self.failed_revision = ""
             except Exception:
                 self.failed_revision, self.retry_at = (
                     desired["revision"],

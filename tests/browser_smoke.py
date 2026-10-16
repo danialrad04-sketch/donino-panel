@@ -11,7 +11,8 @@ from pathlib import Path
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from app.db import initialize, database, hash_password
+from app.db import initialize, digest
+from app.security import hotp
 from playwright.sync_api import sync_playwright
 
 
@@ -20,13 +21,13 @@ def main():
     output.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory() as folder:
         os.environ["DONINO_DB"] = folder + "/test.db"
+        os.environ.pop("DONINO_DATABASE_URL", None)
+        os.environ["DONINO_KEY_FILE"] = folder + "/master.key"
+        setup_token = secrets.token_urlsafe(40)
+        os.environ["DONINO_BOOTSTRAP_TOKEN_HASH"] = digest(setup_token)
+        os.environ["DONINO_BOOTSTRAP_EXPIRES"] = str(int(time.time()) + 3600)
         initialize()
         password = secrets.token_urlsafe(24)
-        with database() as db:
-            db.execute(
-                "INSERT INTO admins VALUES(?,?,?)",
-                ("admin", hash_password(password), "owner"),
-            )
         with socket.socket() as sock:
             sock.bind(("127.0.0.1", 0))
             port = sock.getsockname()[1]
@@ -61,13 +62,15 @@ def main():
                 )
                 errors = []
                 page.on("pageerror", lambda e: errors.append(str(e)))
-                page.goto(url)
+                page.goto(url + "/#setup=" + setup_token)
                 page.locator("#login-view").wait_for(state="visible")
+                page.locator("#bootstrap-form").wait_for(state="visible")
+                assert "#setup=" not in page.url
+                page.locator("[name=owner_username]").fill("admin")
+                page.locator("[name=owner_password]").fill(password)
+                page.locator("[name=confirm]").fill(password)
                 page.evaluate("document.fonts.ready")
-                page.screenshot(path=str(output / "donino-login.png"), full_page=True)
-                page.locator("[name=username]").fill("admin")
-                page.locator("[name=password]").fill(password)
-                page.locator("#login-form button").click()
+                page.locator("#bootstrap-form button").click()
                 page.locator("#app-view").wait_for(state="visible")
                 page.get_by_role("button", name="کاربر جدید").click()
                 page.locator("#edit-form [name=name]").fill("کاربر آزمایشی")
@@ -104,6 +107,16 @@ def main():
                 page.locator("#edit-form [name=port]").fill("8443")
                 page.locator("#edit-form button[type=submit]").click()
                 page.locator("#modal").wait_for(state="hidden")
+                page.locator("a[data-page=users]").click()
+                page.get_by_role("button", name="نودها", exact=True).click()
+                page.locator("#edit-form [name=mode]").select_option("selected")
+                page.locator("#edit-form input[type=checkbox]").check()
+                page.locator("#edit-form button[type=submit]").click()
+                page.locator("#modal").wait_for(state="hidden")
+                page.get_by_role("button", name="دوره‌ها", exact=True).click()
+                page.locator("#modal").wait_for(state="visible")
+                assert "جاری" in page.locator("#modal").inner_text()
+                page.locator("#close-modal").click()
                 page.locator("a[data-page=overview]").click()
                 page.locator("#main h1").filter(has_text="شبکه، در یک نگاه").wait_for()
                 page.locator("#toast").wait_for(state="hidden")
@@ -121,6 +134,20 @@ def main():
                     assert page.evaluate(
                         "document.documentElement.scrollWidth <= innerWidth"
                     ), view + " overflow"
+                page.locator('[data-action="mfa-setup"]').click()
+                page.locator("#edit-form [name=password]").fill(password)
+                page.locator("#edit-form button[type=submit]").click()
+                page.locator("#edit-form [name=code]").wait_for()
+                seed = page.locator("#edit-form textarea").input_value()
+                page.locator("#edit-form [name=code]").fill(
+                    hotp(seed, int(time.time()) // 30)
+                )
+                page.locator("#edit-form button[type=submit]").click()
+                page.locator("#secret-output").wait_for()
+                assert (
+                    len(page.locator("#secret-output").input_value().splitlines()) == 10
+                )
+                page.locator("#close-modal").click()
                 page.locator("#theme").click()
                 page.locator("[data-action=logout]").click()
                 page.locator("#login-view").wait_for(state="visible")

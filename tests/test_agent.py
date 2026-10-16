@@ -137,6 +137,23 @@ class AgentTest(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "Another Donino agent"):
             NodeAgent()
 
+    def test_period_change_forces_restart_with_same_transport_and_credentials(self):
+        current = self.config()
+        self.agent.config = copy.deepcopy(current)
+        self.agent.periods = {"old": 0}
+        with (
+            patch.object(self.agent, "report"),
+            patch("agent.main.subprocess.run", return_value=Mock(returncode=0)),
+            patch.object(self.agent, "start_core") as start,
+            patch.object(self.agent, "hot_apply") as hot,
+        ):
+            self.agent.apply(
+                {"revision": "new-period", "config": current, "periods": {"old": 1}}
+            )
+        start.assert_called_once()
+        hot.assert_not_called()
+        self.assertEqual(self.agent.periods, {"old": 1})
+
 
 if __name__ == "__main__":
     unittest.main()

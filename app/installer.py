@@ -87,10 +87,10 @@ def preflight(domain, expected_ip=None, root="/", allow_unsupported=False, min_f
     else:
         raise InstallError(EXIT_INPUT, f"architecture {machine} is not supported yet")
 
-    if sys.version_info >= (3, 12):
+    if sys.version_info >= (3, 11):
         rows.append(("OK", "python", platform.python_version()))
     else:
-        raise InstallError(EXIT_INPUT, "Python 3.12 or newer is required")
+        raise InstallError(EXIT_INPUT, "Python 3.11 or newer is required")
 
     if root == "/" and os.geteuid() != 0:
         raise InstallError(EXIT_INPUT, "run as root, or pass --root for a test directory")

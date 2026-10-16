@@ -8,7 +8,7 @@ from unittest.mock import patch
 
 from support import configure, postgres_url, sqlite_only
 from app import ops
-from app.db import initialize, database, hash_password
+from app.db import initialize, database, hash_password, SCHEMA_VERSION
 
 
 class OpsTest(unittest.TestCase):
@@ -63,7 +63,7 @@ class OpsTest(unittest.TestCase):
         dest = self.root / "b.db"
         manifest = ops.backup(dest)
         self.assertEqual(manifest["sha256"], ops._sha256(dest))
-        self.assertEqual(manifest["schema_version"], 4)
+        self.assertEqual(manifest["schema_version"], SCHEMA_VERSION)
         stored = json.loads((self.root / "b.db.manifest.json").read_text())
         self.assertEqual(stored, manifest)
         self.assertEqual(oct(os.stat(dest).st_mode & 0o777), "0o600")

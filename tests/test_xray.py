@@ -397,6 +397,41 @@ class XrayTest(unittest.TestCase):
                     print(
                         "  Real node accounting, duplicate-report handling, and quota removal passed"
                     )
+                    panel.put(
+                        "/api/users/" + user["id"],
+                        json={"name": user["name"], "quota": 50_000_000},
+                    )
+                    panel.post("/api/users/" + user["id"] + "/reset-traffic")
+                    old_epoch, old_pid = agent.epoch, agent.proc.pid
+                    agent.tick()
+                    self.assertNotEqual(agent.epoch, old_epoch)
+                    self.assertNotEqual(agent.proc.pid, old_pid)
+                    self.assertEqual(agent.periods[user["id"]], 1)
+                    with socket.create_connection(
+                        ("127.0.0.1", socks_ports["vmess"]), timeout=15
+                    ) as stream:
+                        stream.sendall(b"\x05\x01\x00")
+                        self.assertEqual(stream.recv(2), b"\x05\x00")
+                        stream.sendall(
+                            b"\x05\x01\x00\x01\x7f\x00\x00\x01"
+                            + http.server_port.to_bytes(2, "big")
+                        )
+                        self.assertEqual(stream.recv(10)[1], 0)
+                        stream.sendall(b"GET / HTTP/1.0\r\nHost: localhost\r\n\r\n")
+                        body = b""
+                        while chunk := stream.recv(65536):
+                            body += chunk
+                        self.assertIn(b"donino-real-proxy-ok", body)
+                    agent.tick()
+                    self.assertGreater(panel.get("/api/users").json()[0]["used"], 10000)
+                    history = panel.get("/api/users/" + user["id"] + "/periods").json()
+                    self.assertEqual([row["period_no"] for row in history], [1, 0])
+                    self.assertGreater(
+                        history[1]["uploaded"] + history[1]["downloaded"], 20000
+                    )
+                    print(
+                        "  Real period reset restarted Xray, preserved credentials and accounted new traffic separately"
+                    )
                     previous_config = copy.deepcopy(agent.config)
                     previous_revision = agent.revision
                     bad = copy.deepcopy(previous_config)

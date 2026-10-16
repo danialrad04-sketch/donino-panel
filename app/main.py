@@ -41,7 +41,13 @@ from .db import (
     IntegrityErrors,
     MAX_DEVICES_PER_USER,
 )
-from .core import compile_config, revision, eligible, status, profiles
+from .core import eligible, status, profiles
+from .secrets import seal
+from .accounting import apply_sample, next_period
+from .bootstrap import mount_bootstrap
+from .network_api import mount_network_api
+from .deployments import acknowledge, desired_job
+from .engines import XRAY
 from .deps import (
     admin,
     writer,
@@ -50,14 +56,12 @@ from .deps import (
     node_auth,
     one,
     public_base,
-    authenticate,
 )
 from .security import (
     PASSWORD_MIN,
     PASSWORD_MAX,
     MAX_TOKENS_PER_ADMIN,
     MAX_TOKEN_DAYS,
-    SCOPES,
     check_second_factor,
     clear_failures,
     guard,
@@ -88,6 +92,8 @@ app = FastAPI(
 )
 STATIC = Path(__file__).parent / "static"
 app.mount("/static", StaticFiles(directory=STATIC), name="static")
+mount_bootstrap(app)
+mount_network_api(app)
 
 
 @app.middleware("http")
@@ -217,6 +223,7 @@ class Usage(BaseModel):
     # Xray client id. For devices this is the device id; the default device id
     # equals the user id, so agents from before 0.3 keep working unchanged.
     user_id: str
+    period_no: int | None = Field(default=None, ge=0, le=2147483647)
     up: int = Field(ge=0, le=9_000_000_000_000_000)
     down: int = Field(ge=0, le=9_000_000_000_000_000)
 
@@ -224,6 +231,8 @@ class Usage(BaseModel):
 class Heartbeat(BaseModel):
     epoch: str = Field(min_length=1, max_length=64)
     applied_revision: str = Field(default="", max_length=64)
+    rejected_revision: str = Field(default="", max_length=64)
+    job_id: str = Field(default="", max_length=64)
     error: str = Field(default="", max_length=500)
     usage: list[Usage] = Field(default_factory=list, max_length=10000)
     agent_version: str = Field(default="", max_length=40)
@@ -241,6 +250,10 @@ class Heartbeat(BaseModel):
 class PasswordChange(BaseModel):
     current: str = Field(min_length=1, max_length=PASSWORD_MAX)
     new: str = Field(min_length=PASSWORD_MIN, max_length=PASSWORD_MAX)
+
+
+class PasswordInput(BaseModel):
+    password: str = Field(min_length=1, max_length=PASSWORD_MAX)
 
 
 class CodeInput(BaseModel):
@@ -265,31 +278,27 @@ def roll_periods(db, now=None):
     Runs before usage is applied so a new period starts clean.
     """
     now = int(time.time()) if now is None else now
-    due = [
-        r["id"]
-        for r in db.execute(
-            "SELECT id FROM users WHERE period='monthly' AND period_start IS NOT NULL "
-            "AND period_start + period_days*86400 <= ?",
-            (now,),
-        )
-    ]
-    for uid in due:
-        db.execute(
-            "UPDATE users SET used=0,uploaded=0,downloaded=0,legacy_used=0,"
-            "period_no=period_no+1,period_start=? WHERE id=?",
-            (now, uid),
-        )
-        db.execute(
-            "UPDATE devices SET uploaded=0,downloaded=0 WHERE user_id=?", (uid,)
-        )
+    due = db.execute(
+        "SELECT * FROM users WHERE period='monthly' AND period_start IS NOT NULL "
+        "AND period_start + period_days*86400 <= ?",
+        (now,),
+    ).fetchall()
+    for user in due:
+        next_period(db, user, now, start=now)
     return len(due)
 
 
-def client_rows(db, where="", args=()):
+def client_rows(db, where="", args=(), *, node_id=None):
     """Every device credential with its eligibility, for config or profiles."""
+    if node_id:
+        where += (
+            (" AND " if where else "WHERE ")
+            + "(u.node_mode='all' OR EXISTS(SELECT 1 FROM user_nodes un WHERE un.user_id=u.id AND un.node_id=?))"
+        )
+        args = (*args, node_id)
     rows = db.execute(
         "SELECT d.id, d.secret, d.name AS device_name, d.enabled AS device_enabled, "
-        "d.user_id, u.name AS user_name, u.enabled, u.quota, u.used, u.expires "
+        "d.user_id, u.name AS user_name, u.enabled, u.quota, u.used, u.expires, u.period_no "
         f"FROM devices d JOIN users u ON u.id=d.user_id {where} ORDER BY d.id",
         args,
     ).fetchall()
@@ -299,6 +308,7 @@ def client_rows(db, where="", args=()):
             "secret": r["secret"],
             "device_name": r["device_name"],
             "user_id": r["user_id"],
+            "period_no": r["period_no"],
             "eligible": bool(r["device_enabled"]) and eligible(dict(r)),
         }
         for r in rows
@@ -312,6 +322,16 @@ def index():
 
 @app.get("/healthz")
 def health():
+    return {"status": "ok", "version": __version__}
+
+
+@app.get("/readyz")
+def readiness():
+    try:
+        with database() as db:
+            db.execute("SELECT 1").fetchone()
+    except Exception:
+        return JSONResponse({"status": "unavailable"}, status_code=503)
     return {"status": "ok", "version": __version__}
 
 
@@ -424,17 +444,24 @@ def account_info(account=Depends(admin)):
         "username": account["username"],
         "role": account["role"],
         "mfa_enabled": bool(mfa and mfa["enabled"]),
-        "sessions": [
-            {**dict(s), "current": s["sid"] == current} for s in sessions
-        ],
+        "sessions": [{**dict(s), "current": s["sid"] == current} for s in sessions],
         "tokens": [dict(t) for t in tokens],
     }
 
 
 @app.post("/api/account/mfa/setup")
-def mfa_setup(account=Depends(session_only)):
+def mfa_setup(body: PasswordInput, account=Depends(session_only)):
     secret = new_totp_secret()
     with database() as db:
+        key = "security:" + account["username"]
+        guard(db, key)
+        row = db.execute(
+            "SELECT password FROM admins WHERE username=?", (account["username"],)
+        ).fetchone()
+        if not row or not verify_password(body.password, row["password"]):
+            record_failure(db, key)
+            return JSONResponse({"detail": "رمز عبور درست نیست"}, status_code=401)
+        clear_failures(db, key)
         existing = db.execute(
             "SELECT enabled FROM admin_mfa WHERE username=?", (account["username"],)
         ).fetchone()
@@ -444,7 +471,7 @@ def mfa_setup(account=Depends(session_only)):
             db,
             "admin_mfa",
             ["username", "secret", "enabled", "last_step", "recovery", "created"],
-            [account["username"], secret, 0, 0, "[]", int(time.time())],
+            [account["username"], seal(secret), 0, 0, "[]", int(time.time())],
             ["username"],
         )
     return {"secret": secret, "otpauth": otpauth_uri(secret, account["username"])}
@@ -453,6 +480,8 @@ def mfa_setup(account=Depends(session_only)):
 @app.post("/api/account/mfa/enable")
 def mfa_enable(body: CodeInput, account=Depends(session_only)):
     with database() as db:
+        key = "security:" + account["username"]
+        guard(db, key)
         mfa = db.execute(
             "SELECT * FROM admin_mfa WHERE username=? AND enabled=0",
             (account["username"],),
@@ -461,13 +490,16 @@ def mfa_enable(body: CodeInput, account=Depends(session_only)):
             raise HTTPException(404, "ابتدا راه‌اندازی کد دو مرحله‌ای را شروع کنید")
         step = totp_verify(mfa["secret"], body.code)
         if step is None:
-            raise HTTPException(401, "کد وارد‌شده درست نیست")
+            record_failure(db, key)
+            return JSONResponse({"detail": "کد وارد‌شده درست نیست"}, status_code=401)
+        clear_failures(db, key)
         codes, hashes = new_recovery_codes()
         db.execute(
             "UPDATE admin_mfa SET enabled=1,last_step=?,recovery=? WHERE username=?",
             (step, json.dumps(hashes), account["username"]),
         )
         audit(db, account["username"], "mfa.enable")
+        revoke_credentials(db, account["username"], keep_session=account["session"])
     # Recovery codes are shown exactly once; only their digests are stored.
     return {"recovery_codes": codes}
 
@@ -475,6 +507,8 @@ def mfa_enable(body: CodeInput, account=Depends(session_only)):
 @app.post("/api/account/mfa/disable")
 def mfa_disable(body: PasswordAndCode, account=Depends(session_only)):
     with database() as db:
+        key = "security:" + account["username"]
+        guard(db, key)
         row = db.execute(
             "SELECT password FROM admins WHERE username=?", (account["username"],)
         ).fetchone()
@@ -483,11 +517,19 @@ def mfa_disable(body: PasswordAndCode, account=Depends(session_only)):
             (account["username"],),
         ).fetchone()
         if not mfa or not verify_password(body.password, row["password"]):
-            raise HTTPException(401, "رمز عبور یا کد دو مرحله‌ای درست نیست")
+            record_failure(db, key)
+            return JSONResponse(
+                {"detail": "رمز عبور یا کد دو مرحله‌ای درست نیست"}, status_code=401
+            )
         if not check_second_factor(db, mfa, body.code):
-            raise HTTPException(401, "رمز عبور یا کد دو مرحله‌ای درست نیست")
+            record_failure(db, key)
+            return JSONResponse(
+                {"detail": "رمز عبور یا کد دو مرحله‌ای درست نیست"}, status_code=401
+            )
+        clear_failures(db, key)
         db.execute("DELETE FROM admin_mfa WHERE username=?", (account["username"],))
         audit(db, account["username"], "mfa.disable")
+        revoke_credentials(db, account["username"], keep_session=account["session"])
     return {"ok": True}
 
 
@@ -618,9 +660,13 @@ def list_admins(account=Depends(owner)):
 
 
 @app.post("/api/admins", status_code=201)
-def create_admin(body: AdminInput, account=Depends(owner), session=Depends(session_only)):
+def create_admin(
+    body: AdminInput, account=Depends(owner), session=Depends(session_only)
+):
     with database() as db:
-        if db.execute("SELECT 1 FROM admins WHERE username=?", (body.username,)).fetchone():
+        if db.execute(
+            "SELECT 1 FROM admins WHERE username=?", (body.username,)
+        ).fetchone():
             raise HTTPException(409, "این نام کاربری از قبل وجود دارد")
         db.execute(
             "INSERT INTO admins(username,password,role) VALUES(?,?,?)",
@@ -632,13 +678,22 @@ def create_admin(body: AdminInput, account=Depends(owner), session=Depends(sessi
 
 @app.put("/api/admins/{username}")
 def change_admin_role(
-    username: str, body: AdminRoleInput, account=Depends(owner), session=Depends(session_only)
+    username: str,
+    body: AdminRoleInput,
+    account=Depends(owner),
+    session=Depends(session_only),
 ):
     with database() as db:
-        row = db.execute("SELECT * FROM admins WHERE username=?", (username,)).fetchone()
+        row = db.execute(
+            "SELECT * FROM admins WHERE username=?", (username,)
+        ).fetchone()
         if not row:
             raise HTTPException(404, "مدیر پیدا نشد")
-        if row["role"] == "owner" and body.role != "owner" and owner_count(db, username) == 0:
+        if (
+            row["role"] == "owner"
+            and body.role != "owner"
+            and owner_count(db, username) == 0
+        ):
             raise HTTPException(409, "حداقل یک مالک باید باقی بماند")
         db.execute("UPDATE admins SET role=? WHERE username=?", (body.role, username))
         if row["role"] != body.role:
@@ -650,10 +705,15 @@ def change_admin_role(
 
 @app.post("/api/admins/{username}/password")
 def reset_admin_password(
-    username: str, body: AdminPasswordInput, account=Depends(owner), session=Depends(session_only)
+    username: str,
+    body: AdminPasswordInput,
+    account=Depends(owner),
+    session=Depends(session_only),
 ):
     with database() as db:
-        if not db.execute("SELECT 1 FROM admins WHERE username=?", (username,)).fetchone():
+        if not db.execute(
+            "SELECT 1 FROM admins WHERE username=?", (username,)
+        ).fetchone():
             raise HTTPException(404, "مدیر پیدا نشد")
         db.execute(
             "UPDATE admins SET password=? WHERE username=?",
@@ -669,7 +729,9 @@ def delete_admin(username: str, account=Depends(owner), session=Depends(session_
     if username == account["username"]:
         raise HTTPException(409, "حساب خودتان را نمی‌توانید حذف کنید")
     with database() as db:
-        row = db.execute("SELECT role FROM admins WHERE username=?", (username,)).fetchone()
+        row = db.execute(
+            "SELECT role FROM admins WHERE username=?", (username,)
+        ).fetchone()
         if not row:
             raise HTTPException(404, "مدیر پیدا نشد")
         if row["role"] == "owner" and owner_count(db, username) == 0:
@@ -795,7 +857,10 @@ def update_user(uid: str, body: UserInput, account=Depends(writer)):
         previous = one(db, "users", uid)
         # Switching the period restarts the cycle at the next usage.
         period_start = previous["period_start"]
-        if body.period != previous["period"] or body.period_days != previous["period_days"]:
+        if (
+            body.period != previous["period"]
+            or body.period_days != previous["period_days"]
+        ):
             period_start = None
         if body.period == "none":
             period_start = None
@@ -828,15 +893,8 @@ def delete_user(uid: str, account=Depends(writer)):
 @app.post("/api/users/{uid}/reset-traffic")
 def reset_traffic(uid: str, account=Depends(writer)):
     with database() as db:
-        one(db, "users", uid)
-        # Keep counter baselines so old bytes are never billed again.
-        db.execute(
-            "UPDATE users SET used=0,uploaded=0,downloaded=0,legacy_used=0 WHERE id=?",
-            (uid,),
-        )
-        db.execute(
-            "UPDATE devices SET uploaded=0,downloaded=0 WHERE user_id=?", (uid,)
-        )
+        user = one(db, "users", uid)
+        next_period(db, user, int(time.time()))
         audit(db, account["username"], "user.reset-traffic", uid)
     return {"ok": True}
 
@@ -955,9 +1013,7 @@ def delete_device(did: str, account=Depends(writer)):
 def rotate_device(did: str, account=Depends(writer)):
     with database() as db:
         one(db, "devices", did)
-        db.execute(
-            "UPDATE devices SET secret=? WHERE id=?", (str(uuid.uuid4()), did)
-        )
+        db.execute("UPDATE devices SET secret=? WHERE id=?", (str(uuid.uuid4()), did))
         audit(db, account["username"], "device.rotate-secret", did)
     return {"ok": True}
 
@@ -1118,19 +1174,24 @@ def delete_inbound(iid: str, account=Depends(owner)):
 def agent_config(node=Depends(node_auth)):
     with database() as db:
         roll_periods(db)
-        config = compile_config(
+        clients = client_rows(db, node_id=node["id"])
+        config = XRAY.compile(
             list(
                 db.execute(
                     "SELECT * FROM inbounds WHERE node_id=? ORDER BY id", (node["id"],)
                 )
             ),
-            client_rows(db),
+            clients,
         )
+        periods = {client["id"]: client["period_no"] for client in clients}
+        job_id, checksum = desired_job(db, node["id"], config, periods)
     return {
-        "revision": revision(config),
+        "revision": checksum,
+        "job_id": job_id,
         "config": config,
+        "periods": periods,
         "node_id": node["id"],
-        "agent_protocol": 3,
+        "agent_protocol": 4,
     }
 
 
@@ -1140,49 +1201,8 @@ def heartbeat(body: Heartbeat, node=Depends(node_auth)):
         now = int(time.time())
         roll_periods(db, now)
         for sample in body.usage:
-            device = db.execute(
-                "SELECT id,user_id FROM devices WHERE id=?", (sample.user_id,)
-            ).fetchone()
-            if not device:
-                continue
-            old = db.execute(
-                "SELECT up,down FROM counters WHERE node_id=? AND epoch=? AND device_id=?",
-                (node["id"], body.epoch, device["id"]),
-            ).fetchone()
-            up, down = (
-                max(sample.up, old["up"] if old else 0),
-                max(sample.down, old["down"] if old else 0),
-            )
-            delta_up, delta_down = (
-                up - (old["up"] if old else 0),
-                down - (old["down"] if old else 0),
-            )
-            db.execute(
-                "UPDATE users SET used=used+?,uploaded=uploaded+?,downloaded=downloaded+? WHERE id=?",
-                (
-                    delta_up + delta_down,
-                    delta_up,
-                    delta_down,
-                    device["user_id"],
-                ),
-            )
-            db.execute(
-                "UPDATE devices SET uploaded=uploaded+?,downloaded=downloaded+? WHERE id=?",
-                (delta_up, delta_down, device["id"]),
-            )
-            if delta_up + delta_down > 0:
-                db.execute(
-                    "UPDATE users SET period_start=COALESCE(period_start,?) "
-                    "WHERE id=? AND period='monthly'",
-                    (now, device["user_id"]),
-                )
-            upsert(
-                db,
-                "counters",
-                ["node_id", "epoch", "device_id", "up", "down"],
-                [node["id"], body.epoch, device["id"], up, down],
-                ["node_id", "epoch", "device_id"],
-            )
+            apply_sample(db, node["id"], body.epoch, sample, now)
+        acknowledge(db, node["id"], body, now)
         db.execute(
             """UPDATE nodes SET last_seen=?,applied_revision=?,error=?,agent_version=?,
             core_running=?,apply_mode=?,pending_usage=? WHERE id=?""",
@@ -1264,7 +1284,16 @@ def inbound_rows(db):
 
 def user_profiles(db, user):
     clients = client_rows(db, "WHERE d.user_id=?", (user["id"],))
-    return profiles(clients, inbound_rows(db))
+    inbounds = inbound_rows(db)
+    if user["node_mode"] == "selected":
+        allowed = {
+            row[0]
+            for row in db.execute(
+                "SELECT node_id FROM user_nodes WHERE user_id=?", (user["id"],)
+            )
+        }
+        inbounds = [row for row in inbounds if row["node_id"] in allowed]
+    return profiles(clients, inbounds)
 
 
 @app.get("/sub/{token}")
