@@ -1,0 +1,3 @@
+# Optional: only needed when DONINO_DATABASE_URL points at PostgreSQL.
+-c requirements.lock
+psycopg[binary]==3.2.9

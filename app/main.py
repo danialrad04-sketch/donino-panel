@@ -34,6 +34,11 @@ from .db import (
     verify_password,
     hash_password,
     audit,
+    upsert,
+    pg_dump,
+    db_path,
+    is_postgres,
+    IntegrityErrors,
     MAX_DEVICES_PER_USER,
 )
 from .core import compile_config, revision, eligible, status, profiles
@@ -122,12 +127,15 @@ async def security_headers(request, call_next):
     return response
 
 
-@app.exception_handler(sqlite3.IntegrityError)
 async def conflict(request, exc):
     return JSONResponse(
         {"detail": "نام یا پورت تکراری است، یا رکورد مرتبط وجود ندارد."},
         status_code=409,
     )
+
+
+for _error_class in IntegrityErrors:
+    app.add_exception_handler(_error_class, conflict)
 
 
 def public_user(row, include_secret=False):
@@ -432,10 +440,12 @@ def mfa_setup(account=Depends(session_only)):
         ).fetchone()
         if existing and existing["enabled"]:
             raise HTTPException(409, "کد دو مرحله‌ای فعال است؛ اول آن را غیرفعال کنید")
-        db.execute(
-            "INSERT OR REPLACE INTO admin_mfa(username,secret,enabled,last_step,recovery,created) "
-            "VALUES(?,?,0,0,'[]',?)",
-            (account["username"], secret, int(time.time())),
+        upsert(
+            db,
+            "admin_mfa",
+            ["username", "secret", "enabled", "last_step", "recovery", "created"],
+            [account["username"], secret, 0, 0, "[]", int(time.time())],
+            ["username"],
         )
     return {"secret": secret, "otpauth": otpauth_uri(secret, account["username"])}
 
@@ -1166,9 +1176,12 @@ def heartbeat(body: Heartbeat, node=Depends(node_auth)):
                     "WHERE id=? AND period='monthly'",
                     (now, device["user_id"]),
                 )
-            db.execute(
-                "INSERT OR REPLACE INTO counters VALUES(?,?,?,?,?)",
-                (node["id"], body.epoch, device["id"], up, down),
+            upsert(
+                db,
+                "counters",
+                ["node_id", "epoch", "device_id", "up", "down"],
+                [node["id"], body.epoch, device["id"], up, down],
+                ["node_id", "epoch", "device_id"],
             )
         db.execute(
             """UPDATE nodes SET last_seen=?,applied_revision=?,error=?,agent_version=?,
@@ -1199,24 +1212,31 @@ def list_audit(account=Depends(owner)):
 @app.get("/api/backup")
 def backup(account=Depends(owner)):
     # Back up without holding a write transaction on the source connection.
-    from .db import db_path
-
     with tempfile.TemporaryDirectory() as folder:
-        filename = Path(folder) / "backup.db"
-        source = sqlite3.connect(db_path())
-        target = sqlite3.connect(filename)
-        try:
-            source.backup(target)
-        finally:
-            source.close()
-            target.close()
+        if is_postgres():
+            filename = Path(folder) / "backup.dump"
+            try:
+                pg_dump(filename)
+            except RuntimeError as error:
+                raise HTTPException(503, str(error))
+            media, download = "application/octet-stream", "donino-backup.dump"
+        else:
+            filename = Path(folder) / "backup.db"
+            source = sqlite3.connect(db_path())
+            target = sqlite3.connect(filename)
+            try:
+                source.backup(target)
+            finally:
+                source.close()
+                target.close()
+            media, download = "application/vnd.sqlite3", "donino-backup.db"
         data = filename.read_bytes()
     with database() as db:
         audit(db, account["username"], "backup.download")
     return Response(
         data,
-        media_type="application/vnd.sqlite3",
-        headers={"Content-Disposition": "attachment; filename=donino-backup.db"},
+        media_type=media,
+        headers={"Content-Disposition": f"attachment; filename={download}"},
     )
 
 

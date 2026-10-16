@@ -1,30 +1,137 @@
 import hashlib
 import hmac
 import os
+import re
 import secrets
+import shutil
 import sqlite3
+import subprocess
 import time
 import uuid
 from contextlib import contextmanager
 from pathlib import Path
 
+try:  # PostgreSQL is optional; SQLite stays the default backend.
+    import psycopg
+except ImportError:  # pragma: no cover - exercised only without the postgres extra
+    psycopg = None
+
+SCHEMA_VERSION = 4
+MAX_DEVICES_PER_USER = 20
+# Arbitrary constant key for the PostgreSQL writer lock (serializes writers, like BEGIN IMMEDIATE).
+_PG_WRITER_LOCK = 4541776
+
+IntegrityErrors = (sqlite3.IntegrityError,) + ((psycopg.IntegrityError,) if psycopg else ())
+
+
+def database_url():
+    return os.environ.get("DONINO_DATABASE_URL", "").strip()
+
+
+def is_postgres():
+    return database_url().startswith(("postgresql://", "postgres://"))
+
 
 def db_path():
+    """SQLite file path. Also decides where file-based backups are written."""
     return Path(os.environ.get("DONINO_DB", "data/donino.db"))
+
+
+class Row:
+    """Row that supports both row[0] and row['name'], like sqlite3.Row."""
+
+    __slots__ = ("_values", "_names")
+
+    def __init__(self, values, names):
+        self._values = tuple(values)
+        self._names = names
+
+    def __getitem__(self, key):
+        if isinstance(key, str):
+            return self._values[self._names.index(key)]
+        return self._values[key]
+
+    def keys(self):
+        return list(self._names)
+
+    def __iter__(self):
+        return iter(self._values)
+
+    def __len__(self):
+        return len(self._values)
+
+
+class PgResult:
+    def __init__(self, cursor):
+        self._cursor = cursor
+        self._names = [column.name for column in cursor.description] if cursor.description else []
+
+    @property
+    def rowcount(self):
+        return self._cursor.rowcount
+
+    def fetchone(self):
+        row = self._cursor.fetchone()
+        return None if row is None else Row(row, self._names)
+
+    def fetchall(self):
+        return [Row(row, self._names) for row in self._cursor.fetchall()]
+
+    def __iter__(self):
+        for row in self._cursor:
+            yield Row(row, self._names)
+
+
+def _pg_sql(sql, params):
+    """Translate the SQLite dialect used by the schema and queries into PostgreSQL."""
+    if params:
+        # Literal percent signs must be escaped once placeholders become %s.
+        sql = sql.replace("%", "%%").replace("?", "%s")
+    sql = re.sub(r"\bINTEGER PRIMARY KEY AUTOINCREMENT\b", "BIGSERIAL PRIMARY KEY", sql)
+    # Byte counters exceed 2 GB quickly, so every integer column is 64-bit.
+    return re.sub(r"\bINTEGER\b", "BIGINT", sql)
+
+
+class PgConnection:
+    def __init__(self, raw):
+        self.raw = raw
+
+    def execute(self, sql, params=()):
+        # SQLite accepts bool as 0/1; psycopg would send a boolean into BIGINT columns.
+        params = tuple(int(p) if isinstance(p, bool) else p for p in params)
+        cursor = self.raw.cursor()
+        cursor.execute(_pg_sql(sql, params), params or None)
+        return PgResult(cursor)
+
+    def commit(self):
+        self.raw.commit()
+
+    def rollback(self):
+        self.raw.rollback()
+
+    def close(self):
+        self.raw.close()
 
 
 @contextmanager
 def database():
-    path = db_path()
-    path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
-    connection = sqlite3.connect(path, timeout=20)
-    os.chmod(path, 0o600)
-    connection.row_factory = sqlite3.Row
-    connection.execute("PRAGMA foreign_keys=ON")
-    connection.execute("PRAGMA busy_timeout=20000")
+    if is_postgres():
+        connection = PgConnection(psycopg.connect(database_url(), connect_timeout=10))
+    else:
+        path = db_path()
+        path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+        raw = sqlite3.connect(path, timeout=20)
+        os.chmod(path, 0o600)
+        raw.row_factory = sqlite3.Row
+        raw.execute("PRAGMA foreign_keys=ON")
+        raw.execute("PRAGMA busy_timeout=20000")
+        connection = raw
     try:
         # Serialize read-modify-write operations across requests/workers.
-        connection.execute("BEGIN IMMEDIATE")
+        if is_postgres():
+            connection.execute(f"SELECT pg_advisory_xact_lock({_PG_WRITER_LOCK})")
+        else:
+            connection.execute("BEGIN IMMEDIATE")
         yield connection
         connection.commit()
     except BaseException:
@@ -34,13 +141,83 @@ def database():
         connection.close()
 
 
-SCHEMA_VERSION = 4
-MAX_DEVICES_PER_USER = 20
+def schema_version(db):
+    if is_postgres():
+        if not table_exists(db, "donino_meta"):
+            return 0
+        row = db.execute("SELECT value FROM donino_meta WHERE key='schema_version'").fetchone()
+        return row[0] if row else 0
+    return db.execute("PRAGMA user_version").fetchone()[0]
+
+
+def set_schema_version(db, version):
+    if is_postgres():
+        upsert(db, "donino_meta", ["key", "value"], ["schema_version", version], ["key"])
+    else:
+        db.execute(f"PRAGMA user_version={int(version)}")
+
+
+def table_exists(db, name):
+    if is_postgres():
+        row = db.execute(
+            "SELECT 1 FROM information_schema.tables "
+            "WHERE table_schema=current_schema() AND table_name=?",
+            (name,),
+        ).fetchone()
+    else:
+        row = db.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?", (name,)
+        ).fetchone()
+    return row is not None
+
+
+def table_columns(db, name):
+    if is_postgres():
+        rows = db.execute(
+            "SELECT column_name FROM information_schema.columns "
+            "WHERE table_schema=current_schema() AND table_name=?",
+            (name,),
+        ).fetchall()
+        return {row[0] for row in rows}
+    return {row["name"] for row in db.execute(f"PRAGMA table_info({name})")}
+
+
+def upsert(db, table, columns, values, keys):
+    """Insert or replace a row keyed by `keys` on both backends."""
+    names = ",".join(columns)
+    marks = ",".join("?" * len(columns))
+    if is_postgres():
+        updates = ",".join(f"{c}=EXCLUDED.{c}" for c in columns if c not in keys)
+        action = f"DO UPDATE SET {updates}" if updates else "DO NOTHING"
+        sql = f"INSERT INTO {table}({names}) VALUES({marks}) ON CONFLICT({','.join(keys)}) {action}"
+    else:
+        sql = f"INSERT OR REPLACE INTO {table}({names}) VALUES({marks})"
+    db.execute(sql, values)
+
+
+def pg_dump(destination):
+    """Write a custom-format PostgreSQL dump. Requires the pg_dump client tool."""
+    tool = shutil.which("pg_dump")
+    if not tool:
+        raise RuntimeError("pg_dump is not installed; install the postgresql-client package")
+    result = subprocess.run(
+        [tool, "--format=custom", "--no-owner", "--no-privileges", "--file", str(destination), "--dbname", database_url()],
+        capture_output=True,
+        text=True,
+        timeout=900,
+    )
+    if result.returncode != 0:
+        raise RuntimeError("pg_dump failed: " + result.stderr.strip()[:500])
+    os.chmod(destination, 0o600)
 
 
 def migration_backup(tag="v2"):
-    """Called before DDL, while another connection holds the writer reservation."""
+    """Called before DDL, while the writer lock is already held by this transaction."""
     path = db_path()
+    if is_postgres():
+        path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+        pg_dump(path.parent / f"donino.pre-{tag}-{uuid.uuid4().hex[:12]}.dump")
+        return
     destination = path.with_name(
         path.name + ".pre-" + tag + "-" + uuid.uuid4().hex[:12] + ".db"
     )
@@ -56,23 +233,25 @@ def migration_backup(tag="v2"):
 
 def initialize():
     with database() as db:
-        version = db.execute("PRAGMA user_version").fetchone()[0]
+        if is_postgres():
+            db.execute(
+                "CREATE TABLE IF NOT EXISTS donino_meta(key TEXT PRIMARY KEY, value INTEGER NOT NULL)"
+            )
+        version = schema_version(db)
         if version > SCHEMA_VERSION:
             raise RuntimeError(
                 "Database is newer than this Donino version; refusing to open it"
             )
-        existing = db.execute(
-            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='users'"
-        ).fetchone()
+        existing = table_exists(db, "users")
         if existing and version < SCHEMA_VERSION:
-            columns = {r["name"] for r in db.execute("PRAGMA table_info(users)")}
+            columns = table_columns(db, "users")
             if not {"id", "credential", "used", "token"}.issubset(columns):
                 raise RuntimeError(
                     "Unrecognized database schema; automatic migration refused"
                 )
             # One backup per upgrade run, named after the oldest step being applied.
             migration_backup("v2" if version < 2 else f"v{SCHEMA_VERSION}")
-        # execute() keeps all DDL and the version update inside the same transaction.
+        # Every statement runs inside this transaction, so DDL and the version update commit together.
         schema = """
         CREATE TABLE IF NOT EXISTS admins (
           username TEXT PRIMARY KEY, password TEXT NOT NULL,
@@ -123,13 +302,13 @@ def initialize():
             db.execute(
                 "ALTER TABLE nodes ADD COLUMN pending_usage INTEGER NOT NULL DEFAULT 0"
             )
-            db.execute("PRAGMA user_version=2")
+            set_schema_version(db, 2)
         if version < 3:
             migrate_to_v3(db)
-            db.execute("PRAGMA user_version=3")
+            set_schema_version(db, 3)
         if version < 4:
             migrate_to_v4(db)
-            db.execute("PRAGMA user_version=4")
+            set_schema_version(db, 4)
 
 
 def migrate_to_v4(db):

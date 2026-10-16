@@ -1,5 +1,16 @@
 # Donino releases
 
+## Unreleased — phase 2 (partial): PostgreSQL backend
+
+- Optional PostgreSQL backend selected by `DONINO_DATABASE_URL=postgresql://…`. SQLite remains the default and needs no change. Install `requirements-postgres.txt` for the driver.
+- Writers are serialized with a PostgreSQL advisory lock, which plays the role of `BEGIN IMMEDIATE`. Integer columns are 64-bit on PostgreSQL so byte counters cannot overflow.
+- Schema version is kept in a `donino_meta` table on PostgreSQL and in `PRAGMA user_version` on SQLite.
+- `backup`, `restore` and `doctor` work on both backends. PostgreSQL backups are `pg_dump` custom archives verified with `pg_restore --list`; restores use `pg_restore --clean --if-exists` and keep a `.dump` safety copy first. Requires the `postgresql-client` package on the panel host.
+- `GET /api/backup` returns a `.dump` on PostgreSQL and a `.db` on SQLite.
+- Tests run on SQLite by default. `DONINO_TEST_DATABASE_URL` runs the same suite against PostgreSQL (the public schema is recreated per test). CI runs both.
+
+Not done in this entry: a PostgreSQL-side migration test from schema 2 or 3 (the upgrade path is tested on SQLite only), connection pooling, and installer support for provisioning PostgreSQL.
+
 ## Unreleased — phase 2 (partial): installer scaffold and operations CLI
 
 - `python -m app.installer preflight|plan|render --domain D [--root DIR]`: read-only preflight (OS, architecture, Python, ports, disk, DNS), a secret-free plan, and render of the panel env file (0600), systemd unit and NGINX vhost under a root directory. Locked, resumable, and it refuses to overwrite files that differ (exit 7). Exit codes follow the installer spec.

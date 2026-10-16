@@ -10,6 +10,7 @@ from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
+from support import configure, sqlite_only
 from app.db import database, hash_password, SCHEMA_VERSION
 from app.main import app
 from app.security import hotp, totp_verify, new_totp_secret, normalize_recovery
@@ -26,7 +27,7 @@ class PanelBase(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.old = dict(os.environ)
-        os.environ["DONINO_DB"] = self.tmp.name + "/panel.db"
+        configure(self.tmp.name)
         os.environ["DONINO_SECURE_COOKIE"] = "false"
         self.client = TestClient(app)
         self.client.__enter__()
@@ -400,6 +401,7 @@ class AccountTest(PanelBase):
         self.assertIsInstance(body, list)
 
 
+@sqlite_only
 class MigrationV3Test(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
