@@ -2,6 +2,25 @@
 
 این راهنما برای یک سرور Linux با systemd، Python 3.12+، دسترسی مدیریتی و دامنهٔ واقعی است. کنترل‌پنل و نود می‌توانند روی دو سرور جدا باشند. برای هر نود، یک Xray تحت مدیریت عامل Donino اجرا می‌شود؛ هم‌زمان همان هسته را با پنل یا سرویس دیگری مدیریت نکنید.
 
+## پشتیبان، بررسی و بازیابی
+
+پیش از هر تغییر بزرگ، پشتیبان بگیرید و سلامت پنل را بررسی کنید:
+
+```bash
+sudo -u donino env DONINO_DB=/var/lib/donino-panel/donino.db /opt/donino-panel/.venv/bin/python -m app.cli doctor
+sudo -u donino env DONINO_DB=/var/lib/donino-panel/donino.db /opt/donino-panel/.venv/bin/python -m app.cli backup /var/backups/donino/donino-$(date -u +%Y%m%dT%H%M%SZ).db
+```
+
+فایل پشتیبان و فایل `manifest.json` کنار آن را خارج از سرور نگه دارید؛ هر دو حساس‌اند. برای بازیابی، سرویس پنل را متوقف کنید و سپس:
+
+```bash
+sudo systemctl stop donino-panel
+sudo -u donino env DONINO_DB=/var/lib/donino-panel/donino.db /opt/donino-panel/.venv/bin/python -m app.cli restore /var/backups/donino/NAME.db --replace
+sudo systemctl start donino-panel
+```
+
+بازیابی بدون manifest یا با checksum ناسازگار انجام نمی‌شود. نسخهٔ قبلی پایگاه داده قبل از جایگزینی در کنار همان مسیر با پسوند `.pre-restore-…db` ذخیره می‌شود.
+
 ## پنل مرکزی
 
 ابتدا مخزن را با حساب دارای دسترسی دریافت کنید، سپس کد را در `/opt/donino-panel` قرار دهید. نمونهٔ زیر فرض می‌کند آن مسیر هنوز وجود ندارد:

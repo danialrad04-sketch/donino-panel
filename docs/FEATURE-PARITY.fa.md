@@ -37,8 +37,8 @@
 | F-29 | DNS گیمینگ relay/exit؛ doctor-dns | هدف | ۵ | DNS-03/04؛ آزمون واقعی هر سرویس |
 | F-30 | مهاجرت doctor-dns | هدف؛ منبع بررسی شده | ۵ | DNS-05؛ تطبیق حجم، IP، دوره و کلید |
 | F-31 | واردسازی PasarGuard/3x-ui و backupهای منتخب | هدف؛ سازگاری فعلی ندارد | ۱۳ | IMPORT-01؛ نسخه ورودی صریح و dry-run |
-| F-32 | نصب یک‌فرمانی، ACME، ارتقا و doctor؛ PasarGuard Scripts | جزئی؛ template دستی systemd/NGINX | ۲ | INST-01 تا INST-04 |
-| F-33 | audit، backup، restore و migration | جزئی؛ SQLite و pre-migration backup | ۱، ۲، ۱۴ | DATA-01، OPS-01؛ restore مستقل |
+| F-32 | نصب یک‌فرمانی، ACME، ارتقا و doctor؛ PasarGuard Scripts | جزئی؛ template دستی systemd/NGINX و doctor فقط خواندنی | ۲ | INST-01 تا INST-04 |
+| F-33 | audit، backup، restore و migration | جزئی؛ SQLite، backup با manifest، restore تأییدشده با نسخهٔ ایمنی و doctor؛ restore مستقل روی ماشین دیگر هنوز آزموده نشده | ۱، ۲، ۱۴ | DATA-01، OPS-01؛ restore مستقل |
 | F-34 | پلن، تمدید، کیف پول، رسید و پرداخت | هدف | ۱۲ | BIZ-01؛ idempotency و تطبیق واحد پول |
 | F-35 | Telegram، Discord، webhook و هشدار | هدف | ۱۲ | BIZ-01؛ retry، امضا و محرمانگی |
 | F-36 | فارسی RTL/انگلیسی، theme، موبایل و a11y | جزئی؛ فارسی/موبایل/theme موجود | تدریجی، تکمیل ۱۳ | UI-01؛ keyboard و خطای فرم |

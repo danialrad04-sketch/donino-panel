@@ -1,6 +1,14 @@
 # Donino releases
 
-## Unreleased — phase 1 (partial): security, devices, schema 3
+## Unreleased — phase 2 (partial): operations CLI
+
+- `python -m app.cli doctor`: read-only health report (database permissions, schema version, integrity check, owner account, public URL and cookie settings). Exits 1 on any failure. Never prints secrets and never migrates the database.
+- `backup DEST`: consistent SQLite copy plus `DEST.manifest.json` with SHA-256, schema version and app version. Refuses to overwrite.
+- `restore SRC [--replace]`: refuses unless the manifest checksum, schema version and integrity check all pass. Keeps a timestamped safety copy of the current database before replacing it. Stop the panel service first.
+
+Not done in this entry: the interactive installer, ACME/SSL automation, NGINX generation, port ownership checks and the upgrade state machine.
+
+## Unreleased — phase 1 (complete except PostgreSQL and node-side mTLS): security, devices, schema 4
 
 - Schema 3 (`PRAGMA user_version=3`) with a private pre-migration backup. Every existing user gets one default device whose id equals the user id and whose secret equals the legacy credential, so Xray client emails, counter baselines and subscription links are unchanged and no node restarts because of the upgrade.
 - Devices: each user can have up to 20 devices, each with its own Xray credential, enable/disable, rotation and per-device traffic totals. The default device cannot be deleted. Disabling or rotating a device uses the existing full-restart revocation path.
