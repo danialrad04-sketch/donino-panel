@@ -117,6 +117,24 @@ def main():
                 page.locator("#modal").wait_for(state="visible")
                 assert "جاری" in page.locator("#modal").inner_text()
                 page.locator("#close-modal").click()
+                page.locator("a[data-page=dns]").click()
+                page.get_by_role("button", name="سیاست جدید", exact=True).click()
+                page.locator("#edit-form [name=name]").fill("سیاست آزمایشی DNS")
+                page.locator("#edit-form [name=rules]").fill(
+                    "block blocked.example\nrewrite fixture.example 1.2.3.4"
+                )
+                page.locator("#edit-form button[type=submit]").click()
+                page.locator("#modal").wait_for(state="hidden")
+                page.get_by_role("button", name="فعال‌سازی DNS", exact=True).click()
+                page.locator("#edit-form [name=user_id]").select_option(
+                    label="کاربر آزمایشی"
+                )
+                page.locator("#edit-form [name=query_limit]").fill("500")
+                page.locator("#edit-form button[type=submit]").click()
+                page.locator("#modal-title").filter(
+                    has_text="اعتبارنامهٔ خصوصی DoH"
+                ).wait_for()
+                page.locator("#close-modal").click()
                 page.locator("a[data-page=overview]").click()
                 page.locator("#main h1").filter(has_text="شبکه، در یک نگاه").wait_for()
                 page.locator("#toast").wait_for(state="hidden")
@@ -141,7 +159,7 @@ def main():
                 assert page.evaluate(
                     "document.documentElement.scrollWidth <= innerWidth"
                 ), "Mobile overview overflow"
-                for view in ["users", "nodes", "inbounds", "audit", "settings"]:
+                for view in ["users", "nodes", "inbounds", "dns", "audit", "settings"]:
                     page.locator("a[data-page=" + view + "]").click()
                     page.wait_for_timeout(100)
                     assert page.evaluate(
@@ -179,6 +197,12 @@ def main():
                 )
                 customer.goto(portal_url)
                 customer.locator("#portal-content").wait_for(state="visible")
+                customer.locator("#portal-dns").wait_for(state="visible")
+                assert "۵۰۰" in customer.locator("#dns-summary").inner_text()
+                customer.locator("#dns-claim").click()
+                customer.locator("#dns-message").filter(
+                    has_text="نشانی عمومی"
+                ).wait_for()
                 assert customer.locator("#portal-status").inner_text() == "فعال"
                 assert (
                     customer.locator("#subscription-link")

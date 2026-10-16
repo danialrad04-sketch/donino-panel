@@ -1,5 +1,14 @@
 # Donino releases
 
+## 1.0.0-alpha.6 — authenticated DNS preview, 2026-10-16
+
+- Add DNS policies with suffix priority, block/allow and A/AAAA rewrites; isolate caches by policy revision and DNSSEC flags, inspect aliases/targets, clear AD on synthesized answers and bound negative caching and UDP response size.
+- Add independent DNS accounts, hashed/rotatable DoH credentials, transactional query quotas, shared per-account rate windows, byte/error/block counters and historical periods. Proof from the portal's actual public source address grants expiring IP leases; shared-IP ownership conflicts are refused.
+- Add authenticated RFC 8484 DoH and an optional same-host UDP/TCP/DoT gateway backed by a dedicated validating Unbound. `--with-dns` installs private listeners by default; explicit public binds preserve existing resolvers and refuse occupied ports. Certificate pairs switch atomically, and the unprivileged service receives them over a private pipe.
+- Add Persian DNS management and guest controls, disable managed Uvicorn access logs, and extend browser, real DNSSEC, native service and backup/restore acceptance.
+
+This remains a preview: DoQ, remote DNS nodes, Smart DNS relay/exit, doctor-dns import, game/ISP acceptance and capacity testing are unfinished. DNS query bytes are separate from VPN/game traffic. See [DNS setup and limits](docs/DNS-PREVIEW.fa.md).
+
 ## 1.0.0-alpha.5 — experimental shared quota, 2026-10-16
 
 - Add opt-in shared-quota users with transactional per-node/per-supervisor budget reservations, signed 60-second execution windows and a persistent local budget ledger. Expired, unreported credit stays reserved instead of being allocated again.

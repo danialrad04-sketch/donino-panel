@@ -1,5 +1,13 @@
 # Validation record
 
+## Authenticated DNS preview — 2026-10-16
+
+Schema 9 adds independent DNS policies, accounts, source-IP leases and query/byte periods. The local full suites discovered 143 checks: SQLite/Python 3.12 passed with the PostgreSQL-only restore fault and optional Unbound checks skipped; PostgreSQL 16/Python 3.11 passed with nine SQLite-only checks skipped and actual Unbound enabled. The added checks cover concurrent quota admission, shared account rates, delayed-period responses, private credential rotation, proof/conflict/expiry of source IPs, policy/cache isolation, explicit allow exceptions, CNAME, A/AAAA, negative TTL, TCP fallback, UDP truncation and atomic TLS-pair replacement without damaging the previous pair.
+
+A real Debian Unbound 1.17.1 validates a generated signed private zone, sets AD on a valid answer and returns SERVFAIL for a deliberately invalid signature. Authenticated DoH preserves that result and clears AD for a policy rewrite. Browser acceptance passed for policy creation, DNS account activation, guest quota/IP controls and mobile navigation alongside prior VPN/MFA flows. No third-party browser requests or page JavaScript errors were observed.
+
+Native acceptance passed on Debian 12 and Ubuntu 24.04 with optional Unbound and the gateway, actual verified HTTPS DoH, source-leased UDP/TCP/DoT, refusal after lease deletion, same-host reinstall and second-host preservation of DNS accounts during encrypted recovery. Ubuntu uses standard ports 53/853 and Debian the private defaults. The final CI commit repeats both fixtures and all six jobs. A local test CA is explicitly trusted; public ACME, public recursive reachability, ISP/game behavior, DoQ, remote DNS deployment and capacity are not established. See [DNS setup and limits](DNS-PREVIEW.fa.md).
+
 ## Experimental shared quota — 2026-10-16
 
 Schema 8 adds nine checks to the previous 122: eight reservation/accounting tests and a real Linux parent-death test. SQLite/Python 3.12 passed the 131 discovered checks with the PostgreSQL-only restore fault check skipped. PostgreSQL 16/Python 3.11 passed the same suite with nine SQLite-only checks skipped, including the real offline-budget transfer. Concurrent allocation cannot duplicate the same remaining credit; expired unknown reservations remain held, reports bind to the allocated node/period, positive growth after closure is refused, late periods remain isolated and concurrent journal snapshots do not double-charge local totals.

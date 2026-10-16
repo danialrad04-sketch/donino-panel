@@ -7,6 +7,7 @@
     <title>دونینو | پنل مدیریت شبکه</title>
     <link rel="icon" href="/static/logo.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="/static/style.css" />
+    <script src="/static/dns.js" defer></script>
     <script src="/static/app.js" defer></script>
   </head>
   <body>
@@ -78,7 +79,7 @@
         /></label>
         <p id="login-error" role="alert" class="error"></p>
         <button class="primary" type="submit">ورود</button>
-        <small class="muted">پیش‌نمایش ۱.۰ آلفا ۵</small>
+        <small class="muted">پیش‌نمایش ۱.۰ آلفا ۶</small>
       </form>
     </section>
     <div id="app-view" class="shell" hidden>
@@ -100,6 +101,7 @@
           <a href="#inbounds" data-page="inbounds"
             ><span data-icon="inbounds"></span>اتصال‌ها</a
           >
+          <a href="#dns" data-page="dns"><span data-icon="dns"></span>DNS</a>
           <a href="#audit" data-page="audit" data-owner
             ><span data-icon="events"></span>رویدادها</a
           >
@@ -109,7 +111,7 @@
         </nav>
         <div class="sidebar-bottom">
           <div class="version-card">
-            <b>Donino</b><small>پیش‌نمایش ۱.۰ آلفا ۵</small>
+            <b>Donino</b><small>پیش‌نمایش ۱.۰ آلفا ۶</small>
           </div>
           <div class="account">
             <span class="avatar" id="account-initial">D</span>

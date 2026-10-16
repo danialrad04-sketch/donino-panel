@@ -24,13 +24,18 @@
             class="icon-button"
             aria-label="به‌روزرسانی"
           >
-            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.7"/><path d="M20 4v5h-5"/></svg></button
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M20 12a8 8 0 1 1-2.3-5.7" />
+              <path d="M20 4v5h-5" />
+            </svg></button
           ><button
             id="portal-theme"
             class="icon-button"
             aria-label="تغییر پوسته"
           >
-            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 14.5A8.5 8.5 0 1 1 9.5 3.5a7 7 0 0 0 11 11z"/></svg>
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M20.5 14.5A8.5 8.5 0 1 1 9.5 3.5a7 7 0 0 0 11 11z" />
+            </svg>
           </button>
         </div>
       </header>
@@ -46,7 +51,8 @@
         <section id="portal-content" hidden>
           <div class="stats portal-stats">
             <article class="stat featured">
-              <span>حجم باقی‌مانده</span><strong id="remaining" dir="auto">—</strong
+              <span>حجم باقی‌مانده</span
+              ><strong id="remaining" dir="auto">—</strong
               ><small id="quota">—</small>
             </article>
             <article class="stat">
@@ -102,10 +108,39 @@
             بخشی از مصرف از نسخهٔ قبل منتقل شده و تفکیک ارسال و دریافت آن موجود
             نیست.
           </p>
+          <section id="portal-dns" class="card" hidden>
+            <h2>DNS اختصاصی شما</h2>
+            <p id="dns-summary"></p>
+            <p class="muted">
+              بایت DNS مربوط به درخواست نام دامنه است؛ حجم دانلود و ترافیک بازی
+              را نشان نمی‌دهد. برای DNS عادی یا DoT، IP همین اتصال را ثبت کنید.
+              در IP مشترک از DoH با اعتبارنامه یا تونل سازگار استفاده کنید.
+            </p>
+            <p id="dns-ip-list" class="mono"></p>
+            <div class="compact-actions">
+              <button id="dns-claim" class="secondary">ثبت IP همین اتصال</button
+              ><button id="dns-release" class="secondary">آزادکردن IPها</button
+              ><button id="dns-credential" class="secondary">
+                اعتبارنامهٔ تازهٔ DoH
+              </button>
+            </div>
+            <p id="dns-message" role="status"></p>
+            <label id="dns-secret-label" hidden
+              >اعتبارنامهٔ خصوصی DoH؛ فقط همین بار نمایش داده می‌شود<textarea
+                id="dns-secret"
+                dir="ltr"
+                readonly
+              ></textarea
+              ><small
+                >با ساخت اعتبارنامهٔ تازه، قبلی باطل می‌شود. کلاینت باید هدر
+                Authorization: Bearer را پشتیبانی کند.</small
+              ></label
+            >
+          </section>
         </section>
       </main>
       <footer>
-        <span>DONINO PANEL / 0.2</span
+        <span>Donino / 1.0 alpha 6</span
         ><span>دسترسی ساده. فضای اختصاصی شما.</span
         ><a
           href="https://github.com/danialrad04-sketch/donino-panel"

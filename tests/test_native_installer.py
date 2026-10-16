@@ -17,12 +17,36 @@ from fastapi.testclient import TestClient
 from app.db import database, digest
 from app.main import app
 from ops.common import InstallError, atomic_write
-from ops.install import nginx_config
+from ops.install import nginx_config, arguments, dns_options, available_dns_ports
 from ops.preflight import domain_name, resolve_and_check
 from ops.tls import install_certificate, validate_certificate
 
 
 class InstallerTest(unittest.TestCase):
+    def test_optional_dns_options_and_occupied_ports_are_not_adopted(self):
+        self.assertIsNone(dns_options(arguments([]), {}))
+        expected = {"listen": "127.0.0.1", "port": 5353, "dot_port": 8530}
+        self.assertEqual(dns_options(arguments(["--with-dns"]), {}), expected)
+        self.assertEqual(dns_options(arguments([]), {"dns": expected}), expected)
+        for flags in (
+            ["--dns-port", "53"],
+            ["--with-dns", "--dns-port", "0"],
+            ["--with-dns", "--dot-port", "5335"],
+        ):
+            with self.assertRaises(InstallError):
+                dns_options(arguments(flags), {})
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as sock:
+            sock.bind(("127.0.0.1", 0))
+            with self.assertRaises(InstallError):
+                available_dns_ports(
+                    {
+                        "listen": "127.0.0.1",
+                        "port": sock.getsockname()[1],
+                        "dot_port": 8530,
+                    },
+                    include_upstream=False,
+                )
+
     def test_dns_check_rejects_unmatched_ipv6_and_domain_injection(self):
         for value in (
             "https://example.com",

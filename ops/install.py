@@ -3,11 +3,13 @@
 import argparse
 import fcntl
 import hashlib
+import ipaddress
 import json
 import os
 import pwd
 import secrets
 import shutil
+import socket
 import sys
 import time
 import urllib.request
@@ -29,6 +31,11 @@ def nginx_config(domain, *, tls=False, ipv6=True):
     domain = domain_name(domain)
     common = """
     client_max_body_size 2m;
+    location = /dns-query {
+        access_log off;
+        client_max_body_size 4k;
+        include /etc/nginx/snippets/donino-proxy.conf;
+    }
     location ~ ^/(sub|u|qr|api/portal)/ {
         access_log off;
         include /etc/nginx/snippets/donino-proxy.conf;
@@ -75,6 +82,53 @@ proxy_set_header X-Real-IP $remote_addr;
 proxy_set_header Connection "";
 proxy_read_timeout 60s;
 """
+
+
+def dns_options(args, state):
+    previous = state.get("dns", {})
+    if not (args.with_dns or previous):
+        if any(v is not None for v in (args.dns_listen, args.dns_port, args.dot_port)):
+            raise InstallError("DNS listen options require --with-dns")
+        return None
+    listen = str(
+        ipaddress.ip_address(args.dns_listen or previous.get("listen", "127.0.0.1"))
+    )
+    port = args.dns_port if args.dns_port is not None else previous.get("port", 5353)
+    dot_port = (
+        args.dot_port if args.dot_port is not None else previous.get("dot_port", 8530)
+    )
+    if (
+        not (1 <= port <= 65535 and 1 <= dot_port <= 65535)
+        or port == dot_port
+        or 5335 in (port, dot_port)
+    ):
+        raise InstallError(
+            "DNS/DoT ports must be distinct, valid and separate from upstream 5335"
+        )
+    return {"listen": listen, "port": port, "dot_port": dot_port}
+
+
+def available_dns_ports(settings, *, include_upstream=True):
+    for host, port, protocols in (
+        (settings["listen"], settings["port"], (socket.SOCK_DGRAM, socket.SOCK_STREAM)),
+        (settings["listen"], settings["dot_port"], (socket.SOCK_STREAM,)),
+        *(
+            ([("127.0.0.1", 5335, (socket.SOCK_DGRAM, socket.SOCK_STREAM))])
+            if include_upstream
+            else []
+        ),
+    ):
+        family = socket.AF_INET6 if ":" in host else socket.AF_INET
+        for protocol in protocols:
+            with socket.socket(family, protocol) as sock:
+                if family == socket.AF_INET6:
+                    sock.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_V6ONLY, 1)
+                try:
+                    sock.bind((host, port))
+                except OSError as exc:
+                    raise InstallError(
+                        f"DNS listen address unavailable: {host}:{port}; existing services are not stopped"
+                    ) from exc
 
 
 class Installer:
@@ -181,6 +235,7 @@ WantedBy=timers.target
         )
 
     def packages(self):
+        new_unbound = bool(self.state.get("dns")) and shutil.which("unbound") is None
         env = dict(os.environ, DEBIAN_FRONTEND="noninteractive")
         run(["apt-get", "update"], env=env, code=3)
         run(
@@ -198,11 +253,16 @@ WantedBy=timers.target
                 "postgresql",
                 "postgresql-client",
                 "certbot",
+                *(["unbound", "dns-root-data"] if self.state.get("dns") else []),
             ],
             env=env,
             code=3,
         )
         run(["systemctl", "start", "dbus"])
+        if new_unbound:
+            # Only the default service from the package we just introduced.
+            # Existing resolvers retain their configuration and service state.
+            run(["systemctl", "disable", "--now", "unbound"])
         run(["systemctl", "enable", "--now", "postgresql"])
         if not shutil.which("runuser"):
             raise InstallError("runuser is required", 3)
@@ -523,11 +583,104 @@ WantedBy=timers.target
         self.managed_write("/etc/systemd/system/donino-panel.service", template)
         run(["systemctl", "daemon-reload"])
         run(["systemctl", "stop", "donino-panel"])
+        if Path("/etc/systemd/system/donino-dns.service").exists():
+            run(["systemctl", "stop", "donino-dns"])
         self.app_cli("migrate", release=release)
         self.activate(release)
         run(["systemctl", "enable", "--now", "donino-panel"])
         run(["systemctl", "restart", "donino-panel"])
+        if self.state.get("dns"):
+            self.dns_services()
         self.checkpoint("services")
+
+    def dns_services(self):
+        settings = self.state["dns"]
+        self.dns_certificate()
+        values = read_env(CONFIG / "panel.env")
+        values.update(
+            {
+                "DONINO_DNS_LISTEN": settings["listen"],
+                "DONINO_DNS_PORT": str(settings["port"]),
+                "DONINO_DOT_PORT": str(settings["dot_port"]),
+            }
+        )
+        atomic_write(
+            CONFIG / "panel.env",
+            "".join(key + "=" + value + "\n" for key, value in values.items()),
+        )
+        self.managed_write(
+            "/etc/unbound/donino.conf",
+            (SOURCE / "deploy/unbound-donino.conf.example").read_text(),
+        )
+        run(["unbound-checkconf", "/etc/unbound/donino.conf"], capture=True)
+        for unit in ("donino-unbound.service", "donino-dns.service"):
+            self.managed_write(
+                "/etc/systemd/system/" + unit, (SOURCE / "deploy" / unit).read_text()
+            )
+        run(["systemctl", "daemon-reload"])
+        run(["systemctl", "enable", "--now", "donino-unbound", "donino-dns"])
+        run(["systemctl", "restart", "donino-unbound", "donino-dns"])
+        run(["systemctl", "is-active", "--quiet", "donino-unbound", "donino-dns"])
+        self.dns_health()
+
+    def dns_health(self):
+        settings = self.state["dns"]
+        host = {"0.0.0.0": "127.0.0.1", "::": "::1"}.get(
+            settings["listen"], settings["listen"]
+        )
+        run(
+            [
+                str(CURRENT / ".venv/bin/python"),
+                "-c",
+                """import socket,ssl,sys,time
+import dns.message,dns.query
+context=ssl.create_default_context(cafile=sys.argv[5] or None)
+for attempt in range(20):
+    try:
+        result=dns.query.udp(dns.message.make_query('donino.health.','A'),'127.0.0.1',port=5335,timeout=1)
+        assert result.answer and result.answer[0][0].address=='127.0.0.1'
+        with socket.create_connection((sys.argv[1],int(sys.argv[2])),timeout=1):
+            pass
+        with socket.create_connection((sys.argv[1],int(sys.argv[3])),timeout=1) as raw:
+            with context.wrap_socket(raw,server_hostname=sys.argv[4]):
+                pass
+        break
+    except (OSError,dns.exception.DNSException,AssertionError):
+        if attempt==19:
+            raise RuntimeError('DNS resolver/gateway/TLS readiness check failed') from None
+        time.sleep(0.2)
+""",
+                host,
+                str(settings["port"]),
+                str(settings["dot_port"]),
+                self.state["domain"],
+                str(self.args.ca_file or ""),
+            ],
+            capture=True,
+        )
+
+    def dns_certificate(self):
+        # Never write as root through an application-owned directory. The
+        # service user receives the already verified pair via a private pipe.
+        material = {
+            name: (CONFIG / "tls" / name).read_text()
+            for name in ("panel.crt", "panel.key")
+        }
+        run(
+            [
+                "runuser",
+                "-u",
+                "donino",
+                "--",
+                str(CURRENT / ".venv/bin/python"),
+                "-m",
+                "agent.dns_tls",
+                str(DATA / "dns-tls"),
+            ],
+            input=json.dumps(material),
+            capture=True,
+            cwd=CURRENT,
+        )
 
     def health(self):
         for attempt in range(30):
@@ -562,6 +715,8 @@ WantedBy=timers.target
         self.proxy(self.state["domain"], tls=True)
         run(["systemctl", "daemon-reload"])
         run(["systemctl", "restart", "donino-panel"])
+        if self.state.get("dns"):
+            self.dns_services()
         self.health()
         self.checkpoint("complete")
 
@@ -581,7 +736,12 @@ WantedBy=timers.target
                 raise InstallError(
                     "A managed file has local changes; preserve/reconcile it before uninstall"
                 )
-        for unit in ("donino-panel.service", "donino-backup.timer"):
+        for unit in (
+            "donino-dns.service",
+            "donino-unbound.service",
+            "donino-panel.service",
+            "donino-backup.timer",
+        ):
             if Path("/etc/systemd/system", unit).exists():
                 run(["systemctl", "disable", "--now", unit])
         for name in managed:
@@ -623,6 +783,32 @@ WantedBy=timers.target
             expected=self.args.source_sha256,
             development=self.args.development_source,
         )
+        settings = dns_options(self.args, self.state)
+        if settings:
+            inventory = self.state.get("managed_files", {})
+            for path in (
+                "/etc/unbound/donino.conf",
+                "/etc/systemd/system/donino-unbound.service",
+                "/etc/systemd/system/donino-dns.service",
+            ):
+                target = Path(path)
+                if (
+                    target.exists()
+                    and inventory.get(path)
+                    != hashlib.sha256(target.read_bytes()).hexdigest()
+                ):
+                    raise InstallError(
+                        "Refusing to overwrite unmanaged or modified DNS configuration"
+                    )
+            if (
+                settings != self.state.get("dns")
+                or "/etc/systemd/system/donino-dns.service" not in inventory
+            ):
+                available_dns_ports(
+                    settings,
+                    include_upstream="/etc/systemd/system/donino-unbound.service"
+                    not in inventory,
+                )
         if self.args.tls == "existing":
             if not self.args.cert_file or not self.args.key_file:
                 raise InstallError(
@@ -638,6 +824,8 @@ WantedBy=timers.target
         STATE.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
         self.state["domain"] = report["domain"]
         self.state["ipv6"] = report["ipv6"]
+        if settings:
+            self.state["dns"] = settings
         self.checkpoint("preflight")
         self.packages()
         release = self.code()
@@ -710,6 +898,16 @@ def arguments(argv=None):
     parser.add_argument("--key-file", type=Path)
     parser.add_argument("--ca-file", type=Path)
     parser.add_argument("--acme-staging", action="store_true")
+    parser.add_argument(
+        "--with-dns",
+        action="store_true",
+        help="Install optional same-host Unbound and DNS/DoT gateway",
+    )
+    parser.add_argument("--dns-listen", help="DNS/DoT listen IP (default: loopback)")
+    parser.add_argument(
+        "--dns-port", type=int, help="UDP/TCP gateway port (default: 5353)"
+    )
+    parser.add_argument("--dot-port", type=int, help="DoT gateway port (default: 8530)")
     return parser.parse_args(argv)
 
 
@@ -724,6 +922,9 @@ def main(argv=None):
                 expected=args.expected_ip,
                 allow_nginx=args.allow_existing_nginx,
             )
+            report["dns"] = dns_options(
+                args, json.loads(STATE.read_text()) if STATE.exists() else {}
+            )
             print(json.dumps(report, ensure_ascii=False, indent=2))
             return 2 if report["errors"] else 0
         if args.command == "doctor":
@@ -734,6 +935,7 @@ def main(argv=None):
                 "domain": state.get("domain"),
                 "app_version": state.get("app_version"),
                 "installation_complete": state.get("last_stage") == "complete",
+                "dns": state.get("dns"),
             }
             try:
                 with urllib.request.urlopen(
@@ -823,6 +1025,10 @@ def main(argv=None):
                     check=lambda: run(["nginx", "-t"], capture=True),
                     reload=lambda: run(["systemctl", "reload", "nginx"]),
                 )
+                if installer.state.get("dns"):
+                    installer.dns_certificate()
+                    run(["systemctl", "restart", "donino-dns"])
+                    installer.dns_health()
             else:
                 installer.install()
         return 0
