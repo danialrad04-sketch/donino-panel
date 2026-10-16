@@ -139,7 +139,7 @@ def main():
                 )
                 customer.goto(portal_url)
                 customer.locator("#portal-content").wait_for(state="visible")
-                assert customer.locator("#portal-status").inner_text() == "● فعال"
+                assert customer.locator("#portal-status").inner_text() == "فعال"
                 assert (
                     customer.locator("#subscription-link")
                     .input_value()
