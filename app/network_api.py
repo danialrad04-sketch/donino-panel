@@ -15,6 +15,18 @@ class AssignmentsInput(BaseModel):
 
 
 def mount_network_api(app):
+    @app.get("/api/users/{uid}/budget-reservations")
+    def reservations(uid: str, account=Depends(writer)):
+        with database() as db:
+            one(db, "users", uid)
+            return [
+                dict(row)
+                for row in db.execute(
+                    "SELECT id,node_id,period_no,instance,granted,spent,expires,closed,created,updated FROM budget_leases WHERE user_id=? ORDER BY created DESC,id LIMIT 200",
+                    (uid,),
+                )
+            ]
+
     @app.get("/api/engines")
     def engines(account=Depends(admin)):
         return [XRAY.capabilities()]

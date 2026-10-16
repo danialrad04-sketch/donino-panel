@@ -50,6 +50,7 @@ from .deployments import acknowledge, desired_job
 from .engines import XRAY
 from .node_api import mount_node_api
 from .node_identity import sign_desired
+from .budgets import allocations, close_budgets, summaries, reserve_total
 from .deps import (
     admin,
     writer,
@@ -170,6 +171,7 @@ class UserInput(BaseModel):
     expires: int | None = Field(default=None, gt=0, le=32_503_680_000)
     period: str = Field(default="none", pattern=r"^(none|monthly)$")
     period_days: int = Field(default=30, ge=1, le=366)
+    quota_mode: str | None = Field(default=None, pattern=r"^(legacy|lease)$")
 
 
 class DeviceInput(BaseModel):
@@ -228,11 +230,14 @@ class Usage(BaseModel):
     # equals the user id, so agents from before 0.3 keep working unchanged.
     user_id: str
     period_no: int | None = Field(default=None, ge=0, le=2147483647)
+    lease_id: str | None = Field(default=None, min_length=1, max_length=64)
     up: int = Field(ge=0, le=9_000_000_000_000_000)
     down: int = Field(ge=0, le=9_000_000_000_000_000)
 
 
 class Heartbeat(BaseModel):
+    agent_instance: uuid.UUID | None = None
+    closed_leases: list[str] = Field(default_factory=list, max_length=10000)
     epoch: str = Field(min_length=1, max_length=64)
     applied_revision: str = Field(default="", max_length=64)
     rejected_revision: str = Field(default="", max_length=64)
@@ -302,7 +307,7 @@ def client_rows(db, where="", args=(), *, node_id=None):
         args = (*args, node_id)
     rows = db.execute(
         "SELECT d.id, d.secret, d.name AS device_name, d.enabled AS device_enabled, "
-        "d.user_id, u.name AS user_name, u.enabled, u.quota, u.used, u.expires, u.period_no "
+        "d.user_id, u.name AS user_name, u.enabled, u.quota, u.used, u.expires, u.period_no, u.quota_mode "
         f"FROM devices d JOIN users u ON u.id=d.user_id {where} ORDER BY d.id",
         args,
     ).fetchall()
@@ -313,6 +318,7 @@ def client_rows(db, where="", args=(), *, node_id=None):
             "device_name": r["device_name"],
             "user_id": r["user_id"],
             "period_no": r["period_no"],
+            "quota_mode": r["quota_mode"],
             "eligible": bool(r["device_enabled"]) and eligible(dict(r)),
         }
         for r in rows
@@ -809,29 +815,43 @@ def list_users(
         args.extend(extra)
     where = (" WHERE " + " AND ".join(clauses)) if clauses else ""
     with database() as db:
+        budget_values = summaries(db)
+
+        def render_user(row):
+            value = dict(row)
+            value.update(
+                budget_values.get(
+                    (value["id"], value["period_no"]),
+                    {"budget_reserved": 0, "budget_unreconciled": 0},
+                )
+            )
+            return public_user(value)
+
         if limit is None:
             rows = db.execute(
                 f"SELECT * FROM users{where} ORDER BY created DESC LIMIT 1000", args
             )
-            return [public_user(r) for r in rows]
+            return [render_user(r) for r in rows]
         total = db.execute(f"SELECT COUNT(*) FROM users{where}", args).fetchone()[0]
         rows = db.execute(
             f"SELECT * FROM users{where} ORDER BY created DESC, id LIMIT ? OFFSET ?",
             [*args, limit, offset],
         )
         response.headers["X-Total-Count"] = str(total)
-        return [public_user(r) for r in rows]
+        return [render_user(r) for r in rows]
 
 
 @app.post("/api/users", status_code=201)
 def add_user(body: UserInput, account=Depends(writer)):
+    if body.quota_mode == "lease" and body.quota <= 0:
+        raise HTTPException(422, "حالت بودجهٔ اشتراکی به سهمیهٔ مثبت نیاز دارد")
     uid = str(uuid.uuid4())
     credential = str(uuid.uuid4())
     now = int(time.time())
     with database() as db:
         db.execute(
-            "INSERT INTO users(id,credential,name,enabled,quota,expires,token,created,period,period_days) "
-            "VALUES(?,?,?,?,?,?,?,?,?,?)",
+            "INSERT INTO users(id,credential,name,enabled,quota,expires,token,created,period,period_days,quota_mode) "
+            "VALUES(?,?,?,?,?,?,?,?,?,?,?)",
             (
                 uid,
                 credential,
@@ -843,6 +863,7 @@ def add_user(body: UserInput, account=Depends(writer)):
                 now,
                 body.period,
                 body.period_days,
+                body.quota_mode or "legacy",
             ),
         )
         # Every user starts with one default device whose id is the user id.
@@ -859,6 +880,23 @@ def add_user(body: UserInput, account=Depends(writer)):
 def update_user(uid: str, body: UserInput, account=Depends(writer)):
     with database() as db:
         previous = one(db, "users", uid)
+        if body.quota_mode is not None and body.quota_mode != previous["quota_mode"]:
+            raise HTTPException(
+                409,
+                "حالت سهمیه فقط هنگام ساخت کاربر انتخاب می‌شود؛ برای مهاجرت، کاربر جدید بسازید",
+            )
+        if previous["quota_mode"] == "lease" and body.quota <= 0:
+            raise HTTPException(422, "حالت بودجهٔ اشتراکی به سهمیهٔ مثبت نیاز دارد")
+        if (
+            previous["quota_mode"] == "lease"
+            and body.quota < previous["quota"]
+            and body.quota
+            < previous["used"] + reserve_total(db, uid, previous["period_no"])
+        ):
+            raise HTTPException(
+                409,
+                "سهمیه از مصرف و بودجهٔ تخصیص‌یافته کمتر است؛ ابتدا بودجه‌های فعال را تسویه کنید",
+            )
         # Switching the period restarts the cycle at the next usage.
         period_start = previous["period_start"]
         if (
@@ -1053,6 +1091,14 @@ def add_node(body: NodeInput, account=Depends(owner)):
 def delete_node(nid: str, account=Depends(owner)):
     with database() as db:
         one(db, "nodes", nid)
+        if db.execute(
+            "SELECT 1 FROM budget_leases b JOIN users u ON u.id=b.user_id AND u.period_no=b.period_no WHERE b.node_id=? AND b.closed=0 AND b.granted>b.spent LIMIT 1",
+            (nid,),
+        ).fetchone():
+            raise HTTPException(
+                409,
+                "نود بودجهٔ مصرف تسویه‌نشده دارد؛ حذف آن ذخیرهٔ نامعلوم را آزاد نمی‌کند",
+            )
         db.execute("DELETE FROM nodes WHERE id=?", (nid,))
         audit(db, account["username"], "node.delete", nid)
     return {"ok": True}
@@ -1180,10 +1226,13 @@ def delete_inbound(iid: str, account=Depends(owner)):
 
 
 @app.get("/api/agent/config")
-def agent_config(node=Depends(node_auth)):
+def agent_config(instance: uuid.UUID | None = None, node=Depends(node_auth)):
     with database() as db:
         roll_periods(db)
         clients = client_rows(db, node_id=node["id"])
+        budget_grants = allocations(
+            db, node, clients, str(instance) if instance else ""
+        )
         config = XRAY.compile(
             list(
                 db.execute(
@@ -1208,7 +1257,9 @@ def agent_config(node=Depends(node_auth)):
             "config": config,
             "periods": periods,
             "node_id": node["id"],
-            "agent_protocol": 5,
+            "agent_protocol": 6,
+            "agent_instance": str(instance) if instance else "",
+            "budgets": budget_grants,
         },
         sequence=sequence,
     )
@@ -1221,6 +1272,19 @@ def heartbeat(body: Heartbeat, node=Depends(node_auth)):
         roll_periods(db, now)
         for sample in body.usage:
             apply_sample(db, node["id"], body.epoch, sample, now)
+        if body.closed_leases:
+            if body.core_running is not False or body.pending_usage or body.usage:
+                raise HTTPException(
+                    409,
+                    "Stop the engine and acknowledge all samples before closing budgets",
+                )
+            close_budgets(
+                db,
+                node,
+                str(body.agent_instance) if body.agent_instance else "",
+                body.closed_leases,
+                now,
+            )
         acknowledge(db, node["id"], body, now)
         db.execute(
             """UPDATE nodes SET last_seen=?,applied_revision=?,error=?,agent_version=?,
@@ -1304,6 +1368,14 @@ def inbound_rows(db):
 def user_profiles(db, user):
     clients = client_rows(db, "WHERE d.user_id=?", (user["id"],))
     inbounds = inbound_rows(db)
+    if user["quota_mode"] == "lease":
+        secure_nodes = {
+            row[0]
+            for row in db.execute(
+                "SELECT id FROM nodes WHERE enabled=1 AND auth_mode='mtls'"
+            )
+        }
+        inbounds = [row for row in inbounds if row["node_id"] in secure_nodes]
     if user["node_mode"] == "selected":
         allowed = {
             row[0]
@@ -1393,6 +1465,13 @@ def portal_info(token: str, request: Request):
                     for i, (link, proxy) in enumerate(zip(links, clash["proxies"]))
                 ],
             }
+        )
+        value["quota_mode"] = user["quota_mode"]
+        value.update(
+            summaries(db).get(
+                (user["id"], user["period_no"]),
+                {"budget_reserved": 0, "budget_unreconciled": 0},
+            )
         )
         return value
 

@@ -150,7 +150,7 @@ function usersTable(users, compact = false) {
       "با ساخت اولین کاربر، مدیریت دسترسی را شروع کنید.",
       "users",
     );
-  return `<div class="table-scroll"><table><thead><tr><th>نام کاربر</th><th>وضعیت</th><th>مصرف / سهمیه</th><th>تاریخ انقضا</th>${!compact && writable() ? "<th>عملیات</th>" : ""}</tr></thead><tbody>${users.map((u) => `<tr><td><b>${esc(u.name)}</b><span class="subline">${esc(u.id.slice(0, 8))}</span></td><td>${badge(u.status)}</td><td><span class="mono">${bytes(u.used)} / ${u.quota ? bytes(u.quota) : "نامحدود"}</span></td><td>${date(u.expires)}</td>${!compact && writable() ? `<td class="actions"><button data-action="share" data-id="${u.id}">اشتراک</button><button data-action="edit-user" data-id="${u.id}">ویرایش</button><button data-action="user-nodes" data-id="${u.id}">نودها</button><button data-action="user-periods" data-id="${u.id}">دوره‌ها</button><button data-action="delete-user" data-id="${u.id}" class="danger">حذف</button></td>` : ""}</tr>`).join("")}</tbody></table></div>`;
+  return `<div class="table-scroll"><table><thead><tr><th>نام کاربر</th><th>وضعیت</th><th>مصرف / سهمیه</th><th>تاریخ انقضا</th>${!compact && writable() ? "<th>عملیات</th>" : ""}</tr></thead><tbody>${users.map((u) => `<tr><td><b>${esc(u.name)}</b><span class="subline">${esc(u.id.slice(0, 8))}</span></td><td>${badge(u.status)}</td><td><span class="mono">${bytes(u.used)} / ${u.quota ? bytes(u.quota) : "نامحدود"}</span></td><td>${date(u.expires)}</td>${!compact && writable() ? `<td class="actions"><button data-action="share" data-id="${u.id}">اشتراک</button><button data-action="edit-user" data-id="${u.id}">ویرایش</button><button data-action="user-nodes" data-id="${u.id}">نودها</button><button data-action="user-periods" data-id="${u.id}">دوره‌ها</button>${u.quota_mode === "lease" ? `<button data-action="user-budgets" data-id="${u.id}">بودجه</button>` : ""}<button data-action="delete-user" data-id="${u.id}" class="danger">حذف</button></td>` : ""}</tr>`).join("")}</tbody></table></div>`;
 }
 function renderOverview() {
   const s = data.overview;
@@ -244,7 +244,7 @@ function renderInbounds() {
 function renderSettings() {
   return (
     heading("تنظیمات و نگهداری", "همه‌چیز برای مدیریت یک شبکهٔ مستقل.") +
-    `<div class="settings-grid"><article class="card"><h2>پشتیبان‌گیری</h2><p>نسخهٔ پایگاه داده و حساب‌ها را دریافت کن. این فایل محرمانه است. برای بازیابی ورود دومرحله‌ای، کلید مستقل سرور نیز لازم است؛ پشتیبان کامل رمزگذاری‌شده در راهنمای نگهداری توضیح داده شده است.</p>${owner() ? `<a class="primary" href="/api/backup" download>${icon("download")}دریافت نسخهٔ پایگاه داده</a>` : "<p>دریافت پشتیبان فقط برای مالک شبکه فعال است.</p>"}</article><article class="card"><h2>ظاهر پنل</h2><p>پوستهٔ روشن یا تیره را انتخاب کن. انتخاب روی همین دستگاه ذخیره می‌شود.</p><button class="secondary" data-action="theme">${icon("theme")}تغییر حالت نمایش</button></article><article class="card"><h2>حساب مدیریت</h2><p>نام کاربری: ${esc(account.username)}<br>سطح دسترسی: ${roles[account.role]}<br>رمز، ورود دومرحله‌ای، نشست‌ها و توکن‌ها را از بخش امنیت حساب مدیریت کن. مالک می‌تواند مدیرهای دیگر را نیز همین‌جا مدیریت کند.</p></article><article class="card"><h2>Donino Panel <span class="mono">1.0.0-alpha.4</span></h2><p>نسخهٔ اولیهٔ مستقل، با رابط فارسی و مدیریت چند نود. امکانات در حال توسعه‌اند. راه‌اندازی واقعی به سرور نود، Xray و دامنهٔ مناسب نیاز دارد.</p><a class="subtle-link" href="https://github.com/danialrad04-sketch/donino-panel" target="_blank" rel="noopener">مستندات و کد منبع</a></article></div><section id="account-security" class="settings-grid"></section>`
+    `<div class="settings-grid"><article class="card"><h2>پشتیبان‌گیری</h2><p>نسخهٔ پایگاه داده و حساب‌ها را دریافت کن. این فایل محرمانه است. برای بازیابی ورود دومرحله‌ای، کلید مستقل سرور نیز لازم است؛ پشتیبان کامل رمزگذاری‌شده در راهنمای نگهداری توضیح داده شده است.</p>${owner() ? `<a class="primary" href="/api/backup" download>${icon("download")}دریافت نسخهٔ پایگاه داده</a>` : "<p>دریافت پشتیبان فقط برای مالک شبکه فعال است.</p>"}</article><article class="card"><h2>ظاهر پنل</h2><p>پوستهٔ روشن یا تیره را انتخاب کن. انتخاب روی همین دستگاه ذخیره می‌شود.</p><button class="secondary" data-action="theme">${icon("theme")}تغییر حالت نمایش</button></article><article class="card"><h2>حساب مدیریت</h2><p>نام کاربری: ${esc(account.username)}<br>سطح دسترسی: ${roles[account.role]}<br>رمز، ورود دومرحله‌ای، نشست‌ها و توکن‌ها را از بخش امنیت حساب مدیریت کن. مالک می‌تواند مدیرهای دیگر را نیز همین‌جا مدیریت کند.</p></article><article class="card"><h2>Donino Panel <span class="mono">1.0.0-alpha.5</span></h2><p>نسخهٔ اولیهٔ مستقل، با رابط فارسی و مدیریت چند نود. امکانات در حال توسعه‌اند. راه‌اندازی واقعی به سرور نود، Xray و دامنهٔ مناسب نیاز دارد.</p><a class="subtle-link" href="https://github.com/danialrad04-sketch/donino-panel" target="_blank" rel="noopener">مستندات و کد منبع</a></article></div><section id="account-security" class="settings-grid"></section>`
   );
 }
 function render() {
@@ -402,6 +402,9 @@ function editUser(user) {
         extra: 'min="0" max="8000000" step="0.01" dir="ltr"',
         hint: "صفر = نامحدود",
       }) +
+      (!user
+        ? `<label class="full">اعمال سهمیه<select name="quota_mode"><option value="legacy">گزارش مصرف فعلی</option><option value="lease">بودجهٔ مشترک نودها (آزمایشی)</option></select><small>بودجهٔ مشترک به سهمیهٔ مثبت و نود ثبت‌شدهٔ امن نیاز دارد. در قطع شبکه، حجم تخصیص‌یافته تا تسویه روی همان نود ذخیره می‌ماند. حالت فقط هنگام ایجاد کاربر انتخاب می‌شود.</small></label>`
+        : `<p class="note full">اعمال سهمیه: ${user.quota_mode === "lease" ? "بودجهٔ مشترک نودها (آزمایشی)" : "گزارش مصرف فعلی"}</p>`) +
       input("انقضا", "expires", {
         type: "datetime-local",
         value: user?.expires
@@ -433,6 +436,7 @@ function editUser(user) {
         body: JSON.stringify({
           name: f.name,
           quota: Math.round(Number(f.quota) * 1073741824),
+          quota_mode: user?.quota_mode || f.quota_mode || "legacy",
           expires: f.expires
             ? Math.floor(new Date(f.expires).getTime() / 1000)
             : null,
@@ -592,6 +596,13 @@ async function loadSecurity() {
   }
 }
 async function handleAction(action, id, element) {
+  if (action === "user-budgets") {
+    const values = await api(`/users/${id}/budget-reservations`);
+    return modal(
+      "حجم تخصیص‌یافته به نودها",
+      `<p class="note">ذخیرهٔ منقضی تا رسیدن گزارش نهایی آزاد نمی‌شود؛ نبود گزارش به معنی مصرف نشدن حجم نیست. این حالت نمونه‌برداری دارد و صورتحساب دقیق بایت‌به‌بایت نیست.</p><div class="table-scroll"><table><thead><tr><th>نود</th><th>حجم تخصیصی</th><th>مصرف گزارش‌شده</th><th>وضعیت</th></tr></thead><tbody>${values.map((v) => `<tr><td>${esc(data.nodes.find((n) => n.id === v.node_id)?.name || v.node_id.slice(0, 8))}</td><td>${bytes(v.granted)}</td><td>${bytes(v.spent)}</td><td>${v.closed ? "تسویه شده" : v.expires * 1000 <= Date.now() ? "منقضی؛ در انتظار تسویه" : "فعال"}</td></tr>`).join("")}</tbody></table></div>`,
+    );
+  }
   if (action === "enroll-node") {
     const result = await api(`/nodes/${id}/enrollment`, { method: "POST" });
     return modal(

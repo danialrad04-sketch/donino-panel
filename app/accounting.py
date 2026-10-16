@@ -3,6 +3,7 @@
 from fastapi import HTTPException
 
 from .db import upsert
+from .budgets import account_budget
 
 
 def ensure_period(db, user):
@@ -49,7 +50,7 @@ def apply_sample(db, node_id, epoch, sample, now):
     user = db.execute("SELECT * FROM users WHERE id=?", (device["user_id"],)).fetchone()
     ensure_period(db, user)
     old = db.execute(
-        "SELECT up,down,period_no FROM counters WHERE node_id=? AND epoch=? AND device_id=?",
+        "SELECT up,down,period_no,lease_id FROM counters WHERE node_id=? AND epoch=? AND device_id=?",
         (node_id, epoch, device["id"]),
     ).fetchone()
     # Once an explicit generation owns a process/device counter it cannot change.
@@ -73,6 +74,9 @@ def apply_sample(db, node_id, epoch, sample, now):
     delta_up, delta_down = (
         up - (old["up"] if old else 0),
         down - (old["down"] if old else 0),
+    )
+    account_budget(
+        db, node_id, user, old, sample, period_no, delta_up + delta_down, now
     )
     db.execute(
         "UPDATE usage_periods SET uploaded=uploaded+?,downloaded=downloaded+? WHERE user_id=? AND period_no=?",
@@ -99,7 +103,7 @@ def apply_sample(db, node_id, epoch, sample, now):
     upsert(
         db,
         "counters",
-        ["node_id", "epoch", "device_id", "up", "down", "period_no"],
-        [node_id, epoch, device["id"], up, down, generation],
+        ["node_id", "epoch", "device_id", "up", "down", "period_no", "lease_id"],
+        [node_id, epoch, device["id"], up, down, generation, sample.lease_id],
         ["node_id", "epoch", "device_id"],
     )

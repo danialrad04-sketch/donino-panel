@@ -48,6 +48,13 @@ async function load() {
     $("#quota").textContent = info.quota
       ? "از " + bytes(info.quota) + " سهمیه"
       : "بدون محدودیت حجم";
+    if (info.quota_mode === "lease") {
+      $("#quota").textContent +=
+        "؛ " + bytes(info.budget_reserved || 0) + " تخصیص‌یافته به نودها";
+      if (info.budget_unreconciled)
+        $("#quota").textContent +=
+          "، " + bytes(info.budget_unreconciled) + " در انتظار تسویه";
+    }
     $("#used").textContent = bytes(info.used);
     $("#traffic-detail").textContent =
       "ارسال " + bytes(info.uploaded) + "، دریافت " + bytes(info.downloaded);
