@@ -6,6 +6,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+from support import configure, postgres_url, sqlite_only
 from app import ops
 from app.db import initialize, database, hash_password
 
@@ -15,13 +16,15 @@ class OpsTest(unittest.TestCase):
         self.tmp = tempfile.TemporaryDirectory()
         self.root = Path(self.tmp.name)
         self.path = self.root / "donino.db"
-        self.env = patch.dict(os.environ, {"DONINO_DB": str(self.path), "DONINO_PUBLIC_URL": "https://panel.example.com"})
+        self.env = patch.dict(os.environ, {"DONINO_PUBLIC_URL": "https://panel.example.com"})
         self.env.start()
+        configure(self.tmp.name, "donino.db")
         initialize()
         with database() as db:
             db.execute("INSERT INTO admins VALUES(?,?,?)", ("owner", hash_password("long-test-password"), "owner"))
             db.execute("INSERT INTO users(id,credential,name,token,created) VALUES(?,?,?,?,?)", ("u1", "c1", "alice", "t1", 1))
-        os.chmod(self.path, 0o600)
+        if not postgres_url():
+            os.chmod(self.path, 0o600)
 
     def tearDown(self):
         self.env.stop()
@@ -31,7 +34,10 @@ class OpsTest(unittest.TestCase):
         rows, code = ops.doctor()
         self.assertEqual(code, 0, rows)
         levels = {name: level for level, name, _ in rows}
-        self.assertEqual(levels["integrity_check"], "OK")
+        if postgres_url():
+            self.assertEqual(levels["database"], "OK")
+        else:
+            self.assertEqual(levels["integrity_check"], "OK")
         self.assertEqual(levels["owners"], "OK")
 
     def test_doctor_fails_without_owner_and_warns_on_weak_settings(self):
@@ -78,11 +84,11 @@ class OpsTest(unittest.TestCase):
     def test_restore_rejects_tampered_backup(self):
         dest = self.root / "b.db"
         ops.backup(dest)
-        with sqlite3.connect(dest) as db:
-            db.execute("UPDATE users SET name='mallory'")
+        dest.write_bytes(dest.read_bytes() + b"tampered")
         with self.assertRaisesRegex(ValueError, "checksum"):
             ops.restore(dest, replace=True)
 
+    @sqlite_only
     def test_restore_rejects_future_schema(self):
         dest = self.root / "future.db"
         with sqlite3.connect(dest) as db:
@@ -100,10 +106,11 @@ class OpsTest(unittest.TestCase):
             db.execute("UPDATE users SET name='changed-after-backup'")
         result = ops.restore(dest, replace=True)
         self.assertTrue(Path(result["safety_copy"]).exists())
-        with sqlite3.connect(self.path) as db:
+        with database() as db:
             self.assertEqual(db.execute("SELECT name FROM users").fetchone()[0], "alice")
-        with sqlite3.connect(result["safety_copy"]) as db:
-            self.assertEqual(db.execute("SELECT name FROM users").fetchone()[0], "changed-after-backup")
+        if not postgres_url():
+            with sqlite3.connect(result["safety_copy"]) as db:
+                self.assertEqual(db.execute("SELECT name FROM users").fetchone()[0], "changed-after-backup")
 
     def test_restore_refuses_existing_database_without_replace(self):
         dest = self.root / "b.db"

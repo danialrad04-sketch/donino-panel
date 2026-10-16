@@ -5,9 +5,11 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+from support import configure, sqlite_only
 from app.db import initialize, database, SCHEMA_VERSION
 
 
+@sqlite_only
 class MigrationTest(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()

@@ -1,15 +1,31 @@
-"""Operational commands: read-only doctor, checksummed backup and verified restore."""
+"""Operational commands: read-only doctor, checksummed backup and verified restore.
+
+SQLite: consistent copy through the online backup API.
+PostgreSQL: pg_dump custom-format dump, verified with pg_restore --list before use.
+Both write a JSON manifest with the SHA-256, schema version and app version.
+"""
 
 import hashlib
 import json
 import os
+import shutil
 import sqlite3
 import stat
+import subprocess
 import time
 from pathlib import Path
 
 from . import __version__
-from .db import SCHEMA_VERSION, db_path
+from .db import (
+    SCHEMA_VERSION,
+    database,
+    database_url,
+    db_path,
+    is_postgres,
+    pg_dump,
+    schema_version,
+    table_exists,
+)
 
 
 def _sha256(path):
@@ -41,6 +57,85 @@ def _integrity(path):
         return db.execute("PRAGMA integrity_check").fetchone()[0]
 
 
+def _tool(name):
+    found = shutil.which(name)
+    if not found:
+        raise RuntimeError(f"{name} is not installed; install the postgresql-client package")
+    return found
+
+
+def _write_manifest(destination, version):
+    manifest = {
+        "file": destination.name,
+        "sha256": _sha256(destination),
+        "schema_version": version,
+        "app_version": __version__,
+        "created_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+    }
+    manifest_path = destination.with_name(destination.name + ".manifest.json")
+    fd = os.open(manifest_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    with os.fdopen(fd, "w") as handle:
+        json.dump(manifest, handle, indent=2)
+    return manifest
+
+
+def _report_schema(add, version):
+    if version > SCHEMA_VERSION:
+        add("FAIL", "schema", f"database {version} is newer than this release {SCHEMA_VERSION}")
+    elif version < SCHEMA_VERSION:
+        add("WARN", "schema", f"database {version}; run `migrate` (current {SCHEMA_VERSION})")
+    else:
+        add("OK", "schema", str(version))
+
+
+def _report_counts(add, users, devices, nodes, owners):
+    add("OK", "counts", f"users={users} devices={devices} nodes={nodes}")
+    if owners == 0:
+        add("FAIL", "owners", "no owner account; create one with `admin`")
+    else:
+        add("OK", "owners", str(owners))
+
+
+def _doctor_sqlite(add, path):
+    mode = stat.S_IMODE(os.stat(path).st_mode)
+    if mode & 0o077:
+        add("WARN", "database permissions", f"{oct(mode)} is readable by others; use 0600")
+    else:
+        add("OK", "database permissions", oct(mode))
+    _report_schema(add, _schema_version(path))
+    result = _integrity(path)
+    add("OK" if result == "ok" else "FAIL", "integrity_check", result)
+    with sqlite3.connect(f"file:{path}?mode=ro", uri=True) as db:
+        users = db.execute("SELECT COUNT(*) FROM users").fetchone()[0]
+        devices = db.execute("SELECT COUNT(*) FROM devices").fetchone()[0]
+        nodes = db.execute("SELECT COUNT(*) FROM nodes").fetchone()[0]
+        owners = db.execute("SELECT COUNT(*) FROM admins WHERE role='owner'").fetchone()[0]
+    _report_counts(add, users, devices, nodes, owners)
+
+
+def _doctor_postgres(add):
+    try:
+        with database() as db:
+            if not table_exists(db, "users"):
+                add("WARN", "database", "PostgreSQL reachable but empty; run `migrate`")
+                return
+            version = schema_version(db)
+            users = db.execute("SELECT COUNT(*) FROM users").fetchone()[0]
+            devices = db.execute("SELECT COUNT(*) FROM devices").fetchone()[0]
+            nodes = db.execute("SELECT COUNT(*) FROM nodes").fetchone()[0]
+            owners = db.execute("SELECT COUNT(*) FROM admins WHERE role='owner'").fetchone()[0]
+    except Exception as error:  # psycopg errors; never echo the connection string
+        add("FAIL", "database", f"PostgreSQL unreachable: {type(error).__name__}")
+        return
+    add("OK", "database", "PostgreSQL reachable")
+    _report_schema(add, version)
+    _report_counts(add, users, devices, nodes, owners)
+    if shutil.which("pg_dump") and shutil.which("pg_restore"):
+        add("OK", "pg tools", "pg_dump and pg_restore found")
+    else:
+        add("FAIL", "pg tools", "install postgresql-client; backups and restores need it")
+
+
 def doctor():
     """Read-only health report. Never prints secrets, tokens or keys."""
     rows = []
@@ -48,34 +143,14 @@ def doctor():
     def add(level, name, detail):
         rows.append((level, name, detail))
 
-    path = db_path()
-    if not path.exists():
-        add("FAIL", "database", f"not found at {path}")
+    if is_postgres():
+        _doctor_postgres(add)
     else:
-        mode = stat.S_IMODE(os.stat(path).st_mode)
-        if mode & 0o077:
-            add("WARN", "database permissions", f"{oct(mode)} is readable by others; use 0600")
+        path = db_path()
+        if not path.exists():
+            add("FAIL", "database", f"not found at {path}")
         else:
-            add("OK", "database permissions", oct(mode))
-        version = _schema_version(path)
-        if version > SCHEMA_VERSION:
-            add("FAIL", "schema", f"database {version} is newer than this release {SCHEMA_VERSION}")
-        elif version < SCHEMA_VERSION:
-            add("WARN", "schema", f"database {version}; run `migrate` (current {SCHEMA_VERSION})")
-        else:
-            add("OK", "schema", str(version))
-        result = _integrity(path)
-        add("OK" if result == "ok" else "FAIL", "integrity_check", result)
-        with sqlite3.connect(f"file:{path}?mode=ro", uri=True) as db:
-            users = db.execute("SELECT COUNT(*) FROM users").fetchone()[0]
-            devices = db.execute("SELECT COUNT(*) FROM devices").fetchone()[0]
-            nodes = db.execute("SELECT COUNT(*) FROM nodes").fetchone()[0]
-            owners = db.execute("SELECT COUNT(*) FROM admins WHERE role='owner'").fetchone()[0]
-        add("OK", "counts", f"users={users} devices={devices} nodes={nodes}")
-        if owners == 0:
-            add("FAIL", "owners", "no owner account; create one with `admin`")
-        else:
-            add("OK", "owners", str(owners))
+            _doctor_sqlite(add, path)
 
     public = os.environ.get("DONINO_PUBLIC_URL", "")
     if not public:
@@ -99,25 +174,19 @@ def backup(destination):
     destination = Path(destination)
     if destination.exists():
         raise FileExistsError(f"{destination} already exists; choose a new name")
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    if is_postgres():
+        with database() as db:
+            version = schema_version(db)
+        pg_dump(destination)
+        return _write_manifest(destination, version)
     source = db_path()
     if not source.exists():
         raise FileNotFoundError(f"database not found at {source}")
-    destination.parent.mkdir(parents=True, exist_ok=True)
     fd = os.open(destination, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
     os.close(fd)
     _copy_database(source, destination)
-    manifest = {
-        "file": destination.name,
-        "sha256": _sha256(destination),
-        "schema_version": _schema_version(destination),
-        "app_version": __version__,
-        "created_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-    }
-    manifest_path = destination.with_name(destination.name + ".manifest.json")
-    fd = os.open(manifest_path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-    with os.fdopen(fd, "w") as handle:
-        json.dump(manifest, handle, indent=2)
-    return manifest
+    return _write_manifest(destination, _schema_version(destination))
 
 
 def restore(source, replace=False):
@@ -135,6 +204,9 @@ def restore(source, replace=False):
     manifest = json.loads(manifest_path.read_text())
     if _sha256(source) != manifest["sha256"]:
         raise ValueError("checksum mismatch; the backup is damaged or was changed")
+    if is_postgres():
+        return _restore_postgres(source, manifest, replace)
+
     version = _schema_version(source)
     if version > SCHEMA_VERSION:
         raise ValueError(f"backup schema {version} is newer than this release {SCHEMA_VERSION}")
@@ -158,4 +230,38 @@ def restore(source, replace=False):
     os.close(fd)
     _copy_database(source, staging)
     os.replace(staging, target)
+    return {"restored_from": str(source), "schema_version": version, "safety_copy": str(safety) if safety else None}
+
+
+def _restore_postgres(source, manifest, replace):
+    version = int(manifest["schema_version"])
+    if version > SCHEMA_VERSION:
+        raise ValueError(f"backup schema {version} is newer than this release {SCHEMA_VERSION}")
+    listing = subprocess.run(
+        [_tool("pg_restore"), "--list", str(source)], capture_output=True, text=True, timeout=300
+    )
+    if listing.returncode != 0:
+        raise ValueError("backup is not a readable PostgreSQL dump")
+
+    safety = None
+    with database() as db:
+        populated = table_exists(db, "users")
+    if populated:
+        if not replace:
+            raise FileExistsError("the database already holds data; pass replace=True to overwrite it")
+        safety = db_path().parent / f"donino.pre-restore-{time.strftime('%Y%m%d%H%M%S')}.dump"
+        pg_dump(safety)
+    result = subprocess.run(
+        [
+            _tool("pg_restore"), "--clean", "--if-exists", "--no-owner", "--no-privileges",
+            "--exit-on-error", "--dbname", database_url(), str(source),
+        ],
+        capture_output=True,
+        text=True,
+        timeout=900,
+    )
+    if result.returncode != 0:
+        detail = result.stderr.strip()[:500]
+        hint = f"; previous database kept at {safety}" if safety else ""
+        raise RuntimeError(f"pg_restore failed{hint}: {detail}")
     return {"restored_from": str(source), "schema_version": version, "safety_copy": str(safety) if safety else None}

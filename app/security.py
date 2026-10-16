@@ -12,7 +12,7 @@ from urllib.parse import quote, urlencode
 
 from fastapi import HTTPException
 
-from .db import digest
+from .db import digest, upsert
 
 TOTP_PERIOD = 30
 RECOVERY_CODE_COUNT = 10
@@ -124,10 +124,7 @@ def record_failure(db, key, now=None):
     now = int(time.time()) if now is None else now
     row = db.execute("SELECT * FROM login_attempts WHERE address=?", (key,)).fetchone()
     count = row["attempts"] + 1 if row and row["until"] > now else 1
-    db.execute(
-        "INSERT OR REPLACE INTO login_attempts VALUES(?,?,?)",
-        (key, count, now + LOCK_SECONDS),
-    )
+    upsert(db, "login_attempts", ["address", "attempts", "until"], [key, count, now + LOCK_SECONDS], ["address"])
 
 
 def clear_failures(db, key):

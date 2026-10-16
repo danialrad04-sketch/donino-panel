@@ -10,6 +10,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from fastapi.testclient import TestClient
+from support import configure, postgres_url, sqlite_only
 from app.main import app
 from app.db import database, hash_password
 from agent.main import parse_stats
@@ -19,7 +20,7 @@ class PanelTest(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.old = dict(os.environ)
-        os.environ["DONINO_DB"] = self.tmp.name + "/panel.db"
+        configure(self.tmp.name)
         os.environ["DONINO_SECURE_COOKIE"] = "false"
         self.client = TestClient(app)
         self.client.__enter__()
@@ -226,12 +227,16 @@ class PanelTest(unittest.TestCase):
         self.assertNotEqual(url, self.client.get(path).json()["url"])
         result = self.client.get("/api/backup")
         self.assertEqual(result.status_code, 200)
-        p = Path(self.tmp.name) / "restore.db"
-        p.write_bytes(result.content)
-        with sqlite3.connect(p) as backup:
-            self.assertEqual(
-                backup.execute("SELECT COUNT(*) FROM users").fetchone()[0], 1
-            )
+        if postgres_url():
+            # PostgreSQL downloads are pg_dump custom-format archives.
+            self.assertTrue(result.content.startswith(b"PGDMP"))
+        else:
+            p = Path(self.tmp.name) / "restore.db"
+            p.write_bytes(result.content)
+            with sqlite3.connect(p) as backup:
+                self.assertEqual(
+                    backup.execute("SELECT COUNT(*) FROM users").fetchone()[0], 1
+                )
 
     def test_protocol_credential_rotation_revokes_old_profile(self):
         u, n = self.user(), self.node()

@@ -1,6 +1,5 @@
 import argparse
 import getpass
-import sqlite3
 from pathlib import Path
 from .db import initialize, database, hash_password, audit, SCHEMA_VERSION
 from . import __version__
@@ -42,7 +41,7 @@ def main():
     if args.command == "restore":
         try:
             result = ops.restore(args.source, replace=args.replace)
-        except (FileNotFoundError, FileExistsError, ValueError) as error:
+        except (FileNotFoundError, FileExistsError, ValueError, RuntimeError) as error:
             parser.exit(2, f"restore refused: {error}\n")
         print(f"Restored schema {result['schema_version']} from {result['restored_from']}.")
         if result["safety_copy"]:
@@ -51,7 +50,7 @@ def main():
     if args.command == "backup":
         try:
             manifest = ops.backup(args.destination)
-        except (FileExistsError, FileNotFoundError) as error:
+        except (FileExistsError, FileNotFoundError, RuntimeError) as error:
             parser.exit(2, f"backup refused: {error}\n")
         print(f"Backup saved. sha256={manifest['sha256']} schema={manifest['schema_version']}")
         return
