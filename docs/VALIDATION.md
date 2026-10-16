@@ -1,5 +1,13 @@
 # Validation record
 
+## Experimental shared quota — 2026-10-16
+
+Schema 8 adds nine checks to the previous 122: eight reservation/accounting tests and a real Linux parent-death test. SQLite/Python 3.12 passed the 131 discovered checks with the PostgreSQL-only restore fault check skipped. PostgreSQL 16/Python 3.11 passed the same suite with nine SQLite-only checks skipped, including the real offline-budget transfer. Concurrent allocation cannot duplicate the same remaining credit; expired unknown reservations remain held, reports bind to the allocated node/period, positive growth after closure is refused, late periods remain isolated and concurrent journal snapshots do not double-charge local totals.
+
+The pinned Xray acceptance now additionally enrolls a real supervisor identity, starts an encrypted VMess client, makes the control-plane transport unavailable before transfer and verifies local grant exhaustion stops the real Xray core. Reconnection retains and reconciles the observed sampled overshoot. Browser acceptance passed for shared-quota creation/reservation display alongside existing portal, mobile, theme and security flows. Debian 12 native acceptance passed; both native operating-system fixtures are checked before publication; consult the exact commit checks for final remote results.
+
+These checks establish conservative reservation accounting and the exercised failure paths, not a strict global byte cap. Sampling and process shutdown can overshoot, unsampled crash traffic can be lost, and exhaustion currently stops the whole core. Unreported crashed-instance credit is held until explicit reconciliation or a new period. Public multi-host partition tests, rate bounds and capacity remain outstanding. See [shared quota](SHARED-QUOTA.fa.md).
+
 ## Secure node identity — 2026-10-16
 
 Schema 7 and the node identity/signing slice add seven checks to the previous 115: 122 tests discovered, SQLite passing with the PostgreSQL-only restore fault check skipped; PostgreSQL passing with nine SQLite-only checks skipped. New tests exercise concurrent same-CSR enrollment retries with one certificate issuance, expiry/rate limits/owner access, retirement of bearer credentials, forged proxy headers, API revocation, bounded rotation overlap, private identity writes and replay/tamper/expiry/wrong-node rejection. Agent tests verify that an independent watchdog stops the core and that a candidate cannot extend the previous config's lifetime. Enrollment is refused while the supervisor holds the state lock.

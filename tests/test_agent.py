@@ -169,6 +169,7 @@ class AgentTest(unittest.TestCase):
             signed = sign_desired(
                 {
                     "node_id": "node",
+                    "agent_instance": self.agent.agent_instance,
                     "revision": "candidate",
                     "config": self.config(),
                     "periods": {},

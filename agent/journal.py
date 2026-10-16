@@ -19,6 +19,13 @@ class UsageJournal:
                 row[1] for row in db.execute("PRAGMA table_info(samples)")
             }:
                 db.execute("ALTER TABLE samples ADD COLUMN period_no INTEGER")
+            if "lease_id" not in {
+                row[1] for row in db.execute("PRAGMA table_info(samples)")
+            }:
+                db.execute("ALTER TABLE samples ADD COLUMN lease_id TEXT")
+            db.execute(
+                "CREATE TABLE IF NOT EXISTS lease_totals(lease_id TEXT PRIMARY KEY,up INTEGER NOT NULL,down INTEGER NOT NULL)"
+            )
 
     @contextmanager
     def connect(self):
@@ -26,6 +33,7 @@ class UsageJournal:
         os.chmod(self.path, 0o600)
         db.row_factory = sqlite3.Row
         db.execute("PRAGMA synchronous=FULL")
+        db.execute("BEGIN IMMEDIATE")
         try:
             with db:
                 yield db
@@ -46,13 +54,26 @@ class UsageJournal:
         with self.connect() as db:
             for sample in samples:
                 old = db.execute(
-                    "SELECT period_no FROM samples WHERE epoch=? AND user_id=?",
+                    "SELECT period_no,lease_id,up,down FROM samples WHERE epoch=? AND user_id=?",
                     (epoch, sample["user_id"]),
                 ).fetchone()
                 if old and old["period_no"] != sample.get("period_no"):
                     raise ValueError("A journal epoch cannot change period generation")
+                if old and old["lease_id"] != sample.get("lease_id"):
+                    raise ValueError("A journal epoch cannot change budget lease")
+                if sample.get("lease_id"):
+                    up = max(sample["up"], old["up"] if old else 0) - (
+                        old["up"] if old else 0
+                    )
+                    down = max(sample["down"], old["down"] if old else 0) - (
+                        old["down"] if old else 0
+                    )
+                    db.execute(
+                        "INSERT INTO lease_totals VALUES(?,?,?) ON CONFLICT(lease_id) DO UPDATE SET up=up+excluded.up,down=down+excluded.down",
+                        (sample["lease_id"], up, down),
+                    )
                 db.execute(
-                    """INSERT INTO samples(epoch,user_id,up,down,period_no) VALUES(?,?,?,?,?)
+                    """INSERT INTO samples(epoch,user_id,up,down,period_no,lease_id) VALUES(?,?,?,?,?,?)
                     ON CONFLICT(epoch,user_id) DO UPDATE SET up=MAX(up,excluded.up),down=MAX(down,excluded.down)""",
                     (
                         epoch,
@@ -60,6 +81,7 @@ class UsageJournal:
                         sample["up"],
                         sample["down"],
                         sample.get("period_no"),
+                        sample.get("lease_id"),
                     ),
                 )
 
@@ -71,7 +93,7 @@ class UsageJournal:
             if not epoch:
                 return None
             rows = db.execute(
-                """SELECT user_id,up,down,period_no FROM samples WHERE epoch=?
+                """SELECT user_id,up,down,period_no,lease_id FROM samples WHERE epoch=?
                 AND (up>ack_up OR down>ack_down) ORDER BY user_id LIMIT 500""",
                 (epoch["epoch"],),
             ).fetchall()
@@ -100,3 +122,10 @@ class UsageJournal:
                 "DELETE FROM samples WHERE epoch<>? AND up=ack_up AND down=ack_down",
                 (current_epoch,),
             )
+
+    def budget_spent(self):
+        with self.connect() as db:
+            return {
+                row["lease_id"]: row["up"] + row["down"]
+                for row in db.execute("SELECT * FROM lease_totals")
+            }

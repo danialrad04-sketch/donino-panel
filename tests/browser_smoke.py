@@ -123,6 +123,19 @@ def main():
                 page.screenshot(
                     path=str(output / "donino-dashboard.png"), full_page=True
                 )
+                page.locator("a[data-page=users]").click()
+                page.get_by_role("button", name="کاربر جدید").click()
+                page.locator("#edit-form [name=name]").fill("بودجه آزمایشی")
+                page.locator("#edit-form [name=quota]").fill("10")
+                page.locator("#edit-form [name=quota_mode]").select_option("lease")
+                page.locator("#edit-form button[type=submit]").click()
+                page.locator("#modal").wait_for(state="hidden")
+                page.get_by_role("button", name="بودجه", exact=True).click()
+                page.locator("#modal-title").filter(
+                    has_text="حجم تخصیص‌یافته"
+                ).wait_for()
+                page.locator("#close-modal").click()
+                page.locator("a[data-page=overview]").click()
                 page.set_viewport_size({"width": 390, "height": 844})
                 page.screenshot(path=str(output / "donino-mobile.png"), full_page=True)
                 assert page.evaluate(

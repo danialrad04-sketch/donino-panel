@@ -16,7 +16,7 @@ try:  # PostgreSQL is optional; SQLite stays the default backend.
 except ImportError:  # pragma: no cover - exercised only without the postgres extra
     psycopg = None
 
-SCHEMA_VERSION = 7
+SCHEMA_VERSION = 8
 MAX_DEVICES_PER_USER = 20
 # Arbitrary constant key for the PostgreSQL writer lock (serializes writers, like BEGIN IMMEDIATE).
 _PG_WRITER_LOCK = 4541776
@@ -404,6 +404,23 @@ def initialize():
                 "CREATE INDEX node_certificates_node ON node_certificates(node_id)"
             )
             set_schema_version(db, 7)
+        if version < 8:
+            db.execute(
+                "ALTER TABLE users ADD COLUMN quota_mode TEXT NOT NULL DEFAULT 'legacy' CHECK(quota_mode IN ('legacy','lease'))"
+            )
+            db.execute("ALTER TABLE counters ADD COLUMN lease_id TEXT")
+            db.execute("""CREATE TABLE budget_leases (
+                id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                node_id TEXT NOT NULL REFERENCES nodes(id) ON DELETE CASCADE,
+                period_no INTEGER NOT NULL, instance TEXT NOT NULL,
+                granted INTEGER NOT NULL, spent INTEGER NOT NULL DEFAULT 0,
+                expires INTEGER NOT NULL, closed INTEGER NOT NULL DEFAULT 0,
+                created INTEGER NOT NULL, updated INTEGER NOT NULL,
+                UNIQUE(user_id,node_id,period_no,instance))""")
+            db.execute(
+                "CREATE INDEX budget_leases_user_period ON budget_leases(user_id,period_no,closed)"
+            )
+            set_schema_version(db, 8)
 
 
 def encrypt_legacy_mfa(db):

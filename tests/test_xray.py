@@ -12,6 +12,8 @@ import time
 import unittest
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from unittest.mock import patch
+from urllib.parse import quote
 
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes, serialization
@@ -199,10 +201,11 @@ class XrayTest(unittest.TestCase):
                                 **kwargs,
                             )
 
-                        def get(self, path):
+                        def get(self, path, **kwargs):
                             response = panel.get(
                                 path,
                                 headers={"Authorization": "Bearer " + node["token"]},
+                                **kwargs,
                             )
                             value = response.json()
                             value["config"]["routing"]["rules"] = value["config"][
@@ -220,6 +223,7 @@ class XrayTest(unittest.TestCase):
                     agent.tick()
                     listed = panel.get("/api/inbounds").json()
                     socks_ports = {}
+                    client_configs = {}
                     for inbound in listed:
                         protocol = inbound["protocol"]
                         socks = port()
@@ -306,6 +310,7 @@ class XrayTest(unittest.TestCase):
                             stderr=None,
                         )
                         processes.append(client)
+                        client_configs[protocol] = copy.deepcopy(config)
                         wait_port(socks)
                         with socket.create_connection(
                             ("127.0.0.1", socks), timeout=15
@@ -450,6 +455,17 @@ class XrayTest(unittest.TestCase):
                     print(
                         "  Real occupied-port startup failure restored the previous Xray config"
                     )
+                    agent.close()
+                    self.budget_offline_acceptance(
+                        panel,
+                        node,
+                        folder,
+                        binary,
+                        cert,
+                        http.server_port,
+                        client_configs["vmess"],
+                        processes,
+                    )
             finally:
                 if agent:
                     agent.close()
@@ -465,6 +481,126 @@ class XrayTest(unittest.TestCase):
                 thread.join(timeout=2)
                 os.environ.clear()
                 os.environ.update(old)
+
+    def budget_offline_acceptance(
+        self, panel, node, folder, binary, cert, target_port, client_config, processes
+    ):
+        import httpx
+        from agent.identity import certificate_request, save_identity
+        from app.core import compile_config
+
+        proxy_key = "real-quota-fixture-" + "x" * 40
+        os.environ["DONINO_PROXY_KEY"] = proxy_key
+        shared = panel.post(
+            "/api/users",
+            json={"name": "budget-real-user", "quota": 8192, "quota_mode": "lease"},
+        ).json()
+        token = panel.post(f"/api/nodes/{node['id']}/enrollment").json()["token"]
+        private, csr = certificate_request()
+        enrolled = panel.post(
+            "/api/agent/enroll",
+            json={"node_id": node["id"], "token": token, "csr": csr},
+        )
+        self.assertEqual(enrolled.status_code, 201)
+        state = folder / "metered-node"
+        save_identity(
+            state, "https://panel.example.com", node["id"], enrolled.json(), private
+        )
+        os.environ["DONINO_PANEL_URL"] = "https://panel.example.com"
+        os.environ["DONINO_NODE_STATE"] = str(state)
+        os.environ["DONINO_XRAY"] = str(binary)
+        headers = {
+            "X-Donino-Proxy-Key": proxy_key,
+            "X-Donino-Client-Verify": "SUCCESS",
+            "X-Donino-Client-Cert": quote(enrolled.json()["certificate"], safe=""),
+        }
+
+        class PartitionablePanel:
+            offline = False
+
+            def get(self, path, **kwargs):
+                if self.offline:
+                    raise httpx.ConnectError("simulated control-plane partition")
+                return panel.get(path, headers=headers, **kwargs)
+
+            def post(self, path, **kwargs):
+                if self.offline:
+                    raise httpx.ConnectError("simulated control-plane partition")
+                return panel.post(path, headers=headers, **kwargs)
+
+        def loopback_fixture(inbounds, clients):
+            value = compile_config(inbounds, clients)
+            value["routing"]["rules"] = value["routing"]["rules"][:1]
+            return value  # Private loopback origin is allowed by the fixture before signing.
+
+        supervisor = NodeAgent()
+        supervisor.client.close()
+        transport = PartitionablePanel()
+        supervisor.client = transport
+        try:
+            with patch("app.engines.compile_config", side_effect=loopback_fixture):
+                supervisor.tick()
+                self.assertTrue(supervisor.active_grants)
+                with database() as db:
+                    credential = db.execute(
+                        "SELECT credential FROM users WHERE id=?", (shared["id"],)
+                    ).fetchone()[0]
+                config = copy.deepcopy(client_config)
+                socks = port()
+                config["inbounds"][0]["port"] = socks
+                config["outbounds"][0]["settings"]["vnext"][0]["users"][0]["id"] = (
+                    credential
+                )
+                path = folder / "budget-client.json"
+                path.write_text(json.dumps(config))
+                client = subprocess.Popen(
+                    [binary, "run", "-c", str(path)],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                )
+                processes.append(client)
+                wait_port(socks)
+                transport.offline = True
+                with socket.create_connection(
+                    ("127.0.0.1", socks), timeout=10
+                ) as stream:
+                    stream.sendall(b"\x05\x01\x00")
+                    self.assertEqual(stream.recv(2), b"\x05\x00")
+                    stream.sendall(
+                        b"\x05\x01\x00\x01\x7f\x00\x00\x01"
+                        + target_port.to_bytes(2, "big")
+                    )
+                    self.assertEqual(stream.recv(10)[1], 0)
+                    stream.sendall(b"GET / HTTP/1.0\r\nHost: localhost\r\n\r\n")
+                    while stream.recv(65536):
+                        pass
+                until = time.monotonic() + 5
+                while supervisor.running() and time.monotonic() < until:
+                    time.sleep(0.05)
+                self.assertFalse(
+                    supervisor.running(),
+                    "Budgeted core survived quota exhaustion during the partition",
+                )
+                self.assertGreater(supervisor.journal.count(), 0)
+                with self.assertRaises(httpx.ConnectError):
+                    supervisor.report()
+                transport.offline = False
+                supervisor.report(closing=True)
+                values = {row["id"]: row for row in panel.get("/api/users").json()}
+                self.assertEqual(values[shared["id"]]["status"], "limited")
+                self.assertEqual(values[shared["id"]]["budget_reserved"], 0)
+                supervisor.tick()
+                self.assertTrue(supervisor.running())
+                for inbound in supervisor.config["inbounds"][1:]:
+                    self.assertNotIn(
+                        shared["id"],
+                        {client["email"] for client in inbound["settings"]["clients"]},
+                    )
+                print(
+                    "  Real shared-budget exhaustion stopped Xray during a control-plane partition; sampled overshoot was retained and reconciled"
+                )
+        finally:
+            supervisor.close()
 
 
 if __name__ == "__main__":

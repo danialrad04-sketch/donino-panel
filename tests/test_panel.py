@@ -382,9 +382,9 @@ class PanelTest(unittest.TestCase):
         class NodeClient:
             fail = True
 
-            def get(self, path):
+            def get(self, path, **kwargs):
                 return panel.get(
-                    path, headers={"Authorization": "Bearer " + n["token"]}
+                    path, headers={"Authorization": "Bearer " + n["token"]}, **kwargs
                 )
 
             def post(self, path, **kwargs):

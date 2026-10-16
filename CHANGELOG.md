@@ -1,5 +1,14 @@
 # Donino releases
 
+## 1.0.0-alpha.5 — experimental shared quota, 2026-10-16
+
+- Add opt-in shared-quota users with transactional per-node/per-supervisor budget reservations, signed 60-second execution windows and a persistent local budget ledger. Expired, unreported credit stays reserved instead of being allocated again.
+- Meter enrolled nodes independently of panel HTTP requests and stop Xray when a grant is exhausted, expired or cannot be accounted locally. Bind the Linux engine process lifetime to its supervisor. A clean, fully reported shutdown releases unused credit; an unknown crashed instance does not.
+- Preserve duplicate/out-of-order usage handling and period isolation, retain observed overshoot, guard quota reductions/node deletion and expose reservation metadata in the Persian panel and portal.
+- Add concurrent allocation/journal, closed-grant, identity, period and parent-death checks, plus an actual encrypted VMess transfer that exhausts a grant while the control plane is unreachable and reconciles after reconnection.
+
+This feature is experimental and available only for newly created users and enrolled agents. Sampled metering can overshoot, unsampled crash traffic can be lost, and stopping one exhausted grant currently stops the whole node core. Rate enforcement, capacity testing and stable 1.0 acceptance remain outstanding. See [shared quota](docs/SHARED-QUOTA.fa.md).
+
 ## 1.0.0-alpha.4 — secure node identity, 2026-10-16
 
 - Schema 7 preserves legacy node credentials and adds expiring enrollment records, certificate identity/revocation and monotonic config sequences.
