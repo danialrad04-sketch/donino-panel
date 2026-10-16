@@ -108,7 +108,8 @@ async def security_headers(request, call_next):
             return JSONResponse(
                 {"detail": "Cross-origin request rejected"}, status_code=403
             )
-        bearer = request.headers.get("authorization", "")[7:]
+        authorization = request.headers.get("authorization", "")
+        bearer = authorization[7:] if authorization.startswith("Bearer ") else ""
         if (
             not request.url.path.startswith("/api/agent/")
             and not is_api_token(bearer)

@@ -1,7 +1,7 @@
 {
   "format": "donino-source-v1",
   "version": "1.0.0a3",
-  "source_sha256": "cbb9e7d89b40549d561e1c4885651ab11351dcf3a5d9d14e1c7160b798b74275",
+  "source_sha256": "3663132857820f8b1a4ff710b507ef05e761c909ee8a571e8d47643f11736c57",
   "files": {
     "CHANGELOG.md": "6285328b59281b57d6d2cdbc4297f2f3f4fca586a49c3b9228ea15c65c852ee7",
     "LICENSE": "d8a6cc31abc16b6748c7a21f21611f5a1ec33f67d22ca23d7da1c19b95496bee",
@@ -21,7 +21,7 @@
     "app/deps.py": "2f290e7380d233e7491578ba2e22fa46b97747c803347c8170b2414cbcfa438f",
     "app/engines.py": "a5a630f19333d450f6b38d4d8908239197fa5eced8ea7e51ef46e5937a74cd94",
     "app/installer.py": "9bb14b4bce1d7e81799f019af0789e74cd06ba6d83ec08f890a9bd1f330a6e2f",
-    "app/main.py": "c79b71c50ffa637baa3a9bf9395e143a97551e9dbdd78cebe9a7f6b33ec46c45",
+    "app/main.py": "96906355852e5bbe470c0e5c4cf5db478ed7f53bc499cb0a6e7468e2dcfec5c5",
     "app/network_api.py": "040884076d124dce70f6803d5cda97be6c7a7cd5039efd221bc0279e7f974dc0",
     "app/ops.py": "0e7200b28e3f1683500cae5581a69dc3acd24795b788efba711a749fe4ea55f9",
     "app/secrets.py": "19394e1b1329f794a2186a4608781a47dd21e8dfb8d4b9dc31ed524e33f58625",
@@ -52,7 +52,7 @@
     "docs/RESEARCH.fa.md": "b4aab87d22336634b60865f4f70e4e73ece50cd4627f395b936a3d3310ceeb4a",
     "docs/ROADMAP.fa.md": "22fd2eb413f572018152d0cc40ba77ac22ee5d14e9999642d63a34bf82ad8119",
     "docs/UPGRADE-0.2.fa.md": "8dcade198068212720d008de6797aa4c47596dba9aadf2a5e32dbe742c6cec4e",
-    "docs/VALIDATION.md": "d3c8889f88df5617bff382f3c3f18de3737acf3e1e8215e414cc2f6e4d877d7e",
+    "docs/VALIDATION.md": "e61450bdd56558ca13fd690e5705dab253cc1b44355589b0d30ddeeb1fb60fbb",
     "docs/images/dashboard.png": "01f8bb91d5b3e3deb0a832e6d54b73fc74466507af768938f9743e219715cba9",
     "docs/images/login.png": "743a226fd9cd61ee90338da8cf3a821adbf9b7ec51d4881db57721c12b77f58d",
     "docs/images/mobile.png": "2e552e0ff0a6ffbbed4703bfb2b238407227555c2e6ac20ff46e82ffaecbdbfb",

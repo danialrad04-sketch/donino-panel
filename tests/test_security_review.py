@@ -10,6 +10,15 @@ from app.secrets import key_path, unseal
 
 
 class SecurityReviewTest(PanelBase):
+    def test_non_bearer_header_cannot_bypass_cookie_csrf_protection(self):
+        response = self.client.post(
+            "/api/users",
+            headers={"Authorization": "Basic  dnk_not_a_bearer"},
+            json={"name": "must-not-create"},
+        )
+        self.assertEqual(response.status_code, 403)
+        self.assertEqual(self.client.get("/api/users").json(), [])
+
     def test_mfa_seed_encrypted_and_existing_plaintext_migrates(self):
         setup = self.post("/account/mfa/setup", {"password": PASSWORD}).json()
         with database() as db:
