@@ -85,12 +85,16 @@ def session_only(account=Depends(admin)):
 
 
 def node_auth(request: Request):
+    if request.headers.get("x-donino-client-cert"):
+        from .node_identity import certificate_auth
+
+        return certificate_auth(request)
     auth = request.headers.get("authorization", "")
     if not auth.startswith("Bearer "):
         raise HTTPException(401, "Node token required")
     with database() as db:
         node = db.execute(
-            "SELECT * FROM nodes WHERE token=? AND enabled=1", (digest(auth[7:]),)
+            "SELECT * FROM nodes WHERE token=? AND enabled=1 AND auth_mode='legacy'", (digest(auth[7:]),)
         ).fetchone()
     if not node:
         raise HTTPException(401, "Invalid node token")

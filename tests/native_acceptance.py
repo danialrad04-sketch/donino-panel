@@ -18,6 +18,7 @@ import tempfile
 import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from unittest.mock import patch
 
 import httpx
 from cryptography import x509
@@ -27,6 +28,10 @@ from cryptography.x509.oid import ExtendedKeyUsageOID, NameOID
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from app.security import hotp
+from agent.identity import certificate_request, save_identity
+from agent.main import NodeAgent
+from agent.enroll import enroll as enroll_node
+from app.node_identity import verify_desired
 from ops.manifest import source_inventory, write_manifest
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -249,6 +254,16 @@ class NativeFixture:
         result = json.loads(self.exec(name, "./install.sh", "doctor", capture=True))
         assert result["installation_complete"] and result["api"]["status"] == "ok"
 
+    def secure_client(self, base, metadata, state):
+        context = ssl.create_default_context(
+            cafile=str(self.folder / "certificates/ca.pem")
+        )
+        context.load_cert_chain(
+            state / metadata["directory"] / "client.crt",
+            state / metadata["directory"] / "client.key",
+        )
+        return httpx.Client(base_url=base, verify=context, trust_env=False, timeout=10)
+
     def run(self):
         self.prepare()
         print(self.os_name + ": source snapshot prepared", flush=True)
@@ -281,6 +296,89 @@ class NativeFixture:
         assert user["id"]
         self.install(first)
         self.doctor(first)
+        node = client.post(
+            "/api/nodes", json={"name": "native-mtls-node", "host": "vpn.example.com"}
+        ).json()
+        enrollment = client.post(f"/api/nodes/{node['id']}/enrollment").json()
+        state = self.folder / "node-identity"
+        metadata = enroll_node(
+            str(client.base_url).rstrip("/"),
+            node["id"],
+            enrollment["token"],
+            state,
+            ca_file=self.folder / "certificates/ca.pem",
+        )
+        secure = self.secure_client(client.base_url, metadata, state)
+        desired = secure.get("/api/agent/config")
+        assert desired.status_code == 200, desired.status_code
+        verify_desired(desired.json(), metadata["config_verify_key"], node["id"])
+        assert (
+            client.get(
+                "/api/agent/config",
+                headers={"Authorization": "Bearer " + node["token"]},
+            ).status_code
+            == 401
+        )
+        assert (
+            client.get(
+                "/api/agent/config",
+                headers={
+                    "X-Donino-Client-Cert": (
+                        state / metadata["directory"] / "client.crt"
+                    )
+                    .read_text()
+                    .replace("\n", "%0A"),
+                    "X-Donino-Client-Verify": "SUCCESS",
+                    "X-Donino-Proxy-Key": "untrusted-client-header",
+                },
+            ).status_code
+            == 401
+        )
+        next_private, next_csr = certificate_request()
+        renewed = secure.post("/api/agent/renew-certificate", json={"csr": next_csr})
+        assert renewed.status_code == 200, renewed.status_code
+        metadata = save_identity(
+            state,
+            str(client.base_url).rstrip("/"),
+            node["id"],
+            renewed.json(),
+            next_private,
+        )
+        secure.close()
+        secure = self.secure_client(client.base_url, metadata, state)
+        assert secure.get("/api/agent/config").status_code == 200
+        with patch.dict(
+            os.environ,
+            {
+                "DONINO_PANEL_URL": str(client.base_url).rstrip("/"),
+                "DONINO_NODE_STATE": str(state),
+                "DONINO_PANEL_CA_FILE": str(self.folder / "certificates/ca.pem"),
+            },
+        ):
+            supervisor = NodeAgent()
+            try:
+                supervisor.authenticate_identity()
+                supervisor.report()
+                assert supervisor.bound
+                try:
+                    supervisor.validate_desired(desired.json())
+                except ValueError:
+                    pass
+                else:
+                    raise AssertionError(
+                        "Node supervisor accepted an older signed config"
+                    )
+                supervisor.identity["expires"] = int(time.time())
+                supervisor.renew_identity()
+                supervisor.report()
+                metadata = supervisor.identity
+            finally:
+                supervisor.close()
+        print(
+            self.os_name
+            + ": real NGINX mTLS enrollment, signed config and renewal passed",
+            flush=True,
+        )
         print(self.os_name + ": reinstallation passed", flush=True)
         assert client.get("/api/users").json()[0]["id"] == user["id"]
         self.docker("restart", first)
@@ -306,7 +404,8 @@ class NativeFixture:
         enrollment_step = int(time.time()) // 30
         assert (
             client.post(
-                "/api/account/mfa/enable", json={"code": hotp(seed, int(time.time()) // 30)}
+                "/api/account/mfa/enable",
+                json={"code": hotp(seed, int(time.time()) // 30)},
             ).status_code
             == 200
         )
@@ -343,10 +442,24 @@ class NativeFixture:
         )
         while int(time.time()) // 30 <= enrollment_step:
             time.sleep(0.25)
-        response = restored.post("/api/login", json={**credentials, "code": hotp(seed, int(time.time()) // 30)})
+        response = restored.post(
+            "/api/login",
+            json={**credentials, "code": hotp(seed, int(time.time()) // 30)},
+        )
         assert response.status_code == 200, response.status_code
         assert restored.get("/api/users").json()[0]["id"] == user["id"]
         self.doctor(second)
+        recovered_node = self.secure_client(restored.base_url, metadata, state)
+        desired = recovered_node.get("/api/agent/config")
+        assert desired.status_code == 200, desired.status_code
+        verify_desired(desired.json(), metadata["config_verify_key"], node["id"])
+        assert (
+            restored.post(f"/api/nodes/{node['id']}/revoke-certificates").status_code
+            == 200
+        )
+        assert recovered_node.get("/api/agent/config").status_code == 401
+        recovered_node.close()
+        secure.close()
         # Nonempty restore must be refused without replacing the installed DB.
         self.exec(second, "./install.sh", "uninstall")
         count = self.exec(

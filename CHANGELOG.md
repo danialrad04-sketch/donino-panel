@@ -1,5 +1,14 @@
 # Donino releases
 
+## 1.0.0-alpha.4 — secure node identity, 2026-10-16
+
+- Schema 7 preserves legacy node credentials and adds expiring enrollment records, certificate identity/revocation and monotonic config sequences.
+- Enroll with a node-local P-256 key and signed CSR; a 10-minute token can issue one identity and retry only the same CSR after a lost response. The agent state lock prevents concurrent enrollment or replacement while its supervisor runs.
+- Native NGINX installation verifies node client certificates and overwrites certificate headers; the private proxy key prevents forged forwarding headers. Enrolled nodes reject old bearer tokens. Certificate renewal rotates keys, with one previous identity allowed a bounded ten-minute handoff; certificates live fourteen days and renewal starts seven days before expiry.
+- Sign desired config with pinned Ed25519 verification, node identity, sequence and a sixty-second validity window. Persist verification state, reject tampering/replay/wrong-node messages and stop the engine through an independent expiry watchdog. A rejected candidate cannot extend the previous config's execution window.
+- Include node CA/signing material in encrypted recovery bundles; restore and reload the proxy trust root. Preserve node-local private keys separately. Add Persian enrollment/revocation actions and a secure node guide.
+- Real native acceptance now exercises the enrolled supervisor, signed config, renewal, API revocation and continued certificate authentication after control-plane recovery. Shared budget leases and rate-bounded quota enforcement remain a separate unfinished part of phase 3.
+
 ## 1.0.0-alpha.3 — continuation of merged main, 2026-10-16
 
 - Continue from PRs #2–#6 without adopting the incompatible database schema of the earlier `development/1.0` branch. Schema 6 preserves existing users, device credentials and subscriptions; that earlier schema is explicitly refused.

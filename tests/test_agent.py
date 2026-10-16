@@ -136,6 +136,57 @@ class AgentTest(unittest.TestCase):
     def test_only_one_agent_owns_a_state_directory(self):
         with self.assertRaisesRegex(RuntimeError, "Another Donino agent"):
             NodeAgent()
+        from agent.enroll import enroll
+
+        with self.assertRaisesRegex(RuntimeError, "Stop the node supervisor"):
+            enroll("https://panel.example.com", "node", "unused", self.tmp.name)
+
+    def test_expiry_watchdog_stops_core_independently_of_network_loop(self):
+        import threading
+        import time
+
+        terminated = threading.Event()
+        self.running.terminate.side_effect = terminated.set
+        self.agent.expiry_deadline = time.monotonic() - 1
+        self.agent.watchdog = threading.Thread(target=self.agent.expiry_watchdog)
+        self.agent.watchdog.start()
+        self.assertTrue(
+            terminated.wait(2), "Expired signed execution window did not stop the core"
+        )
+        self.assertFalse(self.agent.running())
+
+    def test_signed_sequence_is_persisted_and_candidate_does_not_extend_old_core(self):
+        import time
+        from app.node_identity import public_material, sign_desired
+
+        with patch.dict(os.environ, {"DONINO_PKI_DIR": self.tmp.name + "/pki"}):
+            material = public_material()
+            self.agent.identity = {
+                "node_id": "node",
+                "config_verify_key": material["config_verify_key"],
+            }
+            self.agent.expiry_deadline = deadline = time.monotonic() + 20
+            signed = sign_desired(
+                {
+                    "node_id": "node",
+                    "revision": "candidate",
+                    "config": self.config(),
+                    "periods": {},
+                },
+                sequence=9,
+            )
+            self.agent.validate_desired(signed)
+            self.assertEqual(self.agent.expiry_deadline, deadline)
+            with self.assertRaises(ValueError):
+                self.agent.validate_desired(
+                    sign_desired({**signed, "signature": "ignored"}, sequence=8)
+                )
+            self.assertEqual(
+                __import__("json").loads(
+                    (Path(self.tmp.name) / "verification.json").read_text()
+                )["sequence"],
+                9,
+            )
 
     def test_period_change_forces_restart_with_same_transport_and_credentials(self):
         current = self.config()

@@ -48,6 +48,8 @@ from .bootstrap import mount_bootstrap
 from .network_api import mount_network_api
 from .deployments import acknowledge, desired_job
 from .engines import XRAY
+from .node_api import mount_node_api
+from .node_identity import sign_desired
 from .deps import (
     admin,
     writer,
@@ -94,6 +96,7 @@ STATIC = Path(__file__).parent / "static"
 app.mount("/static", StaticFiles(directory=STATIC), name="static")
 mount_bootstrap(app)
 mount_network_api(app)
+mount_node_api(app)
 
 
 @app.middleware("http")
@@ -1059,7 +1062,12 @@ def delete_node(nid: str, account=Depends(owner)):
 def rotate_node(nid: str, account=Depends(owner)):
     token = secrets.token_urlsafe(48)
     with database() as db:
-        one(db, "nodes", nid)
+        node = one(db, "nodes", nid)
+        if node["auth_mode"] == "mtls":
+            raise HTTPException(
+                409,
+                "این نود از گواهی استفاده می‌کند؛ ثبت امن یا ابطال گواهی را انتخاب کنید",
+            )
         db.execute("UPDATE nodes SET token=? WHERE id=?", (digest(token), nid))
         audit(db, account["username"], "node.rotate-token", nid)
     return {"token": token}
@@ -1186,14 +1194,24 @@ def agent_config(node=Depends(node_auth)):
         )
         periods = {client["id"]: client["period_no"] for client in clients}
         job_id, checksum = desired_job(db, node["id"], config, periods)
-    return {
-        "revision": checksum,
-        "job_id": job_id,
-        "config": config,
-        "periods": periods,
-        "node_id": node["id"],
-        "agent_protocol": 4,
-    }
+        previous_sequence = db.execute(
+            "SELECT config_sequence FROM nodes WHERE id=?", (node["id"],)
+        ).fetchone()[0]
+        sequence = max(previous_sequence + 1, time.time_ns() // 1_000_000)
+        db.execute(
+            "UPDATE nodes SET config_sequence=? WHERE id=?", (sequence, node["id"])
+        )
+    return sign_desired(
+        {
+            "revision": checksum,
+            "job_id": job_id,
+            "config": config,
+            "periods": periods,
+            "node_id": node["id"],
+            "agent_protocol": 5,
+        },
+        sequence=sequence,
+    )
 
 
 @app.post("/api/agent/heartbeat")

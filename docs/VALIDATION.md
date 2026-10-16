@@ -1,5 +1,13 @@
 # Validation record
 
+## Secure node identity — 2026-10-16
+
+Schema 7 and the node identity/signing slice add seven checks to the previous 115: 122 tests discovered, SQLite passing with the PostgreSQL-only restore fault check skipped; PostgreSQL passing with nine SQLite-only checks skipped. New tests exercise concurrent same-CSR enrollment retries with one certificate issuance, expiry/rate limits/owner access, retirement of bearer credentials, forged proxy headers, API revocation, bounded rotation overlap, private identity writes and replay/tamper/expiry/wrong-node rejection. Agent tests verify that an independent watchdog stops the core and that a candidate cannot extend the previous config's lifetime. Enrollment is refused while the supervisor holds the state lock.
+
+Native acceptance passed on Debian 12 and Ubuntu 24.04 with actual NGINX client-certificate verification, pinned signed configuration, certificate/key renewal, an enrolled supervisor reporting over HTTPS, restoration of CA/signing keys on a second control host and API revocation of the recovered node certificate. Header-spoofing requests and old bearer credentials are refused through the real proxy. Public ACME/VPS/ISP acceptance remains separate. The existing browser regression also passed; exact-commit CI reruns all six jobs before merge.
+
+These checks do not establish shared budget leases, hard byte-level multi-node quota enforcement, automatic node-role installation, public CRL distribution or unattended trust-root rotation. See [node security](NODE-SECURITY.fa.md).
+
 ## Main continuation and 1.0 alpha 3 — 2026-10-16
 
 Continued merged main through PRs #2–#6 and integrated the newer redesign from PR #7. The incompatible earlier `development/1.0` data model is refused explicitly. This entry records executed checks, not completion of the entire master plan.

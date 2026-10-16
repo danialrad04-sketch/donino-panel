@@ -41,7 +41,7 @@ def desired_job(db, node_id, config, periods):
             now,
         ),
     )
-    db.execute("UPDATE nodes SET desired_job=? WHERE id=?", (job_id, node_id))
+    db.execute("UPDATE nodes SET desired_job=?,config_sequence=config_sequence+1 WHERE id=?", (job_id, node_id))
     return job_id, checksum
 
 

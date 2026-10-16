@@ -18,6 +18,7 @@ from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 
 from app import __version__
 from app.storage import backup_database, import_sqlite, restore_archive, require_empty
+from app.node_identity import PKI_FILES, pki_directory
 
 from .common import InstallError, atomic_write, read_env, run
 
@@ -150,6 +151,13 @@ def create_bundle(
         )
         if master.is_file():
             entries["data/master.key"] = master
+        pki = pki_directory()
+        if pki.exists():
+            for name in (*PKI_FILES, "initialized"):
+                path = pki / name
+                if not path.is_file():
+                    raise InstallError("Incomplete node PKI; backup refused")
+                entries["data/pki/" + name] = path
         for name in ("panel.crt", "panel.key"):
             path = Path(config).parent / "tls" / name
             if path.is_file():
@@ -176,6 +184,7 @@ def verified_bundle(source, key_file, folder):
         "config/tls/panel.crt",
         "config/tls/panel.key",
         "state/installer.json",
+        *("data/pki/" + name for name in (*PKI_FILES, "initialized")),
     }
     with zipfile.ZipFile(archive) as bundle:
         manifest = json.loads(bundle.read("manifest.json"))
@@ -208,6 +217,7 @@ def restore_bundle(
         if not apply:
             return manifest
         with panel_environment(config) as values:
+            require_empty()
             master = Path(
                 values.get(
                     "DONINO_KEY_FILE",
@@ -216,7 +226,25 @@ def restore_bundle(
             )
             old = master.read_bytes() if master.exists() else None
             incoming = folder / "data/master.key"
+            pki = pki_directory()
+            pki_files = [
+                name
+                for name in (*PKI_FILES, "initialized")
+                if (folder / "data/pki" / name).exists()
+            ]
+            if pki_files and len(pki_files) != len(PKI_FILES) + 1:
+                raise InstallError("Incomplete PKI backup inventory")
+            previous_pki = {
+                name: (pki / name).read_bytes() if (pki / name).exists() else None
+                for name in pki_files
+            }
             try:
+                for name in pki_files:
+                    atomic_write(pki / name, (folder / "data/pki" / name).read_bytes())
+                    if os.geteuid() == 0:
+                        owner = Path(values["DONINO_DB"]).parent.stat()
+                        os.chown(pki, owner.st_uid, owner.st_gid)
+                        os.chown(pki / name, owner.st_uid, owner.st_gid)
                 if incoming.exists():
                     atomic_write(master, incoming.read_bytes())
                     if os.geteuid() == 0:
@@ -229,6 +257,14 @@ def restore_bundle(
                 else:
                     raise InstallError("Unknown backup database format")
             except BaseException:
+                for name, content in previous_pki.items():
+                    if content is None:
+                        (pki / name).unlink(missing_ok=True)
+                    else:
+                        atomic_write(pki / name, content)
+                        if os.geteuid() == 0:
+                            owner = Path(values["DONINO_DB"]).parent.stat()
+                            os.chown(pki / name, owner.st_uid, owner.st_gid)
                 if old is None:
                     master.unlink(missing_ok=True)
                 else:
@@ -289,6 +325,8 @@ def main():
             run(["systemctl", "stop", "donino-panel"])
             try:
                 result = restore_bundle(args.path, args.key_file, apply=True)
+                run(["nginx", "-t"], capture=True)
+                run(["systemctl", "reload", "nginx"])
             finally:
                 run(["systemctl", "start", "donino-panel"])
                 wait_ready()

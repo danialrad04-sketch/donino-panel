@@ -54,6 +54,9 @@ def nginx_config(domain, *, tls=False, ipv6=True):
     ssl_certificate /etc/donino/tls/panel.crt;
     ssl_certificate_key /etc/donino/tls/panel.key;
     ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_client_certificate /var/lib/donino-panel/pki/node-ca.crt;
+    ssl_verify_client optional;
+    ssl_verify_depth 2;
     add_header X-Content-Type-Options nosniff always;
     add_header Referrer-Policy no-referrer always;
     add_header Strict-Transport-Security "max-age=15552000" always;
@@ -292,6 +295,13 @@ WantedBy=timers.target
                     "Changing an existing domain requires a separate certificate/config migration",
                     5,
                 )
+            if "DONINO_PROXY_KEY" not in values:
+                values["DONINO_PROXY_KEY"] = secrets.token_urlsafe(40)
+                values["DONINO_PKI_DIR"] = str(DATA / "pki")
+                atomic_write(
+                    path,
+                    "".join(key + "=" + value + "\n" for key, value in values.items()),
+                )
             return values
         password = secrets.token_urlsafe(36)
         bootstrap = secrets.token_urlsafe(40)
@@ -301,6 +311,8 @@ WantedBy=timers.target
             + password
             + "@127.0.0.1:5432/donino",
             "DONINO_KEY_FILE": str(DATA / "master.key"),
+            "DONINO_PKI_DIR": str(DATA / "pki"),
+            "DONINO_PROXY_KEY": secrets.token_urlsafe(40),
             "DONINO_PUBLIC_URL": "https://" + domain,
             "DONINO_SECURE_COOKIE": "true",
             "DONINO_BOOTSTRAP_TOKEN_HASH": hashlib.sha256(
@@ -417,7 +429,20 @@ WantedBy=timers.target
     def proxy(self, domain, *, tls):
         snippets = Path("/etc/nginx/snippets")
         snippets.mkdir(exist_ok=True)
-        self.managed_write(snippets / "donino-proxy.conf", PROXY)
+        values = read_env(CONFIG / "panel.env")
+        proxy_key = values.get("DONINO_PROXY_KEY", "")
+        if len(proxy_key) < 32 or any(
+            c not in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_"
+            for c in proxy_key
+        ):
+            raise InstallError("A valid private proxy authentication key is required")
+        self.managed_write(
+            snippets / "donino-proxy.conf",
+            PROXY + "proxy_set_header X-Donino-Proxy-Key " + proxy_key + ";\n"
+            "proxy_set_header X-Donino-Client-Verify $ssl_client_verify;\n"
+            "proxy_set_header X-Donino-Client-Cert $ssl_client_escaped_cert;\n",
+            0o600,
+        )
         path = Path("/etc/nginx/conf.d/donino-panel.conf")
         previous = path.read_bytes() if path.exists() else None
         try:
@@ -621,6 +646,7 @@ WantedBy=timers.target
         if CURRENT.is_symlink():
             backup = self.backup(release=release)
             self.state["pre_upgrade_backup"] = str(backup)
+        self.app_cli("pki-init", release=release)
         self.certificate(report["domain"])
         self.services(release)
         self.health()
