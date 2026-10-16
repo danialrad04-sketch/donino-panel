@@ -13,6 +13,14 @@
 
 This is a development preview, not stable 1.0. Public ACME/VPS/ISP acceptance, mTLS enrollment, signed desired config, shared-quota budget leases, DNS products and additional VPN engines remain outstanding; see the implementation status.
 
+## Unreleased — panel visual redesign
+
+- New neutral graphite design system for both themes: dark mode is no longer pure black, light mode uses a cool gray surface, and one muted teal is the only accent. Status colors are separate from the accent.
+- Layout: fixed side navigation on desktop, bottom navigation on phones, a slim top bar with the page title and sync time. Login is a single centered card.
+- Removed decorative text: all-caps labels, eyebrows above headings, middle-dot separators, arrows in link text, and glyph characters used as icons. Icons are inline SVG line icons.
+- Tables, cards, badges, forms and dialogs share one set of tokens; numbers use tabular figures. The subscription portal uses the same tokens.
+- No behaviour change: the same endpoints, IDs and actions. The browser smoke test was updated for the new status text.
+
 ## Unreleased — phase 2 (partial): PostgreSQL backend
 
 - Optional PostgreSQL backend selected by `DONINO_DATABASE_URL=postgresql://…`. SQLite remains the default and needs no change. Install `requirements-postgres.txt` for the driver.

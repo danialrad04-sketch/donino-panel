@@ -102,5 +102,12 @@ class MigrationTest(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "explicit migration"):
             initialize()
         with sqlite3.connect(self.path) as db:
-            self.assertEqual(db.execute("SELECT version_num FROM alembic_version").fetchone()[0], "0001_foundation")
-            self.assertIsNone(db.execute("SELECT name FROM sqlite_master WHERE name='users'").fetchone())
+            self.assertEqual(
+                db.execute("SELECT version_num FROM alembic_version").fetchone()[0],
+                "0001_foundation",
+            )
+            self.assertIsNone(
+                db.execute(
+                    "SELECT name FROM sqlite_master WHERE name='users'"
+                ).fetchone()
+            )

@@ -41,7 +41,7 @@ async function load() {
     $("#portal-content").hidden = false;
     $("#portal-greeting").textContent =
       info.name + "، به فضای اختصاصی خود خوش آمدید.";
-    $("#portal-status").textContent = "● " + states[info.status];
+    $("#portal-status").textContent = states[info.status];
     $("#portal-status").className = "badge " + info.status;
     $("#remaining").textContent =
       info.remaining === null ? "نامحدود" : bytes(info.remaining);
@@ -50,7 +50,7 @@ async function load() {
       : "بدون محدودیت حجم";
     $("#used").textContent = bytes(info.used);
     $("#traffic-detail").textContent =
-      "ارسال " + bytes(info.uploaded) + " · دریافت " + bytes(info.downloaded);
+      "ارسال " + bytes(info.uploaded) + "، دریافت " + bytes(info.downloaded);
     $("#expiry").textContent = info.expires
       ? new Date(info.expires * 1000).toLocaleDateString("fa-IR")
       : "بدون انقضا";
