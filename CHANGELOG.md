@@ -1,5 +1,10 @@
 # Donino releases
 
+## Unreleased — phase 2 (partial): installer scaffold and operations CLI
+
+- `python -m app.installer preflight|plan|render --domain D [--root DIR]`: read-only preflight (OS, architecture, Python, ports, disk, DNS), a secret-free plan, and render of the panel env file (0600), systemd unit and NGINX vhost under a root directory. Locked, resumable, and it refuses to overwrite files that differ (exit 7). Exit codes follow the installer spec.
+- Services, NGINX reload, certificates and firewall are not changed by this slice.
+
 ## Unreleased — phase 2 (partial): operations CLI
 
 - `python -m app.cli doctor`: read-only health report (database permissions, schema version, integrity check, owner account, public URL and cookie settings). Exits 1 on any failure. Never prints secrets and never migrates the database.
