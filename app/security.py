@@ -13,6 +13,7 @@ from urllib.parse import quote, urlencode
 from fastapi import HTTPException
 
 from .db import digest, upsert
+from .secrets import PREFIX, unseal
 
 TOTP_PERIOD = 30
 RECOVERY_CODE_COUNT = 10
@@ -43,6 +44,8 @@ def totp_verify(secret, code, last_step=0, now=None, window=1, digits=6):
     A step at or below `last_step` is refused so a captured code cannot be
     replayed inside its validity window (RFC 6238 section 5.2).
     """
+    if secret.startswith(PREFIX):
+        secret = unseal(secret)
     code = re.sub(r"\s+", "", str(code))
     if not re.fullmatch(r"[0-9]{%d}" % digits, code):
         return None
@@ -124,7 +127,13 @@ def record_failure(db, key, now=None):
     now = int(time.time()) if now is None else now
     row = db.execute("SELECT * FROM login_attempts WHERE address=?", (key,)).fetchone()
     count = row["attempts"] + 1 if row and row["until"] > now else 1
-    upsert(db, "login_attempts", ["address", "attempts", "until"], [key, count, now + LOCK_SECONDS], ["address"])
+    upsert(
+        db,
+        "login_attempts",
+        ["address", "attempts", "until"],
+        [key, count, now + LOCK_SECONDS],
+        ["address"],
+    )
 
 
 def clear_failures(db, key):

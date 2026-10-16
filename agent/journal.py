@@ -15,6 +15,10 @@ class UsageJournal:
                 up INTEGER NOT NULL, down INTEGER NOT NULL,
                 ack_up INTEGER NOT NULL DEFAULT 0, ack_down INTEGER NOT NULL DEFAULT 0,
                 PRIMARY KEY(epoch,user_id))""")
+            if "period_no" not in {
+                row[1] for row in db.execute("PRAGMA table_info(samples)")
+            }:
+                db.execute("ALTER TABLE samples ADD COLUMN period_no INTEGER")
 
     @contextmanager
     def connect(self):
@@ -41,10 +45,22 @@ class UsageJournal:
     def record(self, epoch, samples):
         with self.connect() as db:
             for sample in samples:
+                old = db.execute(
+                    "SELECT period_no FROM samples WHERE epoch=? AND user_id=?",
+                    (epoch, sample["user_id"]),
+                ).fetchone()
+                if old and old["period_no"] != sample.get("period_no"):
+                    raise ValueError("A journal epoch cannot change period generation")
                 db.execute(
-                    """INSERT INTO samples(epoch,user_id,up,down) VALUES(?,?,?,?)
+                    """INSERT INTO samples(epoch,user_id,up,down,period_no) VALUES(?,?,?,?,?)
                     ON CONFLICT(epoch,user_id) DO UPDATE SET up=MAX(up,excluded.up),down=MAX(down,excluded.down)""",
-                    (epoch, sample["user_id"], sample["up"], sample["down"]),
+                    (
+                        epoch,
+                        sample["user_id"],
+                        sample["up"],
+                        sample["down"],
+                        sample.get("period_no"),
+                    ),
                 )
 
     def pending(self):
@@ -55,11 +71,13 @@ class UsageJournal:
             if not epoch:
                 return None
             rows = db.execute(
-                """SELECT user_id,up,down FROM samples WHERE epoch=?
+                """SELECT user_id,up,down,period_no FROM samples WHERE epoch=?
                 AND (up>ack_up OR down>ack_down) ORDER BY user_id LIMIT 500""",
                 (epoch["epoch"],),
             ).fetchall()
-            return epoch["epoch"], [dict(r) for r in rows]
+            return epoch["epoch"], [
+                {k: v for k, v in dict(r).items() if v is not None} for r in rows
+            ]
 
     def acknowledge(self, epoch, samples):
         with self.connect() as db:

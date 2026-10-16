@@ -10,16 +10,21 @@ const esc = (s) =>
   );
 const number = (n) => new Intl.NumberFormat("fa-IR").format(n);
 const ICONS = {
-  overview: '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
+  overview:
+    '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
   users: '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
-  nodes: '<rect x="3" y="4" width="18" height="6" rx="2"/><rect x="3" y="14" width="18" height="6" rx="2"/><path d="M7 7h.01M7 17h.01"/>',
+  nodes:
+    '<rect x="3" y="4" width="18" height="6" rx="2"/><rect x="3" y="14" width="18" height="6" rx="2"/><path d="M7 7h.01M7 17h.01"/>',
   inbounds: '<path d="M4 8h13l-3-3M20 16H7l3 3"/>',
-  events: '<path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6h.01M4 12h.01M4 18h.01"/>',
-  settings: '<path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/>',
+  events:
+    '<path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6h.01M4 12h.01M4 18h.01"/>',
+  settings:
+    '<path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/>',
   plus: '<path d="M12 5v14M5 12h14"/>',
   refresh: '<path d="M20 12a8 8 0 1 1-2.3-5.7"/><path d="M20 4v5h-5"/>',
   theme: '<path d="M20.5 14.5A8.5 8.5 0 1 1 9.5 3.5a7 7 0 0 0 11 11z"/>',
-  logout: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5M21 12H9"/>',
+  logout:
+    '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5M21 12H9"/>',
   close: '<path d="M6 6l12 12M18 6L6 18"/>',
   download: '<path d="M12 3v12M7 10l5 5 5-5M5 21h14"/>',
   chart: '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',
@@ -61,6 +66,10 @@ let account,
   timer,
   toastTimer,
   loading = false;
+let bootstrapToken = location.hash.startsWith("#setup=")
+  ? location.hash.slice(7)
+  : "";
+if (bootstrapToken) history.replaceState(null, "", location.pathname);
 document.documentElement.dataset.theme =
   localStorage.getItem("donino-theme") || "dark";
 
@@ -97,6 +106,8 @@ function showLogin() {
   account = null;
   $("#app-view").hidden = true;
   $("#login-view").hidden = false;
+  $("#login-form").hidden = Boolean(bootstrapToken);
+  $("#bootstrap-form").hidden = !bootstrapToken;
 }
 function writable() {
   return account && account.role !== "viewer";
@@ -139,7 +150,7 @@ function usersTable(users, compact = false) {
       "با ساخت اولین کاربر، مدیریت دسترسی را شروع کنید.",
       "users",
     );
-  return `<div class="table-scroll"><table><thead><tr><th>نام کاربر</th><th>وضعیت</th><th>مصرف / سهمیه</th><th>تاریخ انقضا</th>${!compact && writable() ? "<th>عملیات</th>" : ""}</tr></thead><tbody>${users.map((u) => `<tr><td><b>${esc(u.name)}</b><span class="subline">${esc(u.id.slice(0, 8))}</span></td><td>${badge(u.status)}</td><td><span class="mono">${bytes(u.used)} / ${u.quota ? bytes(u.quota) : "نامحدود"}</span></td><td>${date(u.expires)}</td>${!compact && writable() ? `<td class="actions"><button data-action="share" data-id="${u.id}">اشتراک</button><button data-action="edit-user" data-id="${u.id}">ویرایش</button><button data-action="delete-user" data-id="${u.id}" class="danger">حذف</button></td>` : ""}</tr>`).join("")}</tbody></table></div>`;
+  return `<div class="table-scroll"><table><thead><tr><th>نام کاربر</th><th>وضعیت</th><th>مصرف / سهمیه</th><th>تاریخ انقضا</th>${!compact && writable() ? "<th>عملیات</th>" : ""}</tr></thead><tbody>${users.map((u) => `<tr><td><b>${esc(u.name)}</b><span class="subline">${esc(u.id.slice(0, 8))}</span></td><td>${badge(u.status)}</td><td><span class="mono">${bytes(u.used)} / ${u.quota ? bytes(u.quota) : "نامحدود"}</span></td><td>${date(u.expires)}</td>${!compact && writable() ? `<td class="actions"><button data-action="share" data-id="${u.id}">اشتراک</button><button data-action="edit-user" data-id="${u.id}">ویرایش</button><button data-action="user-nodes" data-id="${u.id}">نودها</button><button data-action="user-periods" data-id="${u.id}">دوره‌ها</button><button data-action="delete-user" data-id="${u.id}" class="danger">حذف</button></td>` : ""}</tr>`).join("")}</tbody></table></div>`;
 }
 function renderOverview() {
   const s = data.overview;
@@ -198,7 +209,16 @@ function renderUsers() {
       "دسترسی، حجم مصرفی و زمان اعتبار کاربران را مدیریت کن.",
       writable() ? addButton("user", "کاربر جدید") : "",
     ) +
-    `<section class="card table-card"><div class="table-toolbar"><h2 id="users-count">${number(usersView.total)} کاربر</h2><div class="filters"><input id="search-users" class="search" type="search" value="${esc(usersView.q)}" placeholder="جست‌وجوی کاربر…" aria-label="جست‌وجوی کاربر"><select id="filter-state" aria-label="فیلتر وضعیت"><option value="">همه</option>${Object.entries(states).map(([k, v]) => `<option value="${k}" ${usersView.state === k ? "selected" : ""}>${v}</option>`).join("")}</select></div></div><div id="users-table">${usersTable(usersView.rows)}</div><div id="users-pager">${pagerHtml()}</div></section>`
+    `<section class="card table-card"><div class="table-toolbar"><h2 id="users-count">${number(usersView.total)} کاربر</h2><div class="filters"><input id="search-users" class="search" type="search" value="${esc(usersView.q)}" placeholder="جست‌وجوی کاربر…" aria-label="جست‌وجوی کاربر"><select id="filter-state" aria-label="فیلتر وضعیت"><option value="">همه</option>${Object.entries(
+      states,
+    )
+      .map(
+        ([k, v]) =>
+          `<option value="${k}" ${usersView.state === k ? "selected" : ""}>${v}</option>`,
+      )
+      .join(
+        "",
+      )}</select></div></div><div id="users-table">${usersTable(usersView.rows)}</div><div id="users-pager">${pagerHtml()}</div></section>`
   );
 }
 function renderNodes() {
@@ -224,7 +244,7 @@ function renderInbounds() {
 function renderSettings() {
   return (
     heading("تنظیمات و نگهداری", "همه‌چیز برای مدیریت یک شبکهٔ مستقل.") +
-    `<div class="settings-grid"><article class="card"><h2>پشتیبان‌گیری</h2><p>یک نسخهٔ کامل از پایگاه داده، تنظیمات و حساب‌ها دریافت کن. فایل پشتیبان حاوی اطلاعات محرمانه است؛ آن را در فضای امن نگه دار.</p>${owner() ? `<a class="primary" href="/api/backup" download>${icon("download")}دریافت نسخهٔ پشتیبان</a>` : "<p>دریافت پشتیبان فقط برای مالک شبکه فعال است.</p>"}</article><article class="card"><h2>ظاهر پنل</h2><p>پوستهٔ روشن یا تیره را انتخاب کن. انتخاب روی همین دستگاه ذخیره می‌شود.</p><button class="secondary" data-action="theme">${icon("theme")}تغییر حالت نمایش</button></article><article class="card"><h2>حساب مدیریت</h2><p>نام کاربری: ${esc(account.username)}<br>سطح دسترسی: ${roles[account.role]}<br>برای ساخت مدیر یا تغییر رمز، از دستور <span class="mono">python -m app.cli admin USERNAME</span> روی سرور استفاده کن.</p></article><article class="card"><h2>درباره‌ی دونینو <span class="muted">۰.۲.۰</span></h2><p>نسخهٔ اولیهٔ مستقل، با رابط فارسی و مدیریت چند نود. امکانات در حال توسعه‌اند. راه‌اندازی واقعی به سرور نود، Xray و دامنهٔ مناسب نیاز دارد.</p><a class="subtle-link" href="https://github.com/danialrad04-sketch/donino-panel" target="_blank" rel="noopener">مستندات و کد منبع</a></article></div><section id="account-security" class="settings-grid"></section>`
+    `<div class="settings-grid"><article class="card"><h2>پشتیبان‌گیری</h2><p>نسخهٔ پایگاه داده و حساب‌ها را دریافت کن. این فایل محرمانه است. برای بازیابی ورود دومرحله‌ای، کلید مستقل سرور نیز لازم است؛ پشتیبان کامل رمزگذاری‌شده در راهنمای نگهداری توضیح داده شده است.</p>${owner() ? `<a class="primary" href="/api/backup" download>${icon("download")}دریافت نسخهٔ پایگاه داده</a>` : "<p>دریافت پشتیبان فقط برای مالک شبکه فعال است.</p>"}</article><article class="card"><h2>ظاهر پنل</h2><p>پوستهٔ روشن یا تیره را انتخاب کن. انتخاب روی همین دستگاه ذخیره می‌شود.</p><button class="secondary" data-action="theme">${icon("theme")}تغییر حالت نمایش</button></article><article class="card"><h2>حساب مدیریت</h2><p>نام کاربری: ${esc(account.username)}<br>سطح دسترسی: ${roles[account.role]}<br>رمز، ورود دومرحله‌ای، نشست‌ها و توکن‌ها را از بخش امنیت حساب مدیریت کن. مالک می‌تواند مدیرهای دیگر را نیز همین‌جا مدیریت کند.</p></article><article class="card"><h2>Donino Panel <span class="mono">1.0.0-alpha.3</span></h2><p>نسخهٔ اولیهٔ مستقل، با رابط فارسی و مدیریت چند نود. امکانات در حال توسعه‌اند. راه‌اندازی واقعی به سرور نود، Xray و دامنهٔ مناسب نیاز دارد.</p><a class="subtle-link" href="https://github.com/danialrad04-sketch/donino-panel" target="_blank" rel="noopener">مستندات و کد منبع</a></article></div><section id="account-security" class="settings-grid"></section>`
   );
 }
 function render() {
@@ -263,6 +283,34 @@ function render() {
     $("#main").innerHTML = (views[page] || renderOverview)();
     if (page === "settings") loadSecurity();
     if (page === "users") loadUsersPage();
+    if (page === "nodes" && owner()) {
+      $("#main").insertAdjacentHTML(
+        "beforeend",
+        '<section class="card" id="deployment-status">در حال دریافت وضعیت تنظیمات…</section>',
+      );
+      api("/deployments")
+        .then((jobs) => {
+          if (page !== "nodes" || !$("#deployment-status")) return;
+          const labels = {
+            pending: "در انتظار اعمال",
+            applied: "اعمال شد",
+            failed: "ناموفق؛ در انتظار تلاش مجدد",
+            superseded: "با تنظیمات تازه جایگزین شد",
+          };
+          $("#deployment-status").innerHTML =
+            "<h2>اعمال تنظیمات نودها</h2>" +
+            (jobs.length
+              ? `<div class="table-scroll"><table><thead><tr><th>نود</th><th>وضعیت</th><th>زمان</th></tr></thead><tbody>${jobs
+                  .slice(0, 10)
+                  .map(
+                    (j) =>
+                      `<tr><td>${esc(data.nodes.find((n) => n.id === j.node_id)?.name || j.node_id.slice(0, 8))}</td><td>${esc(labels[j.state])}</td><td>${new Date(j.updated * 1000).toLocaleString("fa-IR")}</td></tr>`,
+                  )
+                  .join("")}</tbody></table></div>`
+              : '<p class="muted">پس از اولین همگام‌سازی نود، نتیجهٔ اعمال تنظیمات نمایش داده می‌شود.</p>');
+        })
+        .catch((e) => toast(e.message, true));
+    }
   }
 }
 async function refresh(redraw = true) {
@@ -508,7 +556,10 @@ async function loadAdmins(box) {
         `<div class="compact-actions"><button type="button" class="primary" data-action="admin-create">مدیر جدید</button></div></article>`,
     );
   } catch (error) {
-    box.insertAdjacentHTML("beforeend", `<article class="card"><p class="error">${esc(error.message)}</p></article>`);
+    box.insertAdjacentHTML(
+      "beforeend",
+      `<article class="card"><p class="error">${esc(error.message)}</p></article>`,
+    );
   }
 }
 async function loadSecurity() {
@@ -542,6 +593,35 @@ async function loadSecurity() {
 }
 async function handleAction(action, id, element) {
   const user = data.users.find((u) => u.id === id);
+  if (action === "user-periods") {
+    const periods = await api(`/users/${id}/periods`);
+    return modal(
+      "تاریخچهٔ دوره‌های مصرف",
+      `<div class="table-scroll"><table><thead><tr><th>دوره</th><th>شروع</th><th>پایان</th><th>ارسال</th><th>دریافت</th></tr></thead><tbody>${periods.map((p) => `<tr><td>${number(p.period_no + 1)}</td><td>${date(p.started)}</td><td>${p.ended ? date(p.ended) : "جاری"}</td><td>${bytes(p.uploaded)}</td><td>${bytes(p.downloaded)}</td></tr>`).join("")}</tbody></table></div>`,
+    );
+  }
+  if (action === "user-nodes") {
+    const [assignment, nodes] = await Promise.all([
+      api(`/users/${id}/nodes`),
+      api("/nodes"),
+    ]);
+    return form(
+      "نودهای مجاز کاربر",
+      `<label class="full">دسترسی<select name="mode"><option value="all" ${assignment.mode === "all" ? "selected" : ""}>تمام نودها</option><option value="selected" ${assignment.mode === "selected" ? "selected" : ""}>فقط نودهای انتخاب‌شده</option></select></label><p class="note full">در حالت انتخابی، انتخاب نکردن هیچ نودی دسترسی اتصال را می‌بندد. تغییر پس از همگام‌سازی نود اعمال می‌شود.</p>${nodes.map((n) => `<label class="full"><input type="checkbox" name="node_${esc(n.id)}" ${assignment.node_ids.includes(n.id) ? "checked" : ""}> ${esc(n.name)}</label>`).join("")}`,
+      async (f) => {
+        await api(`/users/${id}/nodes`, {
+          method: "PUT",
+          body: JSON.stringify({
+            mode: f.mode,
+            node_ids: Object.keys(f)
+              .filter((k) => k.startsWith("node_"))
+              .map((k) => k.slice(5)),
+          }),
+        });
+        await saved();
+      },
+    );
+  }
   if (action === "add-user") return editUser();
   if (action === "edit-user") return editUser(user);
   if (action === "close-modal") return $("#modal").close();
@@ -648,25 +728,38 @@ async function handleAction(action, id, element) {
       () => api(`/admins/${encodeURIComponent(id)}`, { method: "DELETE" }),
     );
   if (action === "mfa-setup") {
-    const setup = await api("/account/mfa/setup", { method: "POST" });
     return form(
-      "فعال‌سازی ورود دو مرحله‌ای",
-      `<p class="note full">کلید زیر را در برنامهٔ احراز هویت (مثل Google Authenticator یا Aegis) به‌صورت دستی وارد کنید.</p><label class="full">کلید محرمانه<textarea readonly dir="ltr">${esc(setup.secret)}</textarea></label>` +
-        input("کد ۶ رقمی برنامه", "code", {
-          type: "text",
-          full: true,
-          extra: 'inputmode="numeric" autocomplete="one-time-code" dir="ltr" maxlength="6"',
-        }),
-      async (f) => {
-        const result = await api("/account/mfa/enable", {
+      "تأیید رمز عبور",
+      input("رمز عبور", "password", {
+        type: "password",
+        extra: 'autocomplete="current-password" dir="ltr"',
+      }),
+      async (credentials) => {
+        const setup = await api("/account/mfa/setup", {
           method: "POST",
-          body: JSON.stringify({ code: f.code }),
+          body: JSON.stringify(credentials),
         });
-        modal(
-          "رمزهای بازیابی",
-          `<p class="note">این رمزها فقط همین یک بار نشان داده می‌شوند. هر کدام یک‌بار مصرف است و اگر دستگاه احراز هویت را از دست دادید، به‌جای کد ۶ رقمی وارد می‌شود.</p><label class="full">رمزهای بازیابی<textarea id="secret-output" readonly dir="ltr" rows="10">${esc(result.recovery_codes.join("\n"))}</textarea></label><div class="form-actions"><button type="button" class="primary" data-action="copy-secret">کپی رمزها</button></div>`,
+        return form(
+          "فعال‌سازی ورود دو مرحله‌ای",
+          `<p class="note full">کلید زیر را در برنامهٔ احراز هویت (مثل Google Authenticator یا Aegis) به‌صورت دستی وارد کنید.</p><label class="full">کلید محرمانه<textarea readonly dir="ltr">${esc(setup.secret)}</textarea></label>` +
+            input("کد ۶ رقمی برنامه", "code", {
+              type: "text",
+              full: true,
+              extra:
+                'inputmode="numeric" autocomplete="one-time-code" dir="ltr" maxlength="6"',
+            }),
+          async (f) => {
+            const result = await api("/account/mfa/enable", {
+              method: "POST",
+              body: JSON.stringify({ code: f.code }),
+            });
+            modal(
+              "رمزهای بازیابی",
+              `<p class="note">این رمزها فقط همین یک بار نشان داده می‌شوند. هر کدام یک‌بار مصرف است و اگر دستگاه احراز هویت را از دست دادید، به‌جای کد ۶ رقمی وارد می‌شود.</p><label class="full">رمزهای بازیابی<textarea id="secret-output" readonly dir="ltr" rows="10">${esc(result.recovery_codes.join("\n"))}</textarea></label><div class="form-actions"><button type="button" class="primary" data-action="copy-secret">کپی رمزها</button></div>`,
+            );
+            await loadSecurity();
+          },
         );
-        await loadSecurity();
       },
     );
   }
@@ -777,7 +870,9 @@ async function handleAction(action, id, element) {
   }
   if (action === "enable-device" || action === "disable-device") {
     const uid = element.dataset.user;
-    const current = (await api(`/users/${uid}/devices`)).find((d) => d.id === id);
+    const current = (await api(`/users/${uid}/devices`)).find(
+      (d) => d.id === id,
+    );
     await api(`/devices/${id}`, {
       method: "PUT",
       body: JSON.stringify({
@@ -844,8 +939,8 @@ async function handleAction(action, id, element) {
 document.addEventListener("click", (e) => {
   const target = e.target.closest("[data-action]");
   if (target)
-    handleAction(target.dataset.action, target.dataset.id, target).catch((error) =>
-      toast(error.message, true),
+    handleAction(target.dataset.action, target.dataset.id, target).catch(
+      (error) => toast(error.message, true),
     );
 });
 document.addEventListener("input", (e) => {
@@ -897,6 +992,44 @@ $("#login-form").addEventListener("submit", async (e) => {
     button.disabled = false;
   }
 });
+$("#bootstrap-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const fields = Object.fromEntries(new FormData(event.target));
+  const button = event.target.querySelector("button");
+  $("#bootstrap-error").textContent = "";
+  if (fields.owner_password !== fields.confirm) {
+    $("#bootstrap-error").textContent = "رمز و تکرار آن یکسان نیستند.";
+    return;
+  }
+  button.disabled = true;
+  try {
+    await api("/bootstrap", {
+      method: "POST",
+      body: JSON.stringify({
+        token: bootstrapToken,
+        username: fields.owner_username,
+        password: fields.owner_password,
+      }),
+    });
+    bootstrapToken = "";
+    event.target.reset();
+    showLogin();
+    const account = await api("/login", {
+      method: "POST",
+      body: JSON.stringify({
+        username: fields.owner_username,
+        password: fields.owner_password,
+      }),
+    });
+    await enter(account);
+  } catch (error) {
+    $("#bootstrap-error").textContent = error.message;
+    toast(error.message, true);
+  } finally {
+    button.disabled = false;
+  }
+});
+
 api("/me")
   .then(enter)
   .catch(() => showLogin());

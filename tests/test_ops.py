@@ -8,7 +8,7 @@ from unittest.mock import patch
 
 from support import configure, postgres_url, sqlite_only
 from app import ops
-from app.db import initialize, database, hash_password
+from app.db import initialize, database, hash_password, SCHEMA_VERSION
 
 
 class OpsTest(unittest.TestCase):
@@ -16,13 +16,21 @@ class OpsTest(unittest.TestCase):
         self.tmp = tempfile.TemporaryDirectory()
         self.root = Path(self.tmp.name)
         self.path = self.root / "donino.db"
-        self.env = patch.dict(os.environ, {"DONINO_PUBLIC_URL": "https://panel.example.com"})
+        self.env = patch.dict(
+            os.environ, {"DONINO_PUBLIC_URL": "https://panel.example.com"}
+        )
         self.env.start()
         configure(self.tmp.name, "donino.db")
         initialize()
         with database() as db:
-            db.execute("INSERT INTO admins VALUES(?,?,?)", ("owner", hash_password("long-test-password"), "owner"))
-            db.execute("INSERT INTO users(id,credential,name,token,created) VALUES(?,?,?,?,?)", ("u1", "c1", "alice", "t1", 1))
+            db.execute(
+                "INSERT INTO admins VALUES(?,?,?)",
+                ("owner", hash_password("long-test-password"), "owner"),
+            )
+            db.execute(
+                "INSERT INTO users(id,credential,name,token,created) VALUES(?,?,?,?,?)",
+                ("u1", "c1", "alice", "t1", 1),
+            )
         if not postgres_url():
             os.chmod(self.path, 0o600)
 
@@ -63,7 +71,7 @@ class OpsTest(unittest.TestCase):
         dest = self.root / "b.db"
         manifest = ops.backup(dest)
         self.assertEqual(manifest["sha256"], ops._sha256(dest))
-        self.assertEqual(manifest["schema_version"], 4)
+        self.assertEqual(manifest["schema_version"], SCHEMA_VERSION)
         stored = json.loads((self.root / "b.db.manifest.json").read_text())
         self.assertEqual(stored, manifest)
         self.assertEqual(oct(os.stat(dest).st_mode & 0o777), "0o600")
@@ -107,16 +115,58 @@ class OpsTest(unittest.TestCase):
         result = ops.restore(dest, replace=True)
         self.assertTrue(Path(result["safety_copy"]).exists())
         with database() as db:
-            self.assertEqual(db.execute("SELECT name FROM users").fetchone()[0], "alice")
+            self.assertEqual(
+                db.execute("SELECT name FROM users").fetchone()[0], "alice"
+            )
         if not postgres_url():
             with sqlite3.connect(result["safety_copy"]) as db:
-                self.assertEqual(db.execute("SELECT name FROM users").fetchone()[0], "changed-after-backup")
+                self.assertEqual(
+                    db.execute("SELECT name FROM users").fetchone()[0],
+                    "changed-after-backup",
+                )
 
     def test_restore_refuses_existing_database_without_replace(self):
         dest = self.root / "b.db"
         ops.backup(dest)
         with self.assertRaises(FileExistsError):
             ops.restore(dest)
+
+    @unittest.skipUnless(
+        postgres_url(), "Requires disposable PostgreSQL with event-trigger permission"
+    )
+    def test_postgres_restore_failure_rolls_back_prior_ddl_and_data(self):
+        dest = self.root / "before.dump"
+        ops.backup(dest)
+        with database() as db:
+            db.execute("UPDATE users SET name='must-survive-failed-restore'")
+            db.execute("""CREATE FUNCTION public.donino_test_block_restore() RETURNS event_trigger
+                LANGUAGE plpgsql AS $$ DECLARE item record; BEGIN
+                FOR item IN SELECT * FROM pg_event_trigger_dropped_objects() LOOP
+                  IF item.object_type='table' AND item.object_identity='public.users' THEN
+                    RAISE EXCEPTION 'deliberate restore failure';
+                  END IF;
+                END LOOP; END $$""")
+            db.execute(
+                "CREATE EVENT TRIGGER donino_test_restore_failure ON sql_drop EXECUTE FUNCTION public.donino_test_block_restore()"
+            )
+        try:
+            with self.assertRaisesRegex(RuntimeError, "transaction rolled back"):
+                ops.restore(dest, replace=True)
+            with database() as db:
+                self.assertEqual(
+                    db.execute("SELECT name FROM users").fetchone()[0],
+                    "must-survive-failed-restore",
+                )
+                self.assertEqual(
+                    db.execute("SELECT COUNT(*) FROM admins").fetchone()[0], 1
+                )
+                self.assertTrue(
+                    db.execute("SELECT COUNT(*) FROM devices").fetchone() is not None
+                )
+        finally:
+            with database() as db:
+                db.execute("DROP EVENT TRIGGER donino_test_restore_failure")
+                db.execute("DROP FUNCTION public.donino_test_block_restore()")
 
 
 if __name__ == "__main__":

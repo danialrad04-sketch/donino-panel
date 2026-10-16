@@ -11,6 +11,43 @@
   </head>
   <body>
     <section id="login-view" class="login-view" hidden>
+      <form id="bootstrap-form" class="login-form" hidden>
+        <img src="/static/logo.svg" alt="" width="44" height="44" />
+        <h2>حساب مالک شبکه را بساز</h2>
+        <p class="muted">
+          این لینک یک‌بارمصرف است و پس از ساخت اولین مدیر بسته می‌شود.
+        </p>
+        <label
+          >نام کاربری<input
+            name="owner_username"
+            autocomplete="username"
+            required
+            maxlength="64"
+            dir="ltr"
+        /></label>
+        <label
+          >رمز جدید<input
+            name="owner_password"
+            type="password"
+            autocomplete="new-password"
+            required
+            minlength="12"
+            maxlength="256"
+            dir="ltr"
+        /></label>
+        <label
+          >تکرار رمز<input
+            name="confirm"
+            type="password"
+            autocomplete="new-password"
+            required
+            minlength="12"
+            maxlength="256"
+            dir="ltr"
+        /></label>
+        <p id="bootstrap-error" role="alert" class="error"></p>
+        <button class="primary" type="submit">ساخت حساب و ورود</button>
+      </form>
       <form id="login-form" class="login-form">
         <img src="/static/logo.svg" alt="" width="44" height="44" />
         <h2>ورود به دونینو</h2>
@@ -41,7 +78,7 @@
         /></label>
         <p id="login-error" role="alert" class="error"></p>
         <button class="primary" type="submit">ورود</button>
-        <small class="muted">نسخهٔ ۰.۲.۰</small>
+        <small class="muted">پیش‌نمایش ۱.۰ آلفا ۳</small>
       </form>
     </section>
     <div id="app-view" class="shell" hidden>
@@ -51,16 +88,28 @@
           <span>دونینو<small>پنل مدیریت شبکه</small></span>
         </a>
         <nav aria-label="منوی اصلی">
-          <a href="#overview" data-page="overview"><span data-icon="overview"></span>نمای کلی</a>
-          <a href="#users" data-page="users"><span data-icon="users"></span>کاربران</a>
-          <a href="#nodes" data-page="nodes"><span data-icon="nodes"></span>نودها</a>
-          <a href="#inbounds" data-page="inbounds"><span data-icon="inbounds"></span>اتصال‌ها</a>
-          <a href="#audit" data-page="audit" data-owner><span data-icon="events"></span>رویدادها</a>
-          <a href="#settings" data-page="settings"><span data-icon="settings"></span>تنظیمات</a>
+          <a href="#overview" data-page="overview"
+            ><span data-icon="overview"></span>نمای کلی</a
+          >
+          <a href="#users" data-page="users"
+            ><span data-icon="users"></span>کاربران</a
+          >
+          <a href="#nodes" data-page="nodes"
+            ><span data-icon="nodes"></span>نودها</a
+          >
+          <a href="#inbounds" data-page="inbounds"
+            ><span data-icon="inbounds"></span>اتصال‌ها</a
+          >
+          <a href="#audit" data-page="audit" data-owner
+            ><span data-icon="events"></span>رویدادها</a
+          >
+          <a href="#settings" data-page="settings"
+            ><span data-icon="settings"></span>تنظیمات</a
+          >
         </nav>
         <div class="sidebar-bottom">
           <div class="version-card">
-            <b>Donino</b><small>نسخهٔ ۰.۲.۰</small>
+            <b>Donino</b><small>پیش‌نمایش ۱.۰ آلفا ۳</small>
           </div>
           <div class="account">
             <span class="avatar" id="account-initial">D</span>
@@ -77,9 +126,31 @@
             <span id="sync-status" class="muted">در حال دریافت…</span>
           </div>
           <div class="top-actions">
-            <button id="refresh" class="icon-button" aria-label="به‌روزرسانی" title="به‌روزرسانی"><span data-icon="refresh"></span></button>
-            <button id="theme" class="icon-button" aria-label="تغییر حالت روشن و تیره" title="تغییر حالت نمایش"><span data-icon="theme"></span></button>
-            <button id="logout" class="icon-button" data-action="logout" aria-label="خروج از حساب" title="خروج"><span data-icon="logout"></span></button>
+            <button
+              id="refresh"
+              class="icon-button"
+              aria-label="به‌روزرسانی"
+              title="به‌روزرسانی"
+            >
+              <span data-icon="refresh"></span>
+            </button>
+            <button
+              id="theme"
+              class="icon-button"
+              aria-label="تغییر حالت روشن و تیره"
+              title="تغییر حالت نمایش"
+            >
+              <span data-icon="theme"></span>
+            </button>
+            <button
+              id="logout"
+              class="icon-button"
+              data-action="logout"
+              aria-label="خروج از حساب"
+              title="خروج"
+            >
+              <span data-icon="logout"></span>
+            </button>
           </div>
         </header>
         <main id="main" tabindex="-1"></main>
@@ -88,7 +159,9 @@
     <dialog id="modal">
       <div class="modal-heading">
         <h2 id="modal-title"></h2>
-        <button id="close-modal" class="icon-button" aria-label="بستن"><span data-icon="close"></span></button>
+        <button id="close-modal" class="icon-button" aria-label="بستن">
+          <span data-icon="close"></span>
+        </button>
       </div>
       <div id="modal-body"></div>
     </dialog>

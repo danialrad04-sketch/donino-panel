@@ -1,9 +1,11 @@
 import argparse
 import getpass
+import json
 from pathlib import Path
 from .db import initialize, database, hash_password, audit, SCHEMA_VERSION
 from . import __version__
 from . import ops
+from .security import revoke_credentials
 
 
 def main():
@@ -11,6 +13,9 @@ def main():
     parser.add_argument("--version", action="version", version=__version__)
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("migrate", help="Back up and migrate an older supported database")
+    sub.add_parser(
+        "bootstrap-status", help="Report first-owner setup availability without secrets"
+    )
     create = sub.add_parser(
         "admin", help="Create/update an admin and invalidate their sessions"
     )
@@ -43,7 +48,9 @@ def main():
             result = ops.restore(args.source, replace=args.replace)
         except (FileNotFoundError, FileExistsError, ValueError, RuntimeError) as error:
             parser.exit(2, f"restore refused: {error}\n")
-        print(f"Restored schema {result['schema_version']} from {result['restored_from']}.")
+        print(
+            f"Restored schema {result['schema_version']} from {result['restored_from']}."
+        )
         if result["safety_copy"]:
             print(f"Previous database kept at {result['safety_copy']}.")
         return
@@ -52,9 +59,23 @@ def main():
             manifest = ops.backup(args.destination)
         except (FileExistsError, FileNotFoundError, RuntimeError) as error:
             parser.exit(2, f"backup refused: {error}\n")
-        print(f"Backup saved. sha256={manifest['sha256']} schema={manifest['schema_version']}")
+        print(
+            f"Backup saved. sha256={manifest['sha256']} schema={manifest['schema_version']}"
+        )
         return
     initialize()
+    if args.command == "bootstrap-status":
+        with database() as db:
+            print(
+                json.dumps(
+                    {
+                        "administrators": db.execute(
+                            "SELECT COUNT(*) FROM admins"
+                        ).fetchone()[0]
+                    }
+                )
+            )
+        return
     if args.command == "migrate":
         print(
             f"Database ready at schema {SCHEMA_VERSION}. Older databases were backed up before migration."
@@ -79,9 +100,9 @@ def main():
                 "INSERT INTO admins VALUES(?,?,?) ON CONFLICT(username) DO UPDATE SET password=excluded.password,role=excluded.role",
                 (args.username, hash_password(password), args.role),
             )
-            db.execute("DELETE FROM sessions WHERE username=?", (args.username,))
+            revoke_credentials(db, args.username)
             audit(db, "local-cli", "admin.upsert", args.username)
-        print("Admin saved; previous sessions revoked.")
+        print("Admin saved; previous sessions and API tokens revoked.")
     else:
         parser.error("unknown command")
 

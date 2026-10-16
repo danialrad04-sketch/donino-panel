@@ -1,5 +1,18 @@
 # Donino releases
 
+## 1.0.0-alpha.3 — continuation of merged main, 2026-10-16
+
+- Continue from PRs #2–#6 without adopting the incompatible database schema of the earlier `development/1.0` branch. Schema 6 preserves existing users, device credentials and subscriptions; that earlier schema is explicitly refused.
+- Encrypt MFA seeds using a separate private master key; migrate plaintext seeds, require password reauthentication for enrollment, persist security lockouts and revoke other sessions/API tokens on MFA transitions. Local CLI password resets now revoke API tokens too.
+- PostgreSQL restores use one transaction; private safety copies and SQLite foreign-key/schema checks are enforced. Restored admin sessions and API tokens are invalidated. Invalid database URLs cannot silently select SQLite.
+- Add verified native control-plane installation, local PostgreSQL provisioning, systemd/NGINX, HTTP-01 renewal, one-use first-owner setup, readiness, repair and data-preserving uninstall. Debian 12's Python 3.11 is supported. The earlier `app.installer` render scaffold remains available for compatibility.
+- Add authenticated streaming AES-256-GCM bundles including DB/config/TLS/MFA key, daily backup timer, verification before service interruption and empty-target recovery. Preserve the backup encryption key separately. DB-only downloads do not contain the MFA key.
+- Add usage-period history and generation-aware reports/journals. Late explicitly labeled reports stay in their old period; reset/rollover changes generation and restarts Xray before new counters are collected. Legacy unlabeled journals retain their previous attribution limitation.
+- Add per-user selected/all node assignments, filtered node configs and subscriptions, Persian assignment/history UI, a typed engine boundary and durable apply-config jobs with matching node/revision acknowledgements. Job list APIs omit secret config payloads.
+- Expand CI to Python 3.11/3.12, the full PostgreSQL suite, browser bootstrap/MFA/assignment flows and real native service/container acceptance on both target distributions.
+
+This is a development preview, not stable 1.0. Public ACME/VPS/ISP acceptance, mTLS enrollment, signed desired config, shared-quota budget leases, DNS products and additional VPN engines remain outstanding; see the implementation status.
+
 ## Unreleased — panel visual redesign
 
 - New neutral graphite design system for both themes: dark mode is no longer pure black, light mode uses a cool gray surface, and one muted teal is the only accent. Status colors are separate from the accent.

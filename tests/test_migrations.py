@@ -5,7 +5,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from support import configure, sqlite_only
+from support import sqlite_only
 from app.db import initialize, database, SCHEMA_VERSION
 
 
@@ -94,3 +94,20 @@ class MigrationTest(unittest.TestCase):
     def test_fresh_database_needs_no_migration_backup(self):
         initialize()
         self.assertEqual(list(self.path.parent.glob("*.pre-v2-*.db")), [])
+
+    def test_incompatible_development_schema_is_refused_without_changes(self):
+        with sqlite3.connect(self.path) as db:
+            db.execute("CREATE TABLE alembic_version(version_num TEXT PRIMARY KEY)")
+            db.execute("INSERT INTO alembic_version VALUES('0001_foundation')")
+        with self.assertRaisesRegex(RuntimeError, "explicit migration"):
+            initialize()
+        with sqlite3.connect(self.path) as db:
+            self.assertEqual(
+                db.execute("SELECT version_num FROM alembic_version").fetchone()[0],
+                "0001_foundation",
+            )
+            self.assertIsNone(
+                db.execute(
+                    "SELECT name FROM sqlite_master WHERE name='users'"
+                ).fetchone()
+            )

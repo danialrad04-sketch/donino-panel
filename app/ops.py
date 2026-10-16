@@ -19,12 +19,12 @@ from . import __version__
 from .db import (
     SCHEMA_VERSION,
     database,
-    database_url,
     db_path,
     is_postgres,
     pg_dump,
     schema_version,
     table_exists,
+    pg_client_connection,
 )
 
 
@@ -38,7 +38,9 @@ def _sha256(path):
 
 def _copy_database(source, destination):
     """Consistent copy through SQLite's online backup API."""
-    src = sqlite3.connect(source)
+    src = sqlite3.connect(Path(source).resolve().as_uri() + "?mode=ro", uri=True)
+    fd = os.open(destination, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    os.close(fd)
     dst = sqlite3.connect(destination)
     try:
         src.backup(dst)
@@ -60,7 +62,9 @@ def _integrity(path):
 def _tool(name):
     found = shutil.which(name)
     if not found:
-        raise RuntimeError(f"{name} is not installed; install the postgresql-client package")
+        raise RuntimeError(
+            f"{name} is not installed; install the postgresql-client package"
+        )
     return found
 
 
@@ -81,9 +85,17 @@ def _write_manifest(destination, version):
 
 def _report_schema(add, version):
     if version > SCHEMA_VERSION:
-        add("FAIL", "schema", f"database {version} is newer than this release {SCHEMA_VERSION}")
+        add(
+            "FAIL",
+            "schema",
+            f"database {version} is newer than this release {SCHEMA_VERSION}",
+        )
     elif version < SCHEMA_VERSION:
-        add("WARN", "schema", f"database {version}; run `migrate` (current {SCHEMA_VERSION})")
+        add(
+            "WARN",
+            "schema",
+            f"database {version}; run `migrate` (current {SCHEMA_VERSION})",
+        )
     else:
         add("OK", "schema", str(version))
 
@@ -99,7 +111,11 @@ def _report_counts(add, users, devices, nodes, owners):
 def _doctor_sqlite(add, path):
     mode = stat.S_IMODE(os.stat(path).st_mode)
     if mode & 0o077:
-        add("WARN", "database permissions", f"{oct(mode)} is readable by others; use 0600")
+        add(
+            "WARN",
+            "database permissions",
+            f"{oct(mode)} is readable by others; use 0600",
+        )
     else:
         add("OK", "database permissions", oct(mode))
     _report_schema(add, _schema_version(path))
@@ -109,7 +125,9 @@ def _doctor_sqlite(add, path):
         users = db.execute("SELECT COUNT(*) FROM users").fetchone()[0]
         devices = db.execute("SELECT COUNT(*) FROM devices").fetchone()[0]
         nodes = db.execute("SELECT COUNT(*) FROM nodes").fetchone()[0]
-        owners = db.execute("SELECT COUNT(*) FROM admins WHERE role='owner'").fetchone()[0]
+        owners = db.execute(
+            "SELECT COUNT(*) FROM admins WHERE role='owner'"
+        ).fetchone()[0]
     _report_counts(add, users, devices, nodes, owners)
 
 
@@ -123,7 +141,9 @@ def _doctor_postgres(add):
             users = db.execute("SELECT COUNT(*) FROM users").fetchone()[0]
             devices = db.execute("SELECT COUNT(*) FROM devices").fetchone()[0]
             nodes = db.execute("SELECT COUNT(*) FROM nodes").fetchone()[0]
-            owners = db.execute("SELECT COUNT(*) FROM admins WHERE role='owner'").fetchone()[0]
+            owners = db.execute(
+                "SELECT COUNT(*) FROM admins WHERE role='owner'"
+            ).fetchone()[0]
     except Exception as error:  # psycopg errors; never echo the connection string
         add("FAIL", "database", f"PostgreSQL unreachable: {type(error).__name__}")
         return
@@ -133,7 +153,11 @@ def _doctor_postgres(add):
     if shutil.which("pg_dump") and shutil.which("pg_restore"):
         add("OK", "pg tools", "pg_dump and pg_restore found")
     else:
-        add("FAIL", "pg tools", "install postgresql-client; backups and restores need it")
+        add(
+            "FAIL",
+            "pg tools",
+            "install postgresql-client; backups and restores need it",
+        )
 
 
 def doctor():
@@ -154,13 +178,25 @@ def doctor():
 
     public = os.environ.get("DONINO_PUBLIC_URL", "")
     if not public:
-        add("WARN", "DONINO_PUBLIC_URL", "not set; subscription links use the request host")
+        add(
+            "WARN",
+            "DONINO_PUBLIC_URL",
+            "not set; subscription links use the request host",
+        )
     elif not public.startswith("https://"):
-        add("WARN", "DONINO_PUBLIC_URL", "not HTTPS; clients and browsers should use HTTPS")
+        add(
+            "WARN",
+            "DONINO_PUBLIC_URL",
+            "not HTTPS; clients and browsers should use HTTPS",
+        )
     else:
         add("OK", "DONINO_PUBLIC_URL", "https")
     if os.environ.get("DONINO_SECURE_COOKIE", "true").lower() == "false":
-        add("WARN", "DONINO_SECURE_COOKIE", "false; only acceptable for local HTTP testing")
+        add(
+            "WARN",
+            "DONINO_SECURE_COOKIE",
+            "false; only acceptable for local HTTP testing",
+        )
     else:
         add("OK", "DONINO_SECURE_COOKIE", "secure")
 
@@ -178,13 +214,13 @@ def backup(destination):
     if is_postgres():
         with database() as db:
             version = schema_version(db)
+        fd = os.open(destination, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        os.close(fd)
         pg_dump(destination)
         return _write_manifest(destination, version)
     source = db_path()
     if not source.exists():
         raise FileNotFoundError(f"database not found at {source}")
-    fd = os.open(destination, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-    os.close(fd)
     _copy_database(source, destination)
     return _write_manifest(destination, _schema_version(destination))
 
@@ -208,37 +244,55 @@ def restore(source, replace=False):
         return _restore_postgres(source, manifest, replace)
 
     version = _schema_version(source)
+    if version != int(manifest["schema_version"]):
+        raise ValueError("manifest schema does not match the backup")
     if version > SCHEMA_VERSION:
-        raise ValueError(f"backup schema {version} is newer than this release {SCHEMA_VERSION}")
+        raise ValueError(
+            f"backup schema {version} is newer than this release {SCHEMA_VERSION}"
+        )
     if _integrity(source) != "ok":
         raise ValueError("integrity_check failed on the backup")
+    with sqlite3.connect(source.resolve().as_uri() + "?mode=ro", uri=True) as db:
+        if db.execute("PRAGMA foreign_key_check").fetchone():
+            raise ValueError("foreign_key_check failed on the backup")
 
     target = db_path()
     safety = None
     if target.exists():
         if not replace:
             raise FileExistsError(f"{target} exists; pass replace=True to overwrite it")
-        safety = target.with_name(
-            f"{target.name}.pre-restore-{time.strftime('%Y%m%d%H%M%S')}.db"
-        )
+        safety = target.with_name(f"{target.name}.pre-restore-{time.time_ns()}.db")
         _copy_database(target, safety)
     target.parent.mkdir(parents=True, exist_ok=True)
     staging = target.with_name(target.name + ".restoring")
     if staging.exists():
         staging.unlink()
-    fd = os.open(staging, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-    os.close(fd)
     _copy_database(source, staging)
+    with sqlite3.connect(staging) as db:
+        db.execute("DELETE FROM sessions")
+        if db.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='api_tokens'"
+        ).fetchone():
+            db.execute("DELETE FROM api_tokens")
     os.replace(staging, target)
-    return {"restored_from": str(source), "schema_version": version, "safety_copy": str(safety) if safety else None}
+    return {
+        "restored_from": str(source),
+        "schema_version": version,
+        "safety_copy": str(safety) if safety else None,
+    }
 
 
 def _restore_postgres(source, manifest, replace):
     version = int(manifest["schema_version"])
     if version > SCHEMA_VERSION:
-        raise ValueError(f"backup schema {version} is newer than this release {SCHEMA_VERSION}")
+        raise ValueError(
+            f"backup schema {version} is newer than this release {SCHEMA_VERSION}"
+        )
     listing = subprocess.run(
-        [_tool("pg_restore"), "--list", str(source)], capture_output=True, text=True, timeout=300
+        [_tool("pg_restore"), "--list", str(source)],
+        capture_output=True,
+        text=True,
+        timeout=300,
     )
     if listing.returncode != 0:
         raise ValueError("backup is not a readable PostgreSQL dump")
@@ -248,20 +302,44 @@ def _restore_postgres(source, manifest, replace):
         populated = table_exists(db, "users")
     if populated:
         if not replace:
-            raise FileExistsError("the database already holds data; pass replace=True to overwrite it")
-        safety = db_path().parent / f"donino.pre-restore-{time.strftime('%Y%m%d%H%M%S')}.dump"
+            raise FileExistsError(
+                "the database already holds data; pass replace=True to overwrite it"
+            )
+        safety = db_path().parent / f"donino.pre-restore-{time.time_ns()}.dump"
+        safety.parent.mkdir(parents=True, exist_ok=True)
+        fd = os.open(safety, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        os.close(fd)
         pg_dump(safety)
+    connection, environment = pg_client_connection()
     result = subprocess.run(
         [
-            _tool("pg_restore"), "--clean", "--if-exists", "--no-owner", "--no-privileges",
-            "--exit-on-error", "--dbname", database_url(), str(source),
+            _tool("pg_restore"),
+            "--clean",
+            "--if-exists",
+            "--no-owner",
+            "--no-privileges",
+            "--exit-on-error",
+            "--single-transaction",
+            "--dbname",
+            connection,
+            str(source),
         ],
+        env=environment,
         capture_output=True,
         text=True,
         timeout=900,
     )
     if result.returncode != 0:
-        detail = result.stderr.strip()[:500]
         hint = f"; previous database kept at {safety}" if safety else ""
-        raise RuntimeError(f"pg_restore failed{hint}: {detail}")
-    return {"restored_from": str(source), "schema_version": version, "safety_copy": str(safety) if safety else None}
+        raise RuntimeError(f"pg_restore failed; transaction rolled back{hint}")
+    with database() as db:
+        if schema_version(db) != version:
+            raise ValueError("restored schema differs from the backup manifest")
+        db.execute("DELETE FROM sessions")
+        if table_exists(db, "api_tokens"):
+            db.execute("DELETE FROM api_tokens")
+    return {
+        "restored_from": str(source),
+        "schema_version": version,
+        "safety_copy": str(safety) if safety else None,
+    }
