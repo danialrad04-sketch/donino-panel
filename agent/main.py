@@ -10,6 +10,7 @@ import signal
 import subprocess
 import time
 import uuid
+import threading
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -18,6 +19,9 @@ import httpx
 from app import __version__
 from .journal import UsageJournal
 from .live import user_additions
+from .identity import load_identity, panel_client, certificate_request, save_identity
+from app.node_identity import private_bytes, verify_desired
+from ops.common import atomic_write
 
 log = logging.getLogger("donino-node")
 
@@ -73,12 +77,19 @@ class NodeAgent:
             raise RuntimeError(
                 "Another Donino agent owns this state directory"
             ) from None
-        self.client = httpx.Client(
-            base_url=self.base,
-            timeout=12,
-            follow_redirects=False,
-            headers={"Authorization": "Bearer " + os.environ["DONINO_NODE_TOKEN"]},
+        self.identity = load_identity(self.directory, self.base)
+        self.client = panel_client(
+            self.base,
+            directory=self.directory,
+            identity=self.identity,
+            token=None if self.identity else os.environ["DONINO_NODE_TOKEN"],
         )
+        self.proc_lock = threading.RLock()
+        self.expiry_deadline = None
+        self.candidate_deadline = None
+        self.launch_deadline = None
+        self.watchdog_stop = threading.Event()
+        self.watchdog = None
         self.binary = os.environ.get("DONINO_XRAY", "/usr/local/bin/xray")
         self.journal = UsageJournal(self.directory / "usage.db")
         self.bound = False
@@ -95,19 +106,96 @@ class NodeAgent:
         self.failed_revision = ""
         self.job_id = ""
         self.retry_at = 0
+        self.renew_at = 0
+        if self.identity:
+            self.watchdog = threading.Thread(target=self.expiry_watchdog, daemon=True)
+            self.watchdog.start()
 
     def running(self):
-        return bool(self.proc and self.proc.poll() is None)
+        process = self.proc
+        return bool(process and process.poll() is None)
 
     def stop_core(self):
-        if self.running():
-            self.proc.terminate()
+        with self.proc_lock:
+            process, self.proc = self.proc, None
+        if process and process.poll() is None:
+            process.terminate()
             try:
-                self.proc.wait(timeout=10)
+                process.wait(timeout=10)
             except subprocess.TimeoutExpired:
-                self.proc.kill()
-                self.proc.wait()
-        self.proc = None
+                process.kill()
+                process.wait()
+
+    def expiry_watchdog(self):
+        while not self.watchdog_stop.wait(0.2):
+            if (
+                self.expiry_deadline is not None
+                and time.monotonic() >= self.expiry_deadline
+            ):
+                self.stop_core()
+
+    def validate_desired(self, desired):
+        if not self.identity:
+            return desired  # Legacy rollout remains explicit, until enrollment.
+        path = self.directory / "verification.json"
+        previous = json.loads(private_bytes(path)) if path.exists() else {}
+        if previous.get("key") != self.identity["config_verify_key"]:
+            previous = {}  # A newly authorized enrollment can pin a new signing root.
+        body = verify_desired(
+            desired,
+            self.identity["config_verify_key"],
+            self.identity["node_id"],
+            sequence=previous.get("sequence", 0),
+        )
+        if body["sequence"] == previous.get("sequence") and body[
+            "revision"
+        ] != previous.get("revision"):
+            raise ValueError(
+                "The same config sequence cannot identify different revisions"
+            )
+        atomic_write(
+            path,
+            json.dumps(
+                {
+                    "key": self.identity["config_verify_key"],
+                    "sequence": body["sequence"],
+                    "revision": body["revision"],
+                }
+            ),
+        )
+        self.candidate_deadline = time.monotonic() + min(
+            60, body["valid_until"] - time.time()
+        )
+        if body["revision"] == self.revision:
+            self.expiry_deadline = self.candidate_deadline
+        return desired
+
+    def renew_identity(self):
+        if (
+            not self.identity
+            or self.identity["expires"] > time.time() + 7 * 86400
+            or time.monotonic() < self.renew_at
+        ):
+            return
+        self.renew_at = time.monotonic() + 300
+        private, csr = certificate_request()
+        atomic_write(self.directory / "renewal-pending.key", private)
+        response = self.client.post("/api/agent/renew-certificate", json={"csr": csr})
+        response.raise_for_status()
+        identity = save_identity(
+            self.directory,
+            self.base,
+            self.identity["node_id"],
+            response.json(),
+            private,
+        )
+        replacement = panel_client(
+            self.base, directory=self.directory, identity=identity
+        )
+        previous, self.client = self.client, replacement
+        self.identity = identity
+        previous.close()
+        (self.directory / "renewal-pending.key").unlink(missing_ok=True)
 
     def snapshot(self):
         if self.running():
@@ -146,11 +234,17 @@ class NodeAgent:
         self.write_config(active, config)
         self.epoch = str(uuid.uuid4())
         self.usage = []
-        self.proc = subprocess.Popen(
-            [self.binary, "run", "-c", str(active)],
-            stdout=subprocess.DEVNULL,
-            stderr=None,
-        )
+        with self.proc_lock:
+            if self.identity and (
+                self.launch_deadline is None or time.monotonic() >= self.launch_deadline
+            ):
+                raise RuntimeError("Signed config execution window has expired")
+            self.expiry_deadline = self.launch_deadline
+            self.proc = subprocess.Popen(
+                [self.binary, "run", "-c", str(active)],
+                stdout=subprocess.DEVNULL,
+                stderr=None,
+            )
         time.sleep(0.5)
         if not self.running():
             raise RuntimeError("Xray exited on startup; inspect the node service log")
@@ -181,6 +275,7 @@ class NodeAgent:
         self.snapshot()
 
     def apply(self, desired):
+        previous_deadline = self.expiry_deadline
         config = desired["config"]
         periods = desired.get("periods", {})
         previous_periods = self.periods
@@ -223,6 +318,7 @@ class NodeAgent:
                 self.periods = dict(periods)
                 self.revision = desired["revision"]
                 self.apply_mode = "hot"
+                self.expiry_deadline = self.candidate_deadline
                 log.info("Applied live user update %s", self.revision[:12])
                 return
             except Exception:
@@ -233,11 +329,13 @@ class NodeAgent:
         previous, previous_revision = self.config, self.revision
         self.stop_core()
         try:
+            self.launch_deadline = self.candidate_deadline
             self.start_core(config)
         except Exception:
             self.stop_core()
             if previous:
                 try:
+                    self.launch_deadline = previous_deadline
                     self.start_core(previous)
                     self.config = previous
                     self.periods = previous_periods
@@ -263,7 +361,8 @@ class NodeAgent:
     def authenticate_identity(self):
         result = self.client.get("/api/agent/config")
         result.raise_for_status()
-        node_id = result.json().get("node_id")
+        desired = self.validate_desired(result.json())
+        node_id = desired.get("node_id")
         if not node_id:
             raise RuntimeError(
                 "Upgrade the panel to 0.2 before upgrading its node agent"
@@ -300,10 +399,11 @@ class NodeAgent:
         self.journal.prune(self.epoch)
 
     def tick(self):
+        self.renew_identity()
         self.report()
         response = self.client.get("/api/agent/config")
         response.raise_for_status()
-        desired = response.json()
+        desired = self.validate_desired(response.json())
         self.job_id = desired.get("job_id", "")
         if desired["revision"] != self.revision or not self.running():
             if (
@@ -323,6 +423,9 @@ class NodeAgent:
         self.last_contact = time.monotonic()
 
     def close(self):
+        self.watchdog_stop.set()
+        if self.watchdog:
+            self.watchdog.join(timeout=1)
         self.stop_core()
         if hasattr(self.client, "close"):
             self.client.close()

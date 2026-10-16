@@ -1,4 +1,4 @@
-# راهنمای نصب آزمایشی ۱.۰ alpha 3
+# راهنمای نصب آزمایشی ۱.۰ alpha 4
 
 این نصب‌کننده فعلاً **نقش کنترل‌پنل** را نصب می‌کند. نصب DNS relay/exit و موتورهای تازه همراه فازهای بعد تکمیل می‌شود. هدف OS: Debian 12 و Ubuntu 24.04 روی amd64 با systemd و Python 3.11+. آزمون نصب/بازیابی در کانتینرهای جدا با systemd انجام شده است؛ VM، VPS عمومی و صدور واقعی Let’s Encrypt هنوز شاهد پذیرش ندارند. برای production، این برچسب آزمایشی را با انتشار پایدار اشتباه نگیرید.
 
@@ -7,7 +7,7 @@
 روی سرور تمیز، A و در صورت استفاده AAAA دامنه را به IPهای واقعی همان سرور تنظیم و TCP/80 و TCP/443 را از فایروال میزبان/ارائه‌دهنده قابل دسترس کنید. سپس:
 
 ```bash
-git clone --branch development/continue-v1 https://github.com/danialrad04-sketch/donino-panel.git
+git clone --branch development/network-v1 https://github.com/danialrad04-sketch/donino-panel.git
 cd donino-panel
 sudo ./install.sh --domain panel.example.com
 ```
@@ -89,4 +89,6 @@ sudo ./install.sh uninstall
 
 فقط واحدها و تنظیمات ثبت‌شدهٔ خود Donino حذف می‌شوند؛ فایل با تغییر دستی بدون تطبیق حذف نمی‌شود. DB، account، کلید، نسخه‌های کد و backup نگه داشته می‌شوند. حذف کامل داده، توقف PostgreSQL عمومی میزبان یا پاک‌کردن فایروال بخشی از این دستور نیست.
 
-این شاخه بر schema نسخهٔ main (نسخهٔ ۶) ادامه یافته است. بازیابی bundle باید با همان schema و همان backend انجام شود؛ انتقال SQLite به PostgreSQL یا بازیابی bundle شاخهٔ قدیمی development/1.0 در این مسیر پشتیبانی نمی‌شود.
+این شاخه بر schema نسخهٔ main (نسخهٔ ۷) ادامه یافته است. بازیابی bundle باید با همان schema و همان backend انجام شود؛ انتقال SQLite به PostgreSQL یا بازیابی bundle شاخهٔ قدیمی development/1.0 در این مسیر پشتیبانی نمی‌شود.
+
+در آلفا ۴، CA مخصوص نود، کلید امضای تنظیمات و پراکسی mTLS نیز نصب می‌شوند؛ راهنمای [امنیت نود](NODE-SECURITY.fa.md) را برای ثبت عامل و مهاجرت بخوانید.

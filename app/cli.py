@@ -13,6 +13,7 @@ def main():
     parser.add_argument("--version", action="version", version=__version__)
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("migrate", help="Back up and migrate an older supported database")
+    sub.add_parser("pki-init", help="Initialize private node CA and config signing material")
     sub.add_parser(
         "bootstrap-status", help="Report first-owner setup availability without secrets"
     )
@@ -38,6 +39,12 @@ def main():
         help="Overwrite the current database; a safety copy is kept first",
     )
     args = parser.parse_args()
+    if args.command == "pki-init":
+        from .node_identity import ensure_material
+
+        ensure_material()
+        print("Private node CA and config signing key ready.")
+        return
     if args.command == "doctor":
         rows, code = ops.doctor()
         for level, name, detail in rows:

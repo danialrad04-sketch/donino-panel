@@ -16,7 +16,7 @@ try:  # PostgreSQL is optional; SQLite stays the default backend.
 except ImportError:  # pragma: no cover - exercised only without the postgres extra
     psycopg = None
 
-SCHEMA_VERSION = 6
+SCHEMA_VERSION = 7
 MAX_DEVICES_PER_USER = 20
 # Arbitrary constant key for the PostgreSQL writer lock (serializes writers, like BEGIN IMMEDIATE).
 _PG_WRITER_LOCK = 4541776
@@ -276,7 +276,9 @@ def migration_backup(tag="v2"):
 def initialize():
     with database() as db:
         if table_exists(db, "alembic_version"):
-            raise RuntimeError("This database belongs to the earlier development/1.0 schema; an explicit migration is required")
+            raise RuntimeError(
+                "This database belongs to the earlier development/1.0 schema; an explicit migration is required"
+            )
         if is_postgres():
             db.execute(
                 "CREATE TABLE IF NOT EXISTS donino_meta(key TEXT PRIMARY KEY, value INTEGER NOT NULL)"
@@ -354,14 +356,7 @@ def initialize():
             migrate_to_v4(db)
             set_schema_version(db, 4)
         if version < 5:
-            from .secrets import PREFIX, seal
-
-            for row in db.execute("SELECT username,secret FROM admin_mfa").fetchall():
-                if not row["secret"].startswith(PREFIX):
-                    db.execute(
-                        "UPDATE admin_mfa SET secret=? WHERE username=?",
-                        (seal(row["secret"]), row["username"]),
-                    )
+            encrypt_legacy_mfa(db)
             set_schema_version(db, 5)
         if version < 6:
             db.execute("""CREATE TABLE usage_periods (
@@ -389,6 +384,37 @@ def initialize():
                 error TEXT NOT NULL DEFAULT '')""")
             db.execute("CREATE INDEX deployments_node ON deployments(node_id,created)")
             set_schema_version(db, 6)
+        if version < 7:
+            db.execute(
+                "ALTER TABLE nodes ADD COLUMN auth_mode TEXT NOT NULL DEFAULT 'legacy' CHECK(auth_mode IN ('legacy','mtls'))"
+            )
+            db.execute(
+                "ALTER TABLE nodes ADD COLUMN config_sequence INTEGER NOT NULL DEFAULT 0"
+            )
+            db.execute("""CREATE TABLE node_enrollments (
+                id TEXT PRIMARY KEY, node_id TEXT NOT NULL REFERENCES nodes(id) ON DELETE CASCADE,
+                token_hash TEXT UNIQUE NOT NULL, expires INTEGER NOT NULL, used INTEGER,
+                request_hash TEXT, response TEXT,
+                created INTEGER NOT NULL)""")
+            db.execute("""CREATE TABLE node_certificates (
+                fingerprint TEXT PRIMARY KEY, node_id TEXT NOT NULL REFERENCES nodes(id) ON DELETE CASCADE,
+                serial TEXT UNIQUE NOT NULL, expires INTEGER NOT NULL, grace_until INTEGER,
+                revoked INTEGER NOT NULL DEFAULT 0, created INTEGER NOT NULL)""")
+            db.execute(
+                "CREATE INDEX node_certificates_node ON node_certificates(node_id)"
+            )
+            set_schema_version(db, 7)
+
+
+def encrypt_legacy_mfa(db):
+    from .secrets import PREFIX, seal
+
+    for row in db.execute("SELECT username,secret FROM admin_mfa").fetchall():
+        if not row["secret"].startswith(PREFIX):
+            db.execute(
+                "UPDATE admin_mfa SET secret=? WHERE username=?",
+                (seal(row["secret"]), row["username"]),
+            )
 
 
 def migrate_to_v4(db):

@@ -228,7 +228,7 @@ function renderNodes() {
       "سرورهای مستقل، یک نقطهٔ کنترل.",
       owner() ? addButton("node", "نود جدید") : "",
     ) +
-    `<div class="node-grid">${data.nodes.map((n) => `<article class="card"><div class="node-row"><span class="node-symbol">${icon("nodes")}</span><div><b>${esc(n.name)}</b><small>${esc(n.host)}</small></div>${badge(n.online ? "active" : "disabled", n.online ? "متصل" : "قطع")}</div><div class="node-meta"><span>${number(data.inbounds.filter((i) => i.node_id === n.id).length)} اتصال</span><span>آخرین ارتباط: ${n.last_seen ? new Date(n.last_seen * 1000).toLocaleTimeString("fa-IR") : "هنوز متصل نشده"}</span></div><div class="node-meta"><span>عامل: <span class="mono">${esc(n.agent_version || "0.1 / نامشخص")}</span></span><span>${{ hot: "به‌روزرسانی زنده", restart: "اجرای کامل", rollback: "بازیابی تنظیمات" }[n.apply_mode] || "در انتظار همگام‌سازی"}، ${number(n.pending_usage || 0)} گزارش معوق</span></div>${n.error ? `<p class="node-error">${esc(n.error)}</p>` : ""}${owner() ? `<div class="compact-actions"><button class="secondary" data-action="rotate-node" data-id="${n.id}">تعویض کلید اتصال</button><button class="outline-button danger" data-action="delete-node" data-id="${n.id}">حذف نود</button></div>` : ""}</article>`).join("")}</div>${!data.nodes.length ? `<div class="card">${empty("زیرساختت را بساز", "نود جدید اضافه کن و عامل Donino را روی سرور اجرا کن.", "nodes")}</div>` : ""}`
+    `<div class="node-grid">${data.nodes.map((n) => `<article class="card"><div class="node-row"><span class="node-symbol">${icon("nodes")}</span><div><b>${esc(n.name)}</b><small>${esc(n.host)}</small></div>${badge(n.online ? "active" : "disabled", n.online ? "متصل" : "قطع")}</div><div class="node-meta"><span>${number(data.inbounds.filter((i) => i.node_id === n.id).length)} اتصال</span><span>آخرین ارتباط: ${n.last_seen ? new Date(n.last_seen * 1000).toLocaleTimeString("fa-IR") : "هنوز متصل نشده"}</span></div><div class="node-meta"><span>عامل: <span class="mono">${esc(n.agent_version || "0.1 / نامشخص")}</span>، ${n.auth_mode === "mtls" ? "گواهی اختصاصی" : "توکن قدیمی"}</span><span>${{ hot: "به‌روزرسانی زنده", restart: "اجرای کامل", rollback: "بازیابی تنظیمات" }[n.apply_mode] || "در انتظار همگام‌سازی"}، ${number(n.pending_usage || 0)} گزارش معوق</span></div>${n.error ? `<p class="node-error">${esc(n.error)}</p>` : ""}${owner() ? `<div class="compact-actions"><button class="secondary" data-action="enroll-node" data-id="${n.id}">ثبت امن نود</button><button class="secondary" data-action="revoke-node-certificates" data-id="${n.id}">ابطال گواهی نود</button>${n.auth_mode === "mtls" ? "" : `<button class="secondary" data-action="rotate-node" data-id="${n.id}">تعویض کلید اتصال</button>`}<button class="outline-button danger" data-action="delete-node" data-id="${n.id}">حذف نود</button></div>` : ""}</article>`).join("")}</div>${!data.nodes.length ? `<div class="card">${empty("زیرساختت را بساز", "نود جدید اضافه کن و عامل Donino را روی سرور اجرا کن.", "nodes")}</div>` : ""}`
   );
 }
 function renderInbounds() {
@@ -244,7 +244,7 @@ function renderInbounds() {
 function renderSettings() {
   return (
     heading("تنظیمات و نگهداری", "همه‌چیز برای مدیریت یک شبکهٔ مستقل.") +
-    `<div class="settings-grid"><article class="card"><h2>پشتیبان‌گیری</h2><p>نسخهٔ پایگاه داده و حساب‌ها را دریافت کن. این فایل محرمانه است. برای بازیابی ورود دومرحله‌ای، کلید مستقل سرور نیز لازم است؛ پشتیبان کامل رمزگذاری‌شده در راهنمای نگهداری توضیح داده شده است.</p>${owner() ? `<a class="primary" href="/api/backup" download>${icon("download")}دریافت نسخهٔ پایگاه داده</a>` : "<p>دریافت پشتیبان فقط برای مالک شبکه فعال است.</p>"}</article><article class="card"><h2>ظاهر پنل</h2><p>پوستهٔ روشن یا تیره را انتخاب کن. انتخاب روی همین دستگاه ذخیره می‌شود.</p><button class="secondary" data-action="theme">${icon("theme")}تغییر حالت نمایش</button></article><article class="card"><h2>حساب مدیریت</h2><p>نام کاربری: ${esc(account.username)}<br>سطح دسترسی: ${roles[account.role]}<br>رمز، ورود دومرحله‌ای، نشست‌ها و توکن‌ها را از بخش امنیت حساب مدیریت کن. مالک می‌تواند مدیرهای دیگر را نیز همین‌جا مدیریت کند.</p></article><article class="card"><h2>Donino Panel <span class="mono">1.0.0-alpha.3</span></h2><p>نسخهٔ اولیهٔ مستقل، با رابط فارسی و مدیریت چند نود. امکانات در حال توسعه‌اند. راه‌اندازی واقعی به سرور نود، Xray و دامنهٔ مناسب نیاز دارد.</p><a class="subtle-link" href="https://github.com/danialrad04-sketch/donino-panel" target="_blank" rel="noopener">مستندات و کد منبع</a></article></div><section id="account-security" class="settings-grid"></section>`
+    `<div class="settings-grid"><article class="card"><h2>پشتیبان‌گیری</h2><p>نسخهٔ پایگاه داده و حساب‌ها را دریافت کن. این فایل محرمانه است. برای بازیابی ورود دومرحله‌ای، کلید مستقل سرور نیز لازم است؛ پشتیبان کامل رمزگذاری‌شده در راهنمای نگهداری توضیح داده شده است.</p>${owner() ? `<a class="primary" href="/api/backup" download>${icon("download")}دریافت نسخهٔ پایگاه داده</a>` : "<p>دریافت پشتیبان فقط برای مالک شبکه فعال است.</p>"}</article><article class="card"><h2>ظاهر پنل</h2><p>پوستهٔ روشن یا تیره را انتخاب کن. انتخاب روی همین دستگاه ذخیره می‌شود.</p><button class="secondary" data-action="theme">${icon("theme")}تغییر حالت نمایش</button></article><article class="card"><h2>حساب مدیریت</h2><p>نام کاربری: ${esc(account.username)}<br>سطح دسترسی: ${roles[account.role]}<br>رمز، ورود دومرحله‌ای، نشست‌ها و توکن‌ها را از بخش امنیت حساب مدیریت کن. مالک می‌تواند مدیرهای دیگر را نیز همین‌جا مدیریت کند.</p></article><article class="card"><h2>Donino Panel <span class="mono">1.0.0-alpha.4</span></h2><p>نسخهٔ اولیهٔ مستقل، با رابط فارسی و مدیریت چند نود. امکانات در حال توسعه‌اند. راه‌اندازی واقعی به سرور نود، Xray و دامنهٔ مناسب نیاز دارد.</p><a class="subtle-link" href="https://github.com/danialrad04-sketch/donino-panel" target="_blank" rel="noopener">مستندات و کد منبع</a></article></div><section id="account-security" class="settings-grid"></section>`
   );
 }
 function render() {
@@ -592,6 +592,19 @@ async function loadSecurity() {
   }
 }
 async function handleAction(action, id, element) {
+  if (action === "enroll-node") {
+    const result = await api(`/nodes/${id}/enrollment`, { method: "POST" });
+    return modal(
+      "ثبت امن نود",
+      `<p class="note">توکن زیر ۱۰ دقیقه اعتبار دارد. آن را در فایل خصوصی با دسترسی ۶۰۰ روی همان سرور نود قرار بده. کلید خصوصی و گواهی روی نود نگهداری می‌شوند؛ بعد از ثبت، کلید اتصال قدیمی این نود پذیرفته نمی‌شود.</p><label>توکن یک‌بارمصرف<textarea id="secret-output" readonly dir="ltr">${esc(result.token)}</textarea></label><p class="note">شناسهٔ نود</p><code dir="ltr">${esc(id)}</code><p class="note">برای فرمان ثبت و پیش‌نیاز HTTPS، راهنمای ثبت امن نود را در مستندات نسخه بخوان.</p><button class="primary" data-action="copy-secret">کپی توکن</button>`,
+    );
+  }
+  if (action === "revoke-node-certificates")
+    return confirmAction(
+      "ابطال گواهی نود",
+      "اتصال مدیریتی با گواهی‌های فعلی این نود رد خواهد شد. برای اتصال مجدد باید ثبت امن را دوباره انجام بدهی.",
+      () => api(`/nodes/${id}/revoke-certificates`, { method: "POST" }),
+    );
   const user = data.users.find((u) => u.id === id);
   if (action === "user-periods") {
     const periods = await api(`/users/${id}/periods`);

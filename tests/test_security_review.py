@@ -4,7 +4,7 @@ from unittest.mock import patch
 from fastapi.testclient import TestClient
 
 from test_accounts import PanelBase, PASSWORD, current_code
-from app.db import database, initialize, set_schema_version
+from app.db import database, encrypt_legacy_mfa
 from app.main import app
 from app.secrets import key_path, unseal
 
@@ -26,15 +26,8 @@ class SecurityReviewTest(PanelBase):
             self.assertNotEqual(row["secret"], setup["secret"])
             self.assertEqual(unseal(row["secret"]), setup["secret"])
             db.execute("UPDATE admin_mfa SET secret=?", (setup["secret"],))
-            db.execute("DROP TABLE usage_periods")
-            db.execute("DROP TABLE user_nodes")
-            db.execute("DROP TABLE deployments")
-            db.execute("ALTER TABLE nodes DROP COLUMN desired_job")
-            db.execute("ALTER TABLE counters DROP COLUMN period_no")
-            db.execute("ALTER TABLE users DROP COLUMN node_mode")
-            set_schema_version(db, 4)
+            encrypt_legacy_mfa(db)
         self.assertEqual(key_path().stat().st_mode & 0o777, 0o600)
-        initialize()
         with database() as db:
             self.assertEqual(
                 unseal(db.execute("SELECT secret FROM admin_mfa").fetchone()[0]),
