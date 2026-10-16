@@ -1,5 +1,21 @@
 # Validation record
 
+## Main continuation and 1.0 alpha 3 — 2026-10-16
+
+Continued merged main through PRs #2–#6 and integrated the newer redesign from PR #7. The incompatible earlier `development/1.0` data model is refused explicitly. This entry records executed checks, not completion of the entire master plan.
+
+- SQLite/Python 3.12: 114 discovered tests, 113 passed and the PostgreSQL-only fault-injection test skipped. Includes real pinned Xray VLESS/VMess/Trojan transfer, live additions, active quota revocation, rollback after occupied-port startup, and a real period reset followed by new VMess traffic charged to the new period.
+- PostgreSQL 16/Python 3.11: the same 114 tests, 105 passed with nine SQLite-only checks skipped. Includes a deliberately failing `pg_restore` via an event trigger: earlier DDL and existing user data survive because the restore transaction rolls back. The disposable database is isolated from panel fixtures.
+- Added checks for encrypted/migrated MFA seeds, enrollment password and committed lockouts, revocation of other sessions/API tokens on MFA transitions, CLI token revocation, unknown backend refusal, and explicit refusal of the incompatible development schema.
+- Added checks for streaming encrypted backup tampering/wrong keys/no overwrite, DB+MFA restoration into an empty target and preservation of a populated target/key after refusal.
+- Accounting checks cover out-of-order old-period delivery after new-period traffic, duplicate reports, immutable process/device generation, rejection of invented periods without updating baselines, durable journal generations and a mandatory core restart at a generation boundary.
+- Assignment checks cover filtered node configs and actual subscription contents, transactional refusal of an unknown node and viewer denial. Deployment checks cover restart persistence, superseding, failed/retried jobs, node/revision-matched ACKs and omission of credential payloads from list APIs.
+- Chromium/Playwright acceptance passed after integrating the redesign: one-use owner setup and URL-fragment removal, user/inbound editing, node selection, period history, password-confirmed MFA enrollment and one-time recovery display, separate guest portal, local QR, themes, logout and 390px overflow checks. No page JavaScript errors. Screenshots are taken before MFA secrets are displayed.
+- Native acceptance passed on both Debian 12 (Python 3.11/PostgreSQL 15) and Ubuntu 24.04 (Python 3.12/PostgreSQL 16): real systemd/NGINX/PostgreSQL installation, same-domain reinstallation, container restart, HTTPS verified against an explicit local test CA, expiring/one-use first owner, encrypted backup, installation on a second empty host, DB+MFA-key restore, real second-factor login and uninstall preserving user data. Fixture containers use their own network and cgroup namespace and share the host kernel.
+- Python unused-import checks, JavaScript syntax, source-manifest generation/check and `git diff --check` passed. CI also runs both Python 3.11/3.12 API suites, PostgreSQL, browser and both native target OS fixtures; consult the check attached to the commit being reviewed for remote status.
+
+Public Let's Encrypt issuance/renewal, external VPS/VM behavior, real ISP/console/game acceptance, load/chaos/DR, mTLS enrollment, signed desired config and shared quota leases were not validated here. Existing global PostgreSQL writer serialization and unlabeled legacy usage attribution remain documented limits. DNS/gaming and additional engines are not claimed as implemented. See [actual phase status](IMPLEMENTATION-STATUS.fa.md) and [native preview instructions](INSTALLER-PREVIEW.fa.md).
+
 ## Phase-zero planning documents — 2026-10-15
 
 The 1.0 planning update is documentation only; the executable product remains 0.2.0. The six linked Persian planning documents define 39 feature rows, 22 protocol/family rows and 26 acceptance scenarios. These are requirements, not completed runtime features or executed future tests.

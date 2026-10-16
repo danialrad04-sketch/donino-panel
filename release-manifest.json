@@ -1,7 +1,7 @@
 {
   "format": "donino-source-v1",
   "version": "1.0.0a3",
-  "source_sha256": "1b17303cfd64d42e4e6351f9cb32b9e338653e0e58bafa63e77217ac59ec0b62",
+  "source_sha256": "cbb9e7d89b40549d561e1c4885651ab11351dcf3a5d9d14e1c7160b798b74275",
   "files": {
     "CHANGELOG.md": "6285328b59281b57d6d2cdbc4297f2f3f4fca586a49c3b9228ea15c65c852ee7",
     "LICENSE": "d8a6cc31abc16b6748c7a21f21611f5a1ec33f67d22ca23d7da1c19b95496bee",
@@ -44,7 +44,7 @@
     "docs/DEPLOYMENT.fa.md": "41f2d64c13d4002f560acc912917e43a84a4bcb6e92da99e94ff95f5476925ba",
     "docs/DNS-GAMING-DESIGN.fa.md": "928dc0b17c242ae96af131dbf7b244166dc841cbe0b7110a577c370e423495d3",
     "docs/FEATURE-PARITY.fa.md": "46a667664f000bc2fe598049a631d7018ff732abe66eaee3773f580f18a6b237",
-    "docs/IMPLEMENTATION-STATUS.fa.md": "ad95ae3366d8c7d22e40081adc12037641db2184b03e1a1ba9939568e10c0de8",
+    "docs/IMPLEMENTATION-STATUS.fa.md": "6049ae388725adfc241fd50cbd1045273ffc8bf65da90290bc44c110520e6040",
     "docs/INSTALLER-PREVIEW.fa.md": "7965e686da1905545b4b0dda350b6434eeadc16cdde4f15f74510c0daa4d5f91",
     "docs/INSTALLER-SPEC.fa.md": "855cc2f6500f90026159eca2d743e644944f478b542a4e605a9960af1c90f202",
     "docs/MASTER-PLAN.fa.md": "172d4ead51b3f8d19717003311dbd5c78d2309c866db752a0ee7f6576b51a84f",
@@ -52,7 +52,7 @@
     "docs/RESEARCH.fa.md": "b4aab87d22336634b60865f4f70e4e73ece50cd4627f395b936a3d3310ceeb4a",
     "docs/ROADMAP.fa.md": "22fd2eb413f572018152d0cc40ba77ac22ee5d14e9999642d63a34bf82ad8119",
     "docs/UPGRADE-0.2.fa.md": "8dcade198068212720d008de6797aa4c47596dba9aadf2a5e32dbe742c6cec4e",
-    "docs/VALIDATION.md": "7e4b30249ac471466c1fe6f74c4aaaddcb5642047dab61005080f7815e694487",
+    "docs/VALIDATION.md": "d3c8889f88df5617bff382f3c3f18de3737acf3e1e8215e414cc2f6e4d877d7e",
     "docs/images/dashboard.png": "01f8bb91d5b3e3deb0a832e6d54b73fc74466507af768938f9743e219715cba9",
     "docs/images/login.png": "743a226fd9cd61ee90338da8cf3a821adbf9b7ec51d4881db57721c12b77f58d",
     "docs/images/mobile.png": "2e552e0ff0a6ffbbed4703bfb2b238407227555c2e6ac20ff46e82ffaecbdbfb",
