@@ -16,7 +16,7 @@ try:  # PostgreSQL is optional; SQLite stays the default backend.
 except ImportError:  # pragma: no cover - exercised only without the postgres extra
     psycopg = None
 
-SCHEMA_VERSION = 8
+SCHEMA_VERSION = 9
 MAX_DEVICES_PER_USER = 20
 # Arbitrary constant key for the PostgreSQL writer lock (serializes writers, like BEGIN IMMEDIATE).
 _PG_WRITER_LOCK = 4541776
@@ -421,6 +421,35 @@ def initialize():
                 "CREATE INDEX budget_leases_user_period ON budget_leases(user_id,period_no,closed)"
             )
             set_schema_version(db, 8)
+        if version < 9:
+            db.execute("""CREATE TABLE dns_policies (
+                id TEXT PRIMARY KEY, name TEXT NOT NULL UNIQUE,
+                revision TEXT NOT NULL, rules TEXT NOT NULL,
+                created INTEGER NOT NULL, updated INTEGER NOT NULL)""")
+            db.execute("""CREATE TABLE dns_accounts (
+                id TEXT PRIMARY KEY, user_id TEXT NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+                policy_id TEXT NOT NULL REFERENCES dns_policies(id),
+                token_hash TEXT NOT NULL UNIQUE, enabled INTEGER NOT NULL DEFAULT 1,
+                query_limit INTEGER NOT NULL DEFAULT 0, qps INTEGER NOT NULL DEFAULT 20,
+                period_no INTEGER NOT NULL DEFAULT 0,
+                created INTEGER NOT NULL, updated INTEGER NOT NULL)""")
+            db.execute("""CREATE TABLE dns_periods (
+                account_id TEXT NOT NULL REFERENCES dns_accounts(id) ON DELETE CASCADE,
+                period_no INTEGER NOT NULL, queries INTEGER NOT NULL DEFAULT 0,
+                request_bytes INTEGER NOT NULL DEFAULT 0, response_bytes INTEGER NOT NULL DEFAULT 0,
+                errors INTEGER NOT NULL DEFAULT 0, blocked INTEGER NOT NULL DEFAULT 0,
+                created INTEGER NOT NULL, closed INTEGER,
+                PRIMARY KEY(account_id,period_no))""")
+            db.execute("""CREATE TABLE dns_ip_leases (
+                ip TEXT PRIMARY KEY, account_id TEXT NOT NULL REFERENCES dns_accounts(id) ON DELETE CASCADE,
+                expires INTEGER NOT NULL, created INTEGER NOT NULL)""")
+            db.execute(
+                "CREATE INDEX dns_ip_leases_account ON dns_ip_leases(account_id)"
+            )
+            db.execute("""CREATE TABLE dns_rate (
+                account_id TEXT PRIMARY KEY REFERENCES dns_accounts(id) ON DELETE CASCADE,
+                window_started INTEGER NOT NULL, requests INTEGER NOT NULL)""")
+            set_schema_version(db, 9)
 
 
 def encrypt_legacy_mfa(db):

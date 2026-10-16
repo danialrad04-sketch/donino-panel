@@ -88,6 +88,7 @@ async function load() {
         )
         .join("") ||
       '<div class="card empty">اتصال فعالی برای این اشتراک در دسترس نیست.</div>';
+    await loadDNSPortal();
   } catch (error) {
     // Clear old secrets after token rotation or failed refresh.
     info = null;
@@ -95,12 +96,78 @@ async function load() {
     $("#subscription-link").value = "";
     $("#subscription-qr").removeAttribute("src");
     $("#profile-list").replaceChildren();
+    $("#portal-dns").hidden = true;
+    $("#dns-secret").value = "";
+    $("#dns-secret-label").hidden = true;
     $("#portal-error").textContent = error.message;
     $("#portal-error").hidden = false;
   } finally {
     $("#portal-refresh").disabled = false;
   }
 }
+async function loadDNSPortal() {
+  $("#dns-secret").value = "";
+  $("#dns-secret-label").hidden = true;
+  const response = await fetch(`/api/portal/${encodeURIComponent(token)}/dns`);
+  $("#portal-dns").hidden = !response.ok;
+  if (!response.ok) return;
+  const value = await response.json();
+  $("#dns-summary").textContent =
+    `${number(value.queries)} درخواست از ${value.query_limit ? number(value.query_limit) : "سهمیهٔ نامحدود"}؛ ${bytes(value.request_bytes + value.response_bytes)} بایت DNS. سیاست: ${value.policy_name}. DoH: ${value.doh_url}`;
+  $("#dns-ip-list").textContent = value.ip_leases.length
+    ? value.ip_leases
+        .map(
+          (l) =>
+            l.ip + " — " + new Date(l.expires * 1000).toLocaleString("fa-IR"),
+        )
+        .join("؛ ")
+    : "IP فعالی ثبت نشده است.";
+}
+async function dnsPortalAction(path, method, body) {
+  $("#dns-message").textContent = "در حال انجام…";
+  const response = await fetch(
+    `/api/portal/${encodeURIComponent(token)}/dns/${path}`,
+    {
+      method,
+      headers: { "Content-Type": "application/json", "X-Donino": "1" },
+      ...(body ? { body: JSON.stringify(body) } : {}),
+    },
+  );
+  const value = await response.json();
+  if (!response.ok)
+    throw new Error(
+      typeof value.detail === "string" ? value.detail : "عملیات DNS انجام نشد.",
+    );
+  $("#dns-message").textContent = "انجام شد.";
+  return value;
+}
+$("#dns-claim").onclick = async () => {
+  try {
+    await dnsPortalAction("claim-ip", "POST", { ttl: 3600 });
+    await loadDNSPortal();
+  } catch (e) {
+    $("#dns-message").textContent = e.message;
+  }
+};
+$("#dns-release").onclick = async () => {
+  try {
+    await dnsPortalAction("ip-leases", "DELETE");
+    await loadDNSPortal();
+  } catch (e) {
+    $("#dns-message").textContent = e.message;
+  }
+};
+$("#dns-credential").onclick = async () => {
+  if (!confirm("اعتبارنامهٔ قبلی DoH باطل و اعتبارنامهٔ جدید ساخته شود؟"))
+    return;
+  try {
+    const value = await dnsPortalAction("rotate-token", "POST");
+    $("#dns-secret").value = value.token;
+    $("#dns-secret-label").hidden = false;
+  } catch (e) {
+    $("#dns-message").textContent = e.message;
+  }
+};
 async function copy(text) {
   if (!text) return;
   try {

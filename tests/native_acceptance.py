@@ -21,6 +21,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 import httpx
+import dns.message
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
@@ -236,6 +237,11 @@ class NativeFixture:
         self.exec(
             name,
             "./install.sh",
+            "--with-dns",
+            "--dns-port",
+            "53" if self.os_name == "ubuntu24" else "5353",
+            "--dot-port",
+            "853" if self.os_name == "ubuntu24" else "8530",
             "--domain",
             "panel.test",
             "--expected-ip",
@@ -294,8 +300,67 @@ class NativeFixture:
             json={"name": "native-preserved-user", "quota": 50_000_000_000},
         ).json()
         assert user["id"]
+        policy = client.post(
+            "/api/dns/policies", json={"name": "native resolver"}
+        ).json()
+        dns_account = client.post(
+            "/api/dns/accounts", json={"user_id": user["id"], "policy_id": policy["id"]}
+        ).json()
+        query = dns.message.make_query("donino.health.", "A").to_wire()
+        result = client.post(
+            "/dns-query",
+            content=query,
+            headers={
+                "Authorization": "Bearer " + dns_account["token"],
+                "Content-Type": "application/dns-message",
+            },
+        )
+        assert result.status_code == 200, result.status_code
+        assert dns.message.from_wire(result.content).answer[0][0].address == "127.0.0.1"
+        self.exec(
+            first,
+            "/opt/donino-panel/current/.venv/bin/python",
+            "-c",
+            """
+import os,ssl,sys,time
+import dns.message,dns.query
+from ops.common import read_env
+os.environ.update(read_env('/etc/donino/panel.env'))
+from app.db import database
+account=sys.argv[1]
+port,dot_port=map(int,sys.argv[2:4])
+with database() as db:
+    db.execute('INSERT INTO dns_ip_leases VALUES(?,?,?,?)',('127.0.0.1',account,int(time.time())+60,int(time.time())))
+try:
+    query=dns.message.make_query('donino.health.','A')
+    for method in (dns.query.udp,dns.query.tcp):
+        value=method(query,'127.0.0.1',port=port,timeout=3)
+        assert value.answer[0][0].address=='127.0.0.1'
+    context=ssl.create_default_context(cafile='/testcerts/ca.pem')
+    value=dns.query.tls(query,'127.0.0.1',port=dot_port,timeout=3,ssl_context=context,server_hostname='panel.test')
+    assert value.answer[0][0].address=='127.0.0.1'
+finally:
+    with database() as db:
+        db.execute('DELETE FROM dns_ip_leases WHERE ip=?',('127.0.0.1',))
+try:
+    dns.query.udp(query,'127.0.0.1',port=port,timeout=0.25)
+except dns.exception.Timeout:
+    pass
+else:
+    raise AssertionError('Unleased UDP was accepted')
+""",
+            dns_account["id"],
+            "53" if self.os_name == "ubuntu24" else "5353",
+            "853" if self.os_name == "ubuntu24" else "8530",
+        )
+        print(
+            self.os_name
+            + ": optional Unbound, authenticated HTTPS DoH and leased UDP/TCP/DoT passed",
+            flush=True,
+        )
         self.install(first)
         self.doctor(first)
+        assert client.get("/api/dns/accounts").json()[0]["id"] == dns_account["id"]
         node = client.post(
             "/api/nodes", json={"name": "native-mtls-node", "host": "vpn.example.com"}
         ).json()
@@ -448,6 +513,7 @@ class NativeFixture:
         )
         assert response.status_code == 200, response.status_code
         assert restored.get("/api/users").json()[0]["id"] == user["id"]
+        assert restored.get("/api/dns/accounts").json()[0]["id"] == dns_account["id"]
         self.doctor(second)
         recovered_node = self.secure_client(restored.base_url, metadata, state)
         desired = recovered_node.get("/api/agent/config")

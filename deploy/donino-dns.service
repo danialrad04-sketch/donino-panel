@@ -1,0 +1,30 @@
+[Unit]
+Description=Donino same-host DNS gateway (optional preview)
+After=network-online.target donino-panel.service donino-unbound.service
+Requires=donino-unbound.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=donino
+Group=donino
+WorkingDirectory=/opt/donino-panel/current
+EnvironmentFile=/etc/donino/panel.env
+ExecStart=/opt/donino-panel/current/.venv/bin/python -m agent.dns_server --tls-cert /var/lib/donino-panel/dns-tls/current/panel.crt --tls-key /var/lib/donino-panel/dns-tls/current/panel.key
+Restart=on-failure
+RestartSec=5
+MemoryMax=256M
+TasksMax=64
+LimitNOFILE=512
+TimeoutStopSec=10
+NoNewPrivileges=true
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/donino-panel
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

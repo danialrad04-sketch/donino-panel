@@ -49,6 +49,7 @@ from .network_api import mount_network_api
 from .deployments import acknowledge, desired_job
 from .engines import XRAY
 from .node_api import mount_node_api
+from .dns_api import mount_dns_api
 from .node_identity import sign_desired
 from .budgets import allocations, close_budgets, summaries, reserve_total
 from .deps import (
@@ -98,6 +99,7 @@ app.mount("/static", StaticFiles(directory=STATIC), name="static")
 mount_bootstrap(app)
 mount_network_api(app)
 mount_node_api(app)
+mount_dns_api(app)
 
 
 @app.middleware("http")
@@ -116,6 +118,7 @@ async def security_headers(request, call_next):
         bearer = authorization[7:] if authorization.startswith("Bearer ") else ""
         if (
             not request.url.path.startswith("/api/agent/")
+            and not (request.url.path == "/dns-query" and bearer.startswith("dns_"))
             and not is_api_token(bearer)
             and request.headers.get("x-donino") != "1"
         ):
@@ -125,7 +128,7 @@ async def security_headers(request, call_next):
         body = bytearray()
         async for chunk in request.stream():
             body.extend(chunk)
-            if len(body) > 2_000_000:
+            if len(body) > (4096 if request.url.path == "/dns-query" else 2_000_000):
                 return JSONResponse({"detail": "Request too large"}, status_code=413)
         request._body = bytes(body)
     response = await call_next(request)
