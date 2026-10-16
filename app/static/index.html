@@ -3,29 +3,18 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <meta name="theme-color" content="#101b25" />
-    <title>Donino Panel | دونینو</title>
+    <meta name="theme-color" content="#111417" />
+    <title>دونینو | پنل مدیریت شبکه</title>
     <link rel="icon" href="/static/logo.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="/static/style.css" />
     <script src="/static/app.js" defer></script>
   </head>
   <body>
     <section id="login-view" class="login-view" hidden>
-      <div class="login-art">
-        <img src="/static/logo.svg" alt="" /><span class="eyebrow"
-          >DONINO PANEL / 01</span
-        >
-        <h1>شبکهٔ تو.<br />قواعد تو.</h1>
-        <p>یک خانه برای کاربران، اتصال‌ها و تمام نودهای شبکهٔ شما.</p>
-        <div class="art-rings" aria-hidden="true">
-          <i></i><i></i><i></i><b>ᴅ</b>
-        </div>
-        <small>مستقل · متن‌باز · ساخته‌شده برای شما</small>
-      </div>
       <form id="login-form" class="login-form">
-        <span class="eyebrow">خوش آمدید</span>
+        <img src="/static/logo.svg" alt="" width="44" height="44" />
         <h2>ورود به دونینو</h2>
-        <p class="muted">برای مدیریت شبکه وارد حساب خود شوید.</p>
+        <p class="muted">با حساب مدیریت خود وارد شوید.</p>
         <label
           >نام کاربری<input
             name="username"
@@ -51,80 +40,55 @@
             dir="ltr"
         /></label>
         <p id="login-error" role="alert" class="error"></p>
-        <button class="primary" type="submit">ورود به پنل <span>←</span></button
-        ><small class="muted">Donino Panel · نسخهٔ اولیه ۰.۲</small>
+        <button class="primary" type="submit">ورود</button>
+        <small class="muted">نسخهٔ ۰.۲.۰</small>
       </form>
     </section>
     <div id="app-view" class="shell" hidden>
       <aside class="sidebar">
-        <a class="brand" href="#overview"
-          ><img src="/static/logo.svg" alt="" /><span
-            >DONINO<small>NETWORK CONTROL</small></span
-          ></a
-        ><span class="nav-label">فضای مدیریت</span>
+        <a class="brand" href="#overview">
+          <img src="/static/logo.svg" alt="" />
+          <span>دونینو<small>پنل مدیریت شبکه</small></span>
+        </a>
         <nav aria-label="منوی اصلی">
-          <a href="#overview" data-page="overview"><span>◈</span>نمای کلی</a
-          ><a href="#users" data-page="users"><span>♧</span>کاربران</a
-          ><a href="#nodes" data-page="nodes"><span>⌘</span>نودهای شبکه</a
-          ><a href="#inbounds" data-page="inbounds"><span>⇄</span>اتصال‌ها</a
-          ><a href="#audit" data-page="audit" data-owner
-            ><span>≡</span>رویدادها</a
-          ><a href="#settings" data-page="settings"><span>⚙︎</span>تنظیمات</a>
+          <a href="#overview" data-page="overview"><span data-icon="overview"></span>نمای کلی</a>
+          <a href="#users" data-page="users"><span data-icon="users"></span>کاربران</a>
+          <a href="#nodes" data-page="nodes"><span data-icon="nodes"></span>نودها</a>
+          <a href="#inbounds" data-page="inbounds"><span data-icon="inbounds"></span>اتصال‌ها</a>
+          <a href="#audit" data-page="audit" data-owner><span data-icon="events"></span>رویدادها</a>
+          <a href="#settings" data-page="settings"><span data-icon="settings"></span>تنظیمات</a>
         </nav>
         <div class="sidebar-bottom">
           <div class="version-card">
-            <span class="status-dot"></span><b>Donino Core</b
-            ><small>نسخهٔ اولیه ۰.۲.۰</small>
+            <b>Donino</b><small>نسخهٔ ۰.۲.۰</small>
           </div>
           <div class="account">
-            <span class="avatar">D</span>
+            <span class="avatar" id="account-initial">D</span>
             <div>
               <b id="account-name"></b><small id="account-role"></small>
             </div>
-            <button id="logout" class="icon-button" aria-label="خروج">
-              ↗︎
-            </button>
           </div>
         </div>
       </aside>
       <div class="workspace">
         <header class="topbar">
           <div class="breadcrumb">
-            فضای مدیریت <span>/</span> <b id="breadcrumb">نمای کلی</b>
+            <b id="breadcrumb">نمای کلی</b>
+            <span id="sync-status" class="muted">در حال دریافت…</span>
           </div>
           <div class="top-actions">
-            <span id="sync-status" class="muted">در حال دریافت…</span
-            ><button id="refresh" class="icon-button" aria-label="به‌روزرسانی">
-              ↻</button
-            ><button id="theme" class="icon-button" aria-label="تغییر پوسته">
-              ◐</button
-            ><button
-              class="icon-button"
-              data-action="logout"
-              aria-label="خروج از حساب"
-            >
-              ⇥
-            </button>
+            <button id="refresh" class="icon-button" aria-label="به‌روزرسانی" title="به‌روزرسانی"><span data-icon="refresh"></span></button>
+            <button id="theme" class="icon-button" aria-label="تغییر حالت روشن و تیره" title="تغییر حالت نمایش"><span data-icon="theme"></span></button>
+            <button id="logout" class="icon-button" data-action="logout" aria-label="خروج از حساب" title="خروج"><span data-icon="logout"></span></button>
           </div>
         </header>
         <main id="main" tabindex="-1"></main>
-        <footer>
-          <span>DONINO PANEL</span><span>کنترل شبکه، با نگاه تازه.</span
-          ><a
-            href="https://github.com/danialrad04-sketch/donino-panel"
-            target="_blank"
-            rel="noopener"
-            >کد منبع ↗︎</a
-          >
-        </footer>
       </div>
     </div>
     <dialog id="modal">
       <div class="modal-heading">
         <h2 id="modal-title"></h2>
-        <button id="close-modal" class="icon-button" aria-label="بستن">
-          ×
-        </button>
+        <button id="close-modal" class="icon-button" aria-label="بستن"><span data-icon="close"></span></button>
       </div>
       <div id="modal-body"></div>
     </dialog>

@@ -9,6 +9,25 @@ const esc = (s) =>
       ],
   );
 const number = (n) => new Intl.NumberFormat("fa-IR").format(n);
+const ICONS = {
+  overview: '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
+  users: '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
+  nodes: '<rect x="3" y="4" width="18" height="6" rx="2"/><rect x="3" y="14" width="18" height="6" rx="2"/><path d="M7 7h.01M7 17h.01"/>',
+  inbounds: '<path d="M4 8h13l-3-3M20 16H7l3 3"/>',
+  events: '<path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6h.01M4 12h.01M4 18h.01"/>',
+  settings: '<path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  refresh: '<path d="M20 12a8 8 0 1 1-2.3-5.7"/><path d="M20 4v5h-5"/>',
+  theme: '<path d="M20.5 14.5A8.5 8.5 0 1 1 9.5 3.5a7 7 0 0 0 11 11z"/>',
+  logout: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5M21 12H9"/>',
+  close: '<path d="M6 6l12 12M18 6L6 18"/>',
+  download: '<path d="M12 3v12M7 10l5 5 5-5M5 21h14"/>',
+  chart: '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',
+  empty: '<circle cx="12" cy="12" r="8"/>',
+};
+function icon(name) {
+  return `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true">${ICONS[name] || ICONS.empty}</svg>`;
+}
 const bytes = (n) =>
   n >= 1073741824
     ? (n / 1073741824).toFixed(1) + " GB"
@@ -60,7 +79,7 @@ async function api(path, options = {}) {
     if (response.status === 401 && path !== "/login") showLogin();
     const result = await response.json().catch(() => ({}));
     const detail = Array.isArray(result.detail)
-      ? result.detail.map((e) => e.msg).join(" · ")
+      ? result.detail.map((e) => e.msg).join("، ")
       : result.detail;
     throw new Error(detail || "ارتباط با سرور برقرار نشد");
   }
@@ -86,16 +105,16 @@ function owner() {
   return account && account.role === "owner";
 }
 function badge(state, text) {
-  return `<span class="badge ${esc(state)}">● ${esc(text || states[state])}</span>`;
+  return `<span class="badge ${esc(state)}">${esc(text || states[state])}</span>`;
 }
-function empty(title, text, icon = "◇") {
-  return `<div class="empty"><span class="empty-icon">${icon}</span><b>${esc(title)}</b><span>${esc(text)}</span></div>`;
+function empty(title, text, name = "empty") {
+  return `<div class="empty"><span class="empty-icon">${icon(name)}</span><b>${esc(title)}</b><span>${esc(text)}</span></div>`;
 }
 function heading(title, description, action = "") {
-  return `<div class="page-heading"><div><span class="eyebrow">DONINO / ${esc(page.toUpperCase())}</span><h1>${title}</h1><p>${description}</p></div>${action}</div>`;
+  return `<div class="page-heading"><div><h1>${title}</h1><p>${description}</p></div>${action}</div>`;
 }
 function addButton(kind, text) {
-  return `<button class="primary" data-action="add-${kind}"><span>＋</span>${text}</button>`;
+  return `<button class="primary" data-action="add-${kind}">${icon("plus")}${text}</button>`;
 }
 function nodeRows() {
   return (
@@ -103,13 +122,13 @@ function nodeRows() {
       .slice(0, 4)
       .map(
         (n) =>
-          `<div class="node-row"><span class="node-symbol">⌘</span><div><b>${esc(n.name)}</b><small>${esc(n.host)}</small></div>${badge(n.online ? "active" : "disabled", n.online ? "متصل" : "قطع")}</div>`,
+          `<div class="node-row"><span class="node-symbol">${icon("nodes")}</span><div><b>${esc(n.name)}</b><small>${esc(n.host)}</small></div>${badge(n.online ? "active" : "disabled", n.online ? "متصل" : "قطع")}</div>`,
       )
       .join("") ||
     empty(
       "اولین نود را اضافه کنید",
       "سرورهای شبکه را از بخش نودها متصل کنید.",
-      "⌘",
+      "nodes",
     )
   );
 }
@@ -118,9 +137,9 @@ function usersTable(users, compact = false) {
     return empty(
       "هنوز کاربری وجود ندارد",
       "با ساخت اولین کاربر، مدیریت دسترسی را شروع کنید.",
-      "♧",
+      "users",
     );
-  return `<div class="table-scroll"><table><thead><tr><th>نام کاربر</th><th>وضعیت</th><th>مصرف / سهمیه</th><th>تاریخ انقضا</th>${!compact && writable() ? "<th>عملیات</th>" : ""}</tr></thead><tbody>${users.map((u) => `<tr><td><b>${esc(u.name)}</b><span class="subline">${esc(u.id.slice(0, 8))}</span></td><td>${badge(u.status)}</td><td><span class="mono">${bytes(u.used)} / ${u.quota ? bytes(u.quota) : "∞"}</span></td><td>${date(u.expires)}</td>${!compact && writable() ? `<td class="actions"><button data-action="share" data-id="${u.id}">اشتراک</button><button data-action="edit-user" data-id="${u.id}">ویرایش</button><button data-action="delete-user" data-id="${u.id}" class="danger">حذف</button></td>` : ""}</tr>`).join("")}</tbody></table></div>`;
+  return `<div class="table-scroll"><table><thead><tr><th>نام کاربر</th><th>وضعیت</th><th>مصرف / سهمیه</th><th>تاریخ انقضا</th>${!compact && writable() ? "<th>عملیات</th>" : ""}</tr></thead><tbody>${users.map((u) => `<tr><td><b>${esc(u.name)}</b><span class="subline">${esc(u.id.slice(0, 8))}</span></td><td>${badge(u.status)}</td><td><span class="mono">${bytes(u.used)} / ${u.quota ? bytes(u.quota) : "نامحدود"}</span></td><td>${date(u.expires)}</td>${!compact && writable() ? `<td class="actions"><button data-action="share" data-id="${u.id}">اشتراک</button><button data-action="edit-user" data-id="${u.id}">ویرایش</button><button data-action="delete-user" data-id="${u.id}" class="danger">حذف</button></td>` : ""}</tr>`).join("")}</tbody></table></div>`;
 }
 function renderOverview() {
   const s = data.overview;
@@ -135,9 +154,9 @@ function renderOverview() {
       `خوش آمدی، ${esc(account.username)}. وضعیت دسترسی‌ها و زیرساخت را اینجا ببین.`,
       writable() ? addButton("user", "کاربر جدید") : "",
     ) +
-    `<section class="stats" aria-label="آمار شبکه"><div class="stat featured"><span>کاربران فعال</span><i class="stat-icon">♧</i><strong>${number(s.active || 0)}</strong><small>از ${number(s.users || 0)} کاربر شبکه</small></div><div class="stat"><span>مصرف ثبت‌شده</span><i class="stat-icon">↗︎</i><strong dir="ltr">${bytes(s.used || 0)}</strong><small>مجموع ترافیک کاربران</small></div><div class="stat"><span>نودهای متصل</span><i class="stat-icon">⌘</i><strong>${number(s.online_nodes || 0)} <small>/ ${number(s.nodes || 0)}</small></strong><small>وضعیت آخرین ارتباط با نودها</small></div><div class="stat"><span>اتصال‌های تعریف‌شده</span><i class="stat-icon">⇄</i><strong>${number(s.inbounds || 0)}</strong><small>VLESS · VMess · Trojan</small></div></section>
-  <section class="overview-grid"><div class="card"><div class="card-head"><h2>مصرف کاربران</h2><small>بر اساس ترافیک ثبت‌شده</small></div>${topUsers.length ? topUsers.map((u) => `<div class="usage-row"><div><span>${esc(u.name)}</span><b>${bytes(u.used)}</b></div><progress value="${u.used}" max="${max}" aria-label="مصرف ${esc(u.name)}"></progress></div>`).join("") : empty("شبکه آمادهٔ شروع است", "پس از اتصال نود و شروع مصرف، آمار اینجا نمایش داده می‌شود.", "↗︎")}</div><div class="card"><div class="card-head"><h2>نبض زیرساخت</h2><a href="#nodes">همهٔ نودها ←</a></div>${nodeRows()}</div></section>
-  <section class="card table-card"><div class="table-toolbar"><h2>آخرین کاربران</h2><a class="subtle-link" href="#users">مدیریت کاربران ←</a></div>${usersTable(data.users.slice(0, 5), true)}<div class="table-bottom">هر کاربر، یک اشتراک برای تمام اتصال‌های شبکه.</div></section>`
+    `<section class="stats" aria-label="آمار شبکه"><div class="stat"><span>کاربران فعال</span><strong>${number(s.active || 0)}</strong><small>از ${number(s.users || 0)} کاربر شبکه</small></div><div class="stat"><span>مصرف ثبت‌شده</span><strong dir="ltr">${bytes(s.used || 0)}</strong><small>مجموع ترافیک کاربران</small></div><div class="stat"><span>نودهای متصل</span><strong>${number(s.online_nodes || 0)} <small>/ ${number(s.nodes || 0)}</small></strong><small>وضعیت آخرین ارتباط با نودها</small></div><div class="stat"><span>اتصال‌های تعریف‌شده</span><strong>${number(s.inbounds || 0)}</strong><small>VLESS، VMess و Trojan</small></div></section>
+  <section class="overview-grid"><div class="card"><div class="card-head"><h2>مصرف کاربران</h2><small>بر اساس ترافیک ثبت‌شده</small></div>${topUsers.length ? topUsers.map((u) => `<div class="usage-row"><div><span>${esc(u.name)}</span><b>${bytes(u.used)}</b></div><progress value="${u.used}" max="${max}" aria-label="مصرف ${esc(u.name)}"></progress></div>`).join("") : empty("شبکه آمادهٔ شروع است", "پس از اتصال نود و شروع مصرف، آمار اینجا نمایش داده می‌شود.", "chart")}</div><div class="card"><div class="card-head"><h2>وضعیت نودها</h2><a class="subtle-link" href="#nodes">همهٔ نودها</a></div>${nodeRows()}</div></section>
+  <section class="card table-card"><div class="table-toolbar"><h2>آخرین کاربران</h2><a class="subtle-link" href="#users">مدیریت کاربران</a></div>${usersTable(data.users.slice(0, 5), true)}<div class="table-bottom">هر کاربر، یک اشتراک برای تمام اتصال‌های شبکه.</div></section>`
   );
 }
 let usersView = { q: "", state: "", offset: 0, limit: 25, total: 0, rows: [] };
@@ -189,7 +208,7 @@ function renderNodes() {
       "سرورهای مستقل، یک نقطهٔ کنترل.",
       owner() ? addButton("node", "نود جدید") : "",
     ) +
-    `<div class="node-grid">${data.nodes.map((n) => `<article class="card"><div class="node-row"><span class="node-symbol">⌘</span><div><b>${esc(n.name)}</b><small>${esc(n.host)}</small></div>${badge(n.online ? "active" : "disabled", n.online ? "متصل" : "قطع")}</div><div class="node-meta"><span>${number(data.inbounds.filter((i) => i.node_id === n.id).length)} اتصال</span><span>آخرین ارتباط: ${n.last_seen ? new Date(n.last_seen * 1000).toLocaleTimeString("fa-IR") : "هنوز متصل نشده"}</span></div><div class="node-meta"><span>عامل: <span class="mono">${esc(n.agent_version || "0.1 / نامشخص")}</span></span><span>${{ hot: "به‌روزرسانی زنده", restart: "اجرای کامل", rollback: "بازیابی تنظیمات" }[n.apply_mode] || "در انتظار همگام‌سازی"} · ${number(n.pending_usage || 0)} گزارش معوق</span></div>${n.error ? `<p class="node-error">${esc(n.error)}</p>` : ""}${owner() ? `<div class="compact-actions"><button class="secondary" data-action="rotate-node" data-id="${n.id}">تعویض کلید اتصال</button><button class="outline-button danger" data-action="delete-node" data-id="${n.id}">حذف نود</button></div>` : ""}</article>`).join("")}</div>${!data.nodes.length ? `<div class="card">${empty("زیرساختت را بساز", "نود جدید اضافه کن و عامل Donino را روی سرور اجرا کن.", "⌘")}</div>` : ""}`
+    `<div class="node-grid">${data.nodes.map((n) => `<article class="card"><div class="node-row"><span class="node-symbol">${icon("nodes")}</span><div><b>${esc(n.name)}</b><small>${esc(n.host)}</small></div>${badge(n.online ? "active" : "disabled", n.online ? "متصل" : "قطع")}</div><div class="node-meta"><span>${number(data.inbounds.filter((i) => i.node_id === n.id).length)} اتصال</span><span>آخرین ارتباط: ${n.last_seen ? new Date(n.last_seen * 1000).toLocaleTimeString("fa-IR") : "هنوز متصل نشده"}</span></div><div class="node-meta"><span>عامل: <span class="mono">${esc(n.agent_version || "0.1 / نامشخص")}</span></span><span>${{ hot: "به‌روزرسانی زنده", restart: "اجرای کامل", rollback: "بازیابی تنظیمات" }[n.apply_mode] || "در انتظار همگام‌سازی"}، ${number(n.pending_usage || 0)} گزارش معوق</span></div>${n.error ? `<p class="node-error">${esc(n.error)}</p>` : ""}${owner() ? `<div class="compact-actions"><button class="secondary" data-action="rotate-node" data-id="${n.id}">تعویض کلید اتصال</button><button class="outline-button danger" data-action="delete-node" data-id="${n.id}">حذف نود</button></div>` : ""}</article>`).join("")}</div>${!data.nodes.length ? `<div class="card">${empty("زیرساختت را بساز", "نود جدید اضافه کن و عامل Donino را روی سرور اجرا کن.", "nodes")}</div>` : ""}`
   );
 }
 function renderInbounds() {
@@ -199,13 +218,13 @@ function renderInbounds() {
       "مسیرهای امن اتصال برای تمام کاربران فعال.",
       owner() ? addButton("inbound", "اتصال جدید") : "",
     ) +
-    `<div class="notice">VLESS با REALITY · VMess با WebSocket و TLS · Trojan با TLS. گواهی‌های TLS باید روی سرور نود قرار داشته باشند.</div><section class="card table-card">${data.inbounds.length ? `<div class="table-scroll"><table><thead><tr><th>نام اتصال</th><th>پروتکل</th><th>نود</th><th>پورت</th><th>دامنه</th>${owner() ? "<th>عملیات</th>" : ""}</tr></thead><tbody>${data.inbounds.map((i) => `<tr><td>${esc(i.name)}</td><td><span class="badge ${i.enabled ? "active" : "disabled"} mono">${esc(i.protocol.toUpperCase())} · ${i.enabled ? "فعال" : "خاموش"}</span></td><td>${esc(i.node_name)}</td><td class="mono">${i.port}</td><td><span class="mono">${esc(i.settings.sni)}</span></td>${owner() ? `<td><button data-action="edit-inbound" data-id="${i.id}">ویرایش</button> <button class="danger" data-action="delete-inbound" data-id="${i.id}">حذف</button></td>` : ""}</tr>`).join("")}</tbody></table></div>` : empty("یک مسیر تازه بساز", "ابتدا نود را اضافه کن، سپس اولین اتصال را بساز.", "⇄")}</section>`
+    `<div class="notice">VLESS با REALITY، VMess با WebSocket و TLS، و Trojan با TLS. گواهی‌های TLS باید روی سرور نود قرار داشته باشند.</div><section class="card table-card">${data.inbounds.length ? `<div class="table-scroll"><table><thead><tr><th>نام اتصال</th><th>پروتکل</th><th>نود</th><th>پورت</th><th>دامنه</th>${owner() ? "<th>عملیات</th>" : ""}</tr></thead><tbody>${data.inbounds.map((i) => `<tr><td>${esc(i.name)}</td><td><span class="mono">${esc(i.protocol.toUpperCase())}</span> ${badge(i.enabled ? "active" : "disabled", i.enabled ? "فعال" : "خاموش")}</td><td>${esc(i.node_name)}</td><td class="mono">${i.port}</td><td><span class="mono">${esc(i.settings.sni)}</span></td>${owner() ? `<td><button data-action="edit-inbound" data-id="${i.id}">ویرایش</button> <button class="danger" data-action="delete-inbound" data-id="${i.id}">حذف</button></td>` : ""}</tr>`).join("")}</tbody></table></div>` : empty("یک مسیر تازه بساز", "ابتدا نود را اضافه کن، سپس اولین اتصال را بساز.", "inbounds")}</section>`
   );
 }
 function renderSettings() {
   return (
     heading("تنظیمات و نگهداری", "همه‌چیز برای مدیریت یک شبکهٔ مستقل.") +
-    `<div class="settings-grid"><article class="card"><h2>پشتیبان‌گیری</h2><p>یک نسخهٔ کامل از پایگاه داده، تنظیمات و حساب‌ها دریافت کن. فایل پشتیبان حاوی اطلاعات محرمانه است؛ آن را در فضای امن نگه دار.</p>${owner() ? '<a class="primary" href="/api/backup" download>دریافت نسخهٔ پشتیبان ↓</a>' : "<p>دریافت پشتیبان فقط برای مالک شبکه فعال است.</p>"}</article><article class="card"><h2>ظاهر پنل</h2><p>پوستهٔ روشن یا تیره را انتخاب کن. انتخاب روی همین دستگاه ذخیره می‌شود.</p><button class="secondary" data-action="theme">تغییر پوسته ◐</button></article><article class="card"><h2>حساب مدیریت</h2><p>نام کاربری: ${esc(account.username)}<br>سطح دسترسی: ${roles[account.role]}<br>برای ساخت مدیر یا تغییر رمز، از دستور <span class="mono">python -m app.cli admin USERNAME</span> روی سرور استفاده کن.</p></article><article class="card"><h2>Donino Panel <span class="mono">0.2.0</span></h2><p>نسخهٔ اولیهٔ مستقل، با رابط فارسی و مدیریت چند نود. امکانات در حال توسعه‌اند. راه‌اندازی واقعی به سرور نود، Xray و دامنهٔ مناسب نیاز دارد.</p><a class="subtle-link" href="https://github.com/danialrad04-sketch/donino-panel" target="_blank" rel="noopener">مستندات و کد منبع ↗︎</a></article></div><section id="account-security" class="settings-grid"></section>`
+    `<div class="settings-grid"><article class="card"><h2>پشتیبان‌گیری</h2><p>یک نسخهٔ کامل از پایگاه داده، تنظیمات و حساب‌ها دریافت کن. فایل پشتیبان حاوی اطلاعات محرمانه است؛ آن را در فضای امن نگه دار.</p>${owner() ? `<a class="primary" href="/api/backup" download>${icon("download")}دریافت نسخهٔ پشتیبان</a>` : "<p>دریافت پشتیبان فقط برای مالک شبکه فعال است.</p>"}</article><article class="card"><h2>ظاهر پنل</h2><p>پوستهٔ روشن یا تیره را انتخاب کن. انتخاب روی همین دستگاه ذخیره می‌شود.</p><button class="secondary" data-action="theme">${icon("theme")}تغییر حالت نمایش</button></article><article class="card"><h2>حساب مدیریت</h2><p>نام کاربری: ${esc(account.username)}<br>سطح دسترسی: ${roles[account.role]}<br>برای ساخت مدیر یا تغییر رمز، از دستور <span class="mono">python -m app.cli admin USERNAME</span> روی سرور استفاده کن.</p></article><article class="card"><h2>درباره‌ی دونینو <span class="muted">۰.۲.۰</span></h2><p>نسخهٔ اولیهٔ مستقل، با رابط فارسی و مدیریت چند نود. امکانات در حال توسعه‌اند. راه‌اندازی واقعی به سرور نود، Xray و دامنهٔ مناسب نیاز دارد.</p><a class="subtle-link" href="https://github.com/danialrad04-sketch/donino-panel" target="_blank" rel="noopener">مستندات و کد منبع</a></article></div><section id="account-security" class="settings-grid"></section>`
   );
 }
 function render() {
@@ -255,7 +274,7 @@ async function refresh(redraw = true) {
     );
     data = { users, nodes, inbounds, overview };
     $("#sync-status").textContent =
-      "به‌روز شد · " +
+      "به‌روز شد " +
       new Date().toLocaleTimeString("fa-IR", {
         hour: "2-digit",
         minute: "2-digit",
@@ -274,6 +293,7 @@ async function enter(user) {
   $("#app-view").hidden = false;
   $("#account-name").textContent = user.username;
   $("#account-role").textContent = roles[user.role];
+  $("#account-initial").textContent = user.username.charAt(0).toUpperCase();
   page = titles[location.hash.slice(1)] ? location.hash.slice(1) : "overview";
   await refresh();
   clearInterval(timer);
@@ -300,7 +320,7 @@ function input(label, name, options = {}) {
 function form(title, fields, save) {
   modal(
     title,
-    `<form id="edit-form"><div class="form-grid">${fields}</div><p id="form-error" class="error"></p><div class="form-actions"><button type="button" class="secondary" data-action="close-modal">انصراف</button><button class="primary" type="submit">ذخیره ←</button></div></form>`,
+    `<form id="edit-form"><div class="form-grid">${fields}</div><p id="form-error" class="error"></p><div class="form-actions"><button type="button" class="secondary" data-action="close-modal">انصراف</button><button class="primary" type="submit">ذخیره</button></div></form>`,
   );
   $("#edit-form").addEventListener("submit", async (e) => {
     e.preventDefault();
@@ -465,7 +485,7 @@ async function loadDevices(uid) {
       devices
         .map(
           (d) =>
-            `<div class="node-row"><div><b>${esc(d.name)}${d.is_default ? " · پیش‌فرض" : ""}</b><small>↑ ${bytes(d.uploaded)} · ↓ ${bytes(d.downloaded)}</small></div>${badge(d.enabled ? "active" : "disabled")}<div class="compact-actions">${d.enabled ? `<button type="button" class="secondary" data-action="disable-device" data-id="${d.id}" data-user="${uid}">غیرفعال</button>` : `<button type="button" class="secondary" data-action="enable-device" data-id="${d.id}" data-user="${uid}">فعال</button>`}<button type="button" class="secondary" data-action="rotate-device" data-id="${d.id}" data-user="${uid}">چرخش کلید</button>${d.is_default ? "" : `<button type="button" class="danger" data-action="delete-device" data-id="${d.id}" data-user="${uid}">حذف</button>`}</div></div>`,
+            `<div class="node-row"><div><b>${esc(d.name)}${d.is_default ? " (پیش‌فرض)" : ""}</b><small>ارسال ${bytes(d.uploaded)}، دریافت ${bytes(d.downloaded)}</small></div>${badge(d.enabled ? "active" : "disabled")}<div class="compact-actions">${d.enabled ? `<button type="button" class="secondary" data-action="disable-device" data-id="${d.id}" data-user="${uid}">غیرفعال</button>` : `<button type="button" class="secondary" data-action="enable-device" data-id="${d.id}" data-user="${uid}">فعال</button>`}<button type="button" class="secondary" data-action="rotate-device" data-id="${d.id}" data-user="${uid}">چرخش کلید</button>${d.is_default ? "" : `<button type="button" class="danger" data-action="delete-device" data-id="${d.id}" data-user="${uid}">حذف</button>`}</div></div>`,
         )
         .join("") +
       `<div class="form-grid"><label class="full">نام دستگاه جدید<input id="new-device-name" maxlength="40"></label><div class="full compact-actions"><button type="button" class="primary" data-action="add-device" data-user="${uid}">افزودن دستگاه</button></div></div>`;
@@ -482,7 +502,7 @@ async function loadAdmins(box) {
         admins
           .map(
             (a) =>
-              `<div class="node-row"><div><b>${esc(a.username)}${a.username === account.username ? " · شما" : ""}</b><small>${esc(roles[a.role])} · ورود دو مرحله‌ای: ${a.mfa_enabled ? "فعال" : "غیرفعال"}</small></div><div class="compact-actions"><button type="button" class="secondary" data-action="admin-role" data-id="${esc(a.username)}">نقش</button><button type="button" class="secondary" data-action="admin-password" data-id="${esc(a.username)}">رمز</button>${a.username === account.username ? "" : `<button type="button" class="danger" data-action="admin-delete" data-id="${esc(a.username)}">حذف</button>`}</div></div>`,
+              `<div class="node-row"><div><b>${esc(a.username)}${a.username === account.username ? " (شما)" : ""}</b><small>${esc(roles[a.role])} · ورود دو مرحله‌ای: ${a.mfa_enabled ? "فعال" : "غیرفعال"}</small></div><div class="compact-actions"><button type="button" class="secondary" data-action="admin-role" data-id="${esc(a.username)}">نقش</button><button type="button" class="secondary" data-action="admin-password" data-id="${esc(a.username)}">رمز</button>${a.username === account.username ? "" : `<button type="button" class="danger" data-action="admin-delete" data-id="${esc(a.username)}">حذف</button>`}</div></div>`,
           )
           .join("") +
         `<div class="compact-actions"><button type="button" class="primary" data-action="admin-create">مدیر جدید</button></div></article>`,
@@ -500,14 +520,14 @@ async function loadSecurity() {
       info.sessions
         .map(
           (s) =>
-            `<div class="node-row"><div><b>${esc(s.address || "نامشخص")}</b><small>${new Date(s.created * 1000).toLocaleString("fa-IR")} · ${esc((s.agent || "").slice(0, 60))}</small></div>${s.current ? badge("active", "این نشست") : `<button type="button" class="secondary" data-action="revoke-session" data-id="${esc(s.sid)}">خروج</button>`}</div>`,
+            `<div class="node-row"><div><b>${esc(s.address || "نامشخص")}</b><small>${new Date(s.created * 1000).toLocaleString("fa-IR")}، ${esc((s.agent || "").slice(0, 60))}</small></div>${s.current ? badge("active", "این نشست") : `<button type="button" class="secondary" data-action="revoke-session" data-id="${esc(s.sid)}">خروج</button>`}</div>`,
         )
         .join("") || "<p class='muted'>نشست دیگری فعال نیست.</p>";
     const tokens =
       info.tokens
         .map(
           (t) =>
-            `<div class="node-row"><div><b>${esc(t.name)}</b><small>دامنه: ${esc(t.scope)} · انقضا: ${date(t.expires)} · آخرین استفاده: ${t.last_used ? new Date(t.last_used * 1000).toLocaleString("fa-IR") : "هرگز"}</small></div><button type="button" class="secondary" data-action="revoke-token" data-id="${esc(t.id)}">ابطال</button></div>`,
+            `<div class="node-row"><div><b>${esc(t.name)}</b><small>دامنه: ${esc(t.scope)}، انقضا: ${date(t.expires)}، آخرین استفاده: ${t.last_used ? new Date(t.last_used * 1000).toLocaleString("fa-IR") : "هرگز"}</small></div><button type="button" class="secondary" data-action="revoke-token" data-id="${esc(t.id)}">ابطال</button></div>`,
         )
         .join("") || "<p class='muted'>توکنی ساخته نشده است.</p>";
     box.innerHTML =
@@ -778,7 +798,7 @@ async function handleAction(action, id, element) {
     const result = await api(`/users/${id}/subscription`);
     modal(
       "اشتراک " + user.name,
-      `<p class="note">لینک خصوصی کاربر را کپی کن یا صفحهٔ اختصاصی او را باز کن. QR روی همین سرور تولید می‌شود.</p><img class="share-qr" src="${esc(result.qr_url)}" alt="QR اشتراک"><label>لینک اشتراک<textarea id="secret-output" dir="ltr" readonly>${esc(result.url)}</textarea></label><div class="form-actions"><a class="outline-button" id="open-portal" href="${esc(result.portal_url)}" target="_blank" rel="noopener">صفحهٔ کاربر ↗︎</a><button class="secondary" data-action="copy-portal" data-url="${esc(result.portal_url)}">کپی صفحه</button><button class="secondary" data-action="copy-clash">Clash</button><button class="primary" data-action="copy-secret">کپی اشتراک</button></div>`,
+      `<p class="note">لینک خصوصی کاربر را کپی کن یا صفحهٔ اختصاصی او را باز کن. QR روی همین سرور تولید می‌شود.</p><img class="share-qr" src="${esc(result.qr_url)}" alt="QR اشتراک"><label>لینک اشتراک<textarea id="secret-output" dir="ltr" readonly>${esc(result.url)}</textarea></label><div class="form-actions"><a class="outline-button" id="open-portal" href="${esc(result.portal_url)}" target="_blank" rel="noopener">صفحهٔ کاربر</a><button class="secondary" data-action="copy-portal" data-url="${esc(result.portal_url)}">کپی صفحه</button><button class="secondary" data-action="copy-clash">Clash</button><button class="primary" data-action="copy-secret">کپی اشتراک</button></div>`,
     );
     return;
   }
@@ -841,17 +861,12 @@ document.addEventListener("change", (e) => {
   usersView.offset = 0;
   loadUsersPage();
 });
+document
+  .querySelectorAll("[data-icon]")
+  .forEach((el) => (el.innerHTML = icon(el.dataset.icon)));
 $("#close-modal").onclick = () => $("#modal").close();
 $("#theme").onclick = () => handleAction("theme");
 $("#refresh").onclick = () => refresh();
-$("#logout").onclick = async () => {
-  try {
-    await api("/logout", { method: "POST" });
-    showLogin();
-  } catch (e) {
-    toast(e.message, true);
-  }
-};
 window.addEventListener("hashchange", () => {
   page = titles[location.hash.slice(1)] ? location.hash.slice(1) : "overview";
   render();
