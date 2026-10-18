@@ -1,21 +1,25 @@
 {
   "task_id": "codex-v1-progress",
   "status": "in_progress",
-  "branch": "development/mihomo-complete",
-  "last_verified_commit": null,
+  "branch": "development/tunnel-bindings",
+  "last_verified_commit": "5394ee2bb73f805b2a0d7b211a66e0fa3c0b0537",
   "completed": [
     "بررسی PR ۱۷ و اصلاح SNI خروجی Trojan برای Mihomo",
-    "هر ۹ آزمون Mihomo با شش مسیر واقعی و بدون expected failure موفق شد"
+    "هر ۹ آزمون Mihomo با شش مسیر واقعی و بدون expected failure موفق شد",
+    "binding پایدار node/inbound در schema 11، guard و بازیابی پاسخ گم‌شده",
+    "پذیرش مرورگر دسکتاپ/موبایل و قرارداد worker واقعی با نقشهٔ متصل"
   ],
   "remaining": [
-    "پذیرش کامل Mihomo شش مسیر",
-    "اتصال پایدار نقشهٔ تانل به inboundهای پنل و محافظت در برابر تغییر تنظیمات"
+    "پذیرش واقعی انتقال VPN روی دو node و سپس انتشار محافظت‌شدهٔ endpoint",
+    "نصب اولیهٔ نقش‌ها/عامل دوردست و مراحل بعدی طبق master plan"
   ],
-  "next_action": "آزمون واقعی Mihomo را کامل، شواهد و CI را ثبت و سپس binding تانل را پیاده کن.",
+  "next_action": "CI و PR این بسته را تکمیل کن؛ سپس پذیرش برنامه روی دو node آزمایشی و انتشار endpoint را با guard پیاده کن. کلاد متوقف بماند.",
   "tests": [
-    "Mihomo/Xray واقعی: 9 OK",
-    "هماهنگی شامل توقف Claude: 3 OK",
-    "source release: 2 OK"
+    "مجموعهٔ محلی یکپارچه: 188 آزمون OK، 9 skip محیطی",
+    "Mihomo واقعی: 9 OK؛ CI روی SQLite و PostgreSQL موفق",
+    "binding هدف: 11 OK شامل restore-history، schema10 migration، concurrency و timeout",
+    "مرورگر با مسیر متصل/دستی و موبایل: موفق",
+    "قرارداد پین‌شدهٔ worker روی Unix socket: موفق"
   ],
   "blockers": [],
   "pr_url": null

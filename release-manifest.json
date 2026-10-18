@@ -1,7 +1,7 @@
 {
   "format": "donino-source-v1",
   "version": "1.0.0a9",
-  "source_sha256": "83154c84208930bc31250e895d9cbcd2d8871450f2cf916842d70a9de2ff9c6b",
+  "source_sha256": "dd4210996239aebfd293fca9f9ac9d9e391c4739d1c6a29acb097f0bea62cd16",
   "files": {
     "AGENTS.md": "f302cbd1e5487795ca3fafd882f29fa2febba8dd55daa23e00164f271507d53e",
     "CHANGELOG.md": "f42c93d531015239e4f986e39031aad4e76f69af2abc7cd8bdb974ca98b0d093",
@@ -94,9 +94,9 @@
     "docs/XRAY-TRANSPORT-ACCEPTANCE.md": "304bab4878b1ff50426011f9dcb6e47aa6e33a8fbc5b4d896621a010fd6ad89e",
     "docs/coordination/CODEX-STATUS.fa.md": "188e7d6e767945351c27e91ef157b33dd75d57533e98a39f467b11d56cfd00cd",
     "docs/coordination/README.fa.md": "c7a0dae0343dc653512ade4cf169a7becb31bd041cd913a0d9bb12b5e22dbe5e",
-    "docs/coordination/assignments.json": "5204495500a9a39181b4bae81a1c48f5811d04c1516b18a70fd1227a47babdd7",
+    "docs/coordination/assignments.json": "ceecf2a9c27bab2c672e2db55fced09670bac6b6a92f3e1c980575df3002c69c",
     "docs/coordination/checkpoints/claude.json": "b0cf12f259c1de00c43b4d74a69a0dde438697fd269965011385ebee20ef129f",
-    "docs/coordination/checkpoints/codex.json": "f1f07dde888240d6391de2b1dfed87c783691d216cf4a77375ddf1008a754fb2",
+    "docs/coordination/checkpoints/codex.json": "1593da66157ca82da4be156fa32144fc0a2bc538d644b9cbed481d2d35044546",
     "docs/coordination/history/mihomo-tls-acceptance-v1.claude.json": "b0cf12f259c1de00c43b4d74a69a0dde438697fd269965011385ebee20ef129f",
     "docs/coordination/history/xray-acceptance-v1.claude.json": "066e8834399b612b24199a2ccc13792be976f43a9ab8f1a045f2ceaf48563807",
     "docs/coordination/reviews/xray-acceptance-v1.fa.md": "bbbdc4cd9f38b9a4932785e24cc147a4971ebd358b979918dbbefe4cd015977f",
