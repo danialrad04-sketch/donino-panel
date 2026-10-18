@@ -1,30 +1,28 @@
 {
   "task_id": "codex-v1-progress",
   "status": "in_progress",
-  "branch": "development/smart-dns-routing",
-  "last_verified_commit": "388c33bb27ed0413b0519d51445064a0d78ce74f",
+  "branch": "development/smart-exit-installer",
+  "last_verified_commit": "00c1afae042e6081e21757219b625e1f7d48497f",
   "completed": [
-    "PR ۱۹ ادغام و alpha.10 با ۱۰ job موفق منتشر شد",
-    "Smart DNS با TLS passthrough، دو جایگزین، مجوز IP، حجم مستقل و schema 13",
-    "رابط نود/مسیریابی/حجم و نصب اختیاری frontend هم‌پورت 443",
-    "رفع حفظ credential در ویرایش UI و حفظ UUIDهای route در فرم متنی",
-    "نصب Debian/Ubuntu و بازیابی دومیزبان با توقف نقش‌ها؛ heartbeat موقت دادهٔ کاربر محسوب نمی‌شود",
-    "پذیرش نهایی شبکه، مرورگر و مجموعهٔ یکپارچه؛ ثبت PR ۲۰"
+    "alpha.11 منتشر و checkpoint آن بدون تغییر آرشیو شد",
+    "نصب مستقل Smart DNS exit با کاربر/فایل/نسخهٔ جدا، بدون DB اضافی",
+    "TLS موجود و مسیر ACME، تمدید با rollback، credential پایدار و رد credential مفقود/خراب پیش از توقف سرویس",
+    "اصلاح start/restart تکراری و جلوگیری از restart هنگام رد گواهی خراب",
+    "پذیرش نهایی نقش مستقل در Debian/Ubuntu و سازگاری نصب کنترل‌پنل Debian/مرورگر"
   ],
   "remaining": [
-    "بررسی ۱۰ job متمایز CI روی head نهایی PR ۲۰، سپس ادغام و prerelease alpha.11",
-    "آزمون VPS/دامنه/بازی واقعی، ظرفیت/retention و آماده‌سازی خودکار خروجی دوردست",
-    "WireGuard/OpenVPN و دیگر فازهای باقی‌ماندهٔ طرح v1"
+    "هر ۱۲ job متمایز CI را روی head نهایی بررسی کن؛ سپس PR ۲۱ را ادغام و alpha.12 را prerelease/latest=false منتشر کن.",
+    "مستندات و CI نقش مستقل، PR و پیش‌انتشار پس از موفقیت آزمون‌ها",
+    "فاز WireGuard/OpenVPN و دیگر gateهای v1 همچنان باقی‌اند"
   ],
-  "next_action": "PR ۲۰ را روی head نهایی بررسی کن. فقط پس از موفقیت jobهای CI و تطبیق SHA، merge و v1.0.0-alpha.11 prerelease (latest=false) منتشر کن. اگر قطع شد، از همین PR/checkpoint ادامه بده. کلاد متوقف بماند.",
+  "next_action": "روی head نهایی PR ۲۱ منتظر موفقیت ۱۲ job متمایز CI بمان؛ با تطبیق SHA ادغام و v1.0.0-alpha.12 را prerelease/latest=false منتشر کن. کلاد متوقف است. پس از این برش عملیاتی، اولویت اجرای واقعی WireGuard طبق طرح است؛ آن پروتکل هنوز پشتیبانی‌شده نیست.",
   "tests": [
-    "مجموعهٔ یکپارچهٔ محلی با Xray/Mihomo/FRP و worker واقعی: 227 آزمون، 225 موفق، 2 skip (fault PostgreSQL و Unbound محلی؛ CI محیط هر دو را دارد)",
-    "17 آزمون Smart DNS شامل UDP، دو خروجی TLS، HTTPS مقصد، تغییر سیاست، failover، quota، ابطال، ECH و مهاجرت/restore موفق",
-    "10 آزمون نصب/پیش‌پرواز/rollback و heartbeat مقصد خالی موفق",
-    "Debian 12 و Ubuntu 24.04: نصب، نصب مجدد، restart، TLS/mTLS، backup رمزگذاری‌شده، restore دومیزبان و uninstall با حفظ داده موفق",
-    "Chromium: نود، probe نمایشی، فعال‌سازی با حفظ credential، route متنی، کاتالوگ، quota، فرم موبایل 390px و مسیرهای قبلی؛ بدون JS error و third-party request",
-    "manifest، coordination check، diff check، syntax و lint فایل‌های جدید موفق؛ نتیجهٔ CI روی head نهایی باید بررسی شود"
+    "9 آزمون متمرکز نقش مستقل و rollback جفت گواهی موفق",
+    "نصب مستقل Debian و Ubuntu: install/upgrade/restart، TLS/auth، اسرار خصوصی، رد گواهی/رمز/دامنه نامعتبر، credential خراب/مفقود، تمدید و uninstall موفق",
+    "نصب بومی کنترل‌پنل Debian و Chromium با مسیرهای قبلی موفق",
+    "اجرای کامل نهایی: 236 آزمون، 234 موفق، 2 skip (fault PostgreSQL و Unbound محلی) با Xray/Mihomo/FRP و worker واقعی؛ dedicated CI محیط هر دو را فراهم می‌کند.",
+    "manifest، coordination و diff check موفق؛ CI روی head نهایی PR ۲۱ باید بررسی شود."
   ],
   "blockers": [],
-  "pr_url": "https://github.com/danialrad04-sketch/donino-panel/pull/20"
+  "pr_url": "https://github.com/danialrad04-sketch/donino-panel/pull/21"
 }

@@ -1,5 +1,15 @@
 # Validation record
 
+## Independent Smart DNS exit role — 2026-10-18
+
+`install.sh --role smart-exit` provisions an independent TLS exit with a dedicated service user, verified immutable source releases and a private stable gateway credential. It does not install PostgreSQL or a control DB. Native systemd fixtures on Debian 12 and Ubuntu 24.04 passed installation, bare upgrade preserving TLS mode/allowlist/credential, verified TLS/auth, refusal of wrong CA/SNI/password/disallowed domain, protected private files, high-port capability removal, renewal, bad-pair refusal without restarting the healthy process, host restart and data-preserving uninstall. Missing/corrupt private credentials and locally modified managed files are refused without stopping the running service.
+
+Nine focused unit checks passed for typed role settings, credential preservation/corruption, lost-credential refusal, saved TLS mode, database-free planning, HTTP-01 orchestration, NGINX file/inventory rollback, immutable release tamper refusal and actual certificate-pair rollback when the post-activation readiness probe fails. The renewal fixture uses distinct local CA identities and compares key fingerprints, not private material in assertion output. Duplicate start/restart was removed; invalid certificates fail before any service restart. The initial Ubuntu renewal health failure was resolved by those changes and both OS fixtures then passed again.
+
+The existing Debian control-plane installation/reinstallation/backup/second-host restoration/uninstall fixture and Chromium flows still pass. The final integrated local run discovered 236 checks: 234 passed and two environment-specific checks (PostgreSQL restore fault and local real Unbound) were skipped. Pinned real Xray, Mihomo, FRP and the Unix worker were enabled. Dedicated CI supplies PostgreSQL/Unbound and repeats the final commit before publication; exact-head remote results are recorded on PR #21 and the release. Two additional native-exit matrix jobs cover the new role in CI, alongside the existing ten jobs.
+
+These are isolated OS/service and loopback TLS/auth results. HTTP-01 command/hook behavior is exercised without claiming public ACME issuance, public reachability, gaming/WAN transfer or a throughput benchmark. End-to-end application transfer remains covered separately by the Smart DNS gateway/two-exit/origin fixture. Remote SSH provisioning, distributed allowlist/credential rotation, IPv4/IPv6 deployment acceptance and remaining v1 engine/release gates are still open. See [exit setup](SMART-EXIT-INSTALL.fa.md).
+
 ## Smart DNS HTTPS routing and native SNI frontend — 2026-10-18
 
 The final integrated local suite discovered **227 checks: 225 passed, 2 skipped** with pinned real Xray, Mihomo, FRP and the Unix worker enabled. The skips are the PostgreSQL-specific restore fault and local real Unbound; dedicated CI provides those environments.

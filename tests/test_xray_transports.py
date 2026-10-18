@@ -280,7 +280,9 @@ def _free_port():
         return s.getsockname()[1]
 
 
-def _write_test_pki(folder, server_names=("localhost",)):
+def _write_test_pki(
+    folder, server_names=("localhost",), *, authority_name="Donino transport test CA"
+):
     """A test CA and a leaf certificate for localhost, signed by that CA."""
     folder.mkdir(parents=True, exist_ok=True)
     now = datetime.datetime.now(datetime.timezone.utc)
@@ -300,7 +302,7 @@ def _write_test_pki(folder, server_names=("localhost",)):
         )
 
     ca_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
-    ca_name = name("Donino transport test CA")
+    ca_name = name(authority_name)
     ca_cert = (
         builder(ca_name, ca_name, ca_key)
         .add_extension(x509.BasicConstraints(ca=True, path_length=None), critical=True)

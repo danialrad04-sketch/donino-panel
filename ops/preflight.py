@@ -95,7 +95,15 @@ def resolve_and_check(domain, expected=()):
     return sorted(actual)
 
 
-def inspect(domain, *, expected=(), existing=False, allow_nginx=False, network=True):
+def inspect(
+    domain,
+    *,
+    expected=(),
+    existing=False,
+    allow_nginx=False,
+    network=True,
+    ports=(80, 443),
+):
     domain = domain_name(domain)
     release = os_release()
     errors = []
@@ -119,7 +127,7 @@ def inspect(domain, *, expected=(), existing=False, allow_nginx=False, network=T
     if shutil.disk_usage("/").free < 1_073_741_824:
         errors.append("At least 1 GiB free disk is required")
     ipv6 = socket.has_ipv6 and free_port(0, "::")
-    for port in (80, 443):
+    for port in ports:
         if (not free_port(port) or (ipv6 and not free_port(port, "::"))) and not (
             existing or allow_nginx
         ):

@@ -954,6 +954,17 @@ def arguments(argv=None):
         ],
     )
     parser.add_argument("--domain")
+    parser.add_argument("--role", choices=["control", "smart-exit"], default="control")
+    parser.add_argument(
+        "--exit-allow-domain",
+        action="append",
+        default=[],
+        help="Smart exit allowed domain suffix; repeat",
+    )
+    parser.add_argument("--exit-listen", help="Smart exit bind IP (default: 0.0.0.0)")
+    parser.add_argument(
+        "--exit-port", type=int, help="Smart exit TLS port (default: 9445)"
+    )
     parser.add_argument("--archive", type=Path, help="Backup output or restore input")
     parser.add_argument(
         "--backup-key-file", type=Path, default=Path("/etc/donino/backup.key")
@@ -975,7 +986,7 @@ def arguments(argv=None):
     parser.add_argument("--expected-ip", action="append", default=[])
     parser.add_argument("--email")
     parser.add_argument("--allow-existing-nginx", action="store_true")
-    parser.add_argument("--tls", choices=["acme", "existing"], default="acme")
+    parser.add_argument("--tls", choices=["acme", "existing"])
     parser.add_argument("--cert-file", type=Path)
     parser.add_argument("--key-file", type=Path)
     parser.add_argument("--ca-file", type=Path)
@@ -1007,6 +1018,17 @@ def arguments(argv=None):
 def main(argv=None):
     args = arguments(argv)
     try:
+        if args.role == "smart-exit":
+            from .exit_install import main as exit_main
+
+            return exit_main(args)
+        args.tls = args.tls or "acme"
+        if (
+            args.exit_allow_domain
+            or args.exit_listen is not None
+            or args.exit_port is not None
+        ):
+            raise InstallError("Exit options require --role smart-exit")
         if args.command == "plan":
             if not args.domain:
                 raise InstallError("plan requires --domain")
