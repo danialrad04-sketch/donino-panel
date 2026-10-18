@@ -1,0 +1,35 @@
+name: Mihomo client acceptance
+on: [push, pull_request, workflow_dispatch]
+permissions:
+  contents: read
+jobs:
+  mihomo-tls:
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        backend: [sqlite, postgresql]
+    services:
+      postgres:
+        image: postgres:16-bookworm@sha256:0ea6700a3b4f0ae6ce746519073558aed4d88a79d8d07622a9a644946c7319c4
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: donino_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt -r requirements-postgres.txt
+      - name: Fetch the pinned Xray node binary (SHA-256 verified)
+        run: python scripts/fetch_xray.py /tmp/donino-xray
+      - name: Fetch the pinned Mihomo client binary (SHA-256 verified)
+        run: python scripts/fetch_mihomo.py /tmp/donino-mihomo
+      - name: Real Mihomo acceptance for the TLS profiles
+        run: DONINO_TEST_XRAY=/tmp/donino-xray/xray DONINO_TEST_MIHOMO=/tmp/donino-mihomo/mihomo python -m unittest discover -s tests -p test_mihomo.py -v
+        env:
+          DONINO_TEST_DATABASE_URL: ${{ matrix.backend == 'postgresql' && 'postgresql://postgres:postgres@localhost:5432/donino_test' || '' }}

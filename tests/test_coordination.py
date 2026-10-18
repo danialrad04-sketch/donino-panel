@@ -78,6 +78,10 @@ class CoordinationTest(unittest.TestCase):
                 target.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copyfile(source, target)
             task = coordination.assignment(root, "claude")
+            assignments = root / "docs/coordination/assignments.json"
+            entries = coordination.read(assignments)
+            entries["assignments"]["claude"]["suspended"] = False
+            assignments.write_text(json.dumps(entries))
             checkpoint = coordination.inside(root, task["checkpoint"])
             data = coordination.read(checkpoint)
             data["next_action"] = (
@@ -106,6 +110,26 @@ class CoordinationTest(unittest.TestCase):
             manifest = root / "release-manifest.json"
             before = checkpoint.read_bytes(), manifest.read_bytes()
             supplied.write_text(json.dumps({**data, "task_id": "wrong-task"}))
+            refused = subprocess.run(command, capture_output=True, timeout=20)
+            self.assertNotEqual(refused.returncode, 0)
+            self.assertEqual((checkpoint.read_bytes(), manifest.read_bytes()), before)
+            entries["assignments"]["claude"]["suspended"] = True
+            entries["assignments"]["claude"]["suspension_reason"] = "Fixture pause"
+            assignments.write_text(json.dumps(entries))
+            status = subprocess.run(
+                [
+                    sys.executable,
+                    str(root / "scripts/coordination.py"),
+                    "status",
+                    "--actor",
+                    "claude",
+                ],
+                capture_output=True,
+                text=True,
+                timeout=20,
+            )
+            self.assertEqual(json.loads(status.stdout)["status"], "paused")
+            supplied.write_text(json.dumps(data))
             refused = subprocess.run(command, capture_output=True, timeout=20)
             self.assertNotEqual(refused.returncode, 0)
             self.assertEqual((checkpoint.read_bytes(), manifest.read_bytes()), before)

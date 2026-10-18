@@ -3,6 +3,11 @@
 Start here on **every session**, including when the entire user message is
 `ادامه`, `ادامه بده` or `continue`.
 
+**Current user instruction:** Claude is paused because of its limit; Codex is
+completing the remaining work. If `assignments.json` marks Claude `suspended`,
+do not resume the old task or pick new work until the user assigns Claude again.
+Fetch main and read the latest assignment first; preserved checkpoints are history.
+
 1. Read `AGENTS.md`, `docs/coordination/README.fa.md`, then run
    `python scripts/coordination.py status --actor claude`.
 2. Read the returned task document and checkpoint. Inspect `git status`, branch,
