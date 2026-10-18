@@ -133,21 +133,45 @@ class _Mihomo:
             )
         self.processes.append(proc)
         try:
+            ready = False
             for _ in range(100):
+                if proc.poll() is not None:
+                    break
+                startup = log.read_text(errors="replace")
+                if "Start initial compatible provider Donino" not in startup:
+                    time.sleep(0.05)
+                    continue
                 try:
                     with socket.create_connection(("127.0.0.1", socks), timeout=0.1):
+                        ready = True
                         break
                 except OSError:
-                    time.sleep(0.1)
+                    time.sleep(0.05)
+            if not ready:
+                raise AssertionError(
+                    "Mihomo did not finish local startup: "
+                    + log.read_text(errors="replace")[-1200:]
+                )
             body = b""
+            failure = ""
             try:
                 with socket.create_connection(("127.0.0.1", socks), timeout=15) as sock:
                     _socks_connect(sock, self.echo_port)
                     sock.sendall(b"GET / HTTP/1.0\r\nHost: localhost\r\n\r\n")
                     while chunk := sock.recv(65536):
                         body += chunk
-            except OSError:
+            except OSError as error:
                 body = b""
+                failure = str(error)
+            if not body:
+                # A socket error may arrive before the outbound goroutine logs
+                # the TLS refusal. Preserve that required diagnostic before exit.
+                deadline = time.monotonic() + 2
+                while time.monotonic() < deadline:
+                    text = log.read_text(errors="replace")
+                    if "x509:" in text or "[TCP]" in text:
+                        break
+                    time.sleep(0.02)
         finally:
             proc.terminate()
             try:
@@ -156,6 +180,8 @@ class _Mihomo:
                 proc.kill()
                 proc.wait()
         text = log.read_text(errors="replace")
+        if failure:
+            text += "\nLab client socket error: " + failure
         # Isolation guard: every destination Mihomo dialled must be the loopback test node or echo.
         for target in re.findall(r"-->\s+(\S+)", text):
             if not target.startswith("127.0.0.1:"):
