@@ -3,6 +3,7 @@
 import os
 import socket
 import subprocess
+import tempfile
 import threading
 import time
 import unittest
@@ -29,6 +30,17 @@ from app.main import app
     "Set DONINO_TEST_UNBOUND to a real Unbound binary",
 )
 class DNSRuntimeTest(PanelBase):
+    def setUp(self):
+        super().setUp()
+        # Ubuntu's packaged AppArmor profile permits the Unbound state tree,
+        # rather than arbitrary /tmp configs. CI prepares a private, runner-owned
+        # subdirectory there; database files and application keys stay separate.
+        fixture = tempfile.TemporaryDirectory(
+            prefix="donino-dns-", dir=os.environ.get("DONINO_TEST_UNBOUND_ROOT")
+        )
+        self.addCleanup(fixture.cleanup)
+        self.resolver_directory = Path(fixture.name)
+
     def test_real_validating_resolver_and_doh_policy_isolation(self):
         zone = dns.name.from_text("signed.test.")
         private = ec.generate_private_key(ec.SECP256R1())
@@ -79,13 +91,13 @@ class DNSRuntimeTest(PanelBase):
         with socket.socket() as listener:
             listener.bind(("127.0.0.1", 0))
             port = listener.getsockname()[1]
-        config = Path(self.tmp.name) / "unbound.conf"
+        config = self.resolver_directory / "unbound.conf"
         config.write_text(f'''server:
     interface: 127.0.0.1
     port: {port}
     username: ""
     chroot: ""
-    directory: "{self.tmp.name}"
+    directory: "{self.resolver_directory}"
     pidfile: ""
     do-daemonize: no
     use-syslog: no
@@ -100,7 +112,7 @@ stub-zone:
     stub-addr: 127.0.0.1@{authority_port}
     stub-prime: no
 ''')
-        log = open(Path(self.tmp.name) / "unbound.log", "w+")
+        log = open(self.resolver_directory / "unbound.log", "w+")
         process = subprocess.Popen(
             [os.environ["DONINO_TEST_UNBOUND"], "-d", "-c", str(config)],
             stdout=log,
