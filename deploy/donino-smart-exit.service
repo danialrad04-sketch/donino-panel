@@ -1,0 +1,27 @@
+[Unit]
+Description=Donino authenticated Smart DNS TLS exit
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=donino-exit
+Group=donino-exit
+WorkingDirectory=/opt/donino-smart-exit/current
+ExecStart=/opt/donino-smart-exit/current/.venv/bin/python -m agent.smart_exit run /var/lib/donino-smart-exit/exit.json
+Restart=on-failure
+RestartSec=5
+MemoryMax=256M
+TasksMax=128
+LimitNOFILE=1024
+TimeoutStopSec=10
+NoNewPrivileges=true
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

@@ -1,5 +1,12 @@
 # Donino releases
 
+## 1.0.0-alpha.12 — independent Smart DNS exit installation, 2026-10-18
+
+- Add `install.sh --role smart-exit` with a dedicated service account, immutable verified releases and private stable gateway credentials; no control-plane database is installed.
+- Add HTTP-01/Certbot or existing TLS, safe certificate delivery to the service user, renewal/readiness rollback, plan/doctor/repair/upgrade and preserving uninstall.
+- Preserve exit mode, allowlist and credential on upgrades; refuse occupied listeners, modified/unmanaged files and mixed role options. No host firewall/routes are changed.
+- Add independent Debian/Ubuntu service acceptance and focused failure/rollback tests. Public ACME, WAN/game acceptance, credential rotation/distributed configuration and remaining v1 protocols are still open.
+
 ## 1.0.0-alpha.11 — managed Smart DNS HTTPS routing, 2026-10-18
 
 - Add opt-in SNI passthrough through authenticated TLS exit nodes, ordered primary/two fallback routes and per-domain exceptions; fail closed without a direct fallback.

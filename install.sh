@@ -10,7 +10,7 @@ if [ "$donino_local_source" = true ] && [ -f "$donino_source_dir/ops/install.py"
     exec python3 -I -c 'import sys; sys.path.insert(0,sys.argv.pop(1)); from ops.install import main; raise SystemExit(main())' "$donino_source_dir" "$@"
 fi
 # Ref and downloader hash are pinned for the published checkpoint.
-donino_release_ref=${DONINO_REF:-v1.0.0-alpha.11}
+donino_release_ref=${DONINO_REF:-v1.0.0-alpha.12}
 donino_bootstrap_sha256=e0b3ecdeba21beee53049dfb9690880b786175ff9b612f457a2bbd53d0f1db3b
 exec python3 -I - "$donino_release_ref" "$donino_bootstrap_sha256" "$@" <<'PYTHON'
 import hashlib
