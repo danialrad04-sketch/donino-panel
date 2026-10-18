@@ -2,12 +2,13 @@
   "task_id": "codex-v1-progress",
   "status": "in_progress",
   "branch": "development/tunnel-bindings",
-  "last_verified_commit": "5394ee2bb73f805b2a0d7b211a66e0fa3c0b0537",
+  "last_verified_commit": "a597888ed92ae31906c15618460e8627fa1b1df8",
   "completed": [
     "بررسی PR ۱۷ و اصلاح SNI خروجی Trojan برای Mihomo",
     "هر ۹ آزمون Mihomo با شش مسیر واقعی و بدون expected failure موفق شد",
     "binding پایدار node/inbound در schema 11، guard و بازیابی پاسخ گم‌شده",
-    "پذیرش مرورگر دسکتاپ/موبایل و قرارداد worker واقعی با نقشهٔ متصل"
+    "پذیرش مرورگر دسکتاپ/موبایل و قرارداد worker واقعی با نقشهٔ متصل",
+    "رفع علت قطع زودهنگام fixture Mihomo: انتظار برای Running پس از post-up، بدون retry انتقال یا تضعیف TLS"
   ],
   "remaining": [
     "پذیرش واقعی انتقال VPN روی دو node و سپس انتشار محافظت‌شدهٔ endpoint",
@@ -15,12 +16,12 @@
   ],
   "next_action": "CI و PR این بسته را تکمیل کن؛ سپس پذیرش برنامه روی دو node آزمایشی و انتشار endpoint را با guard پیاده کن. کلاد متوقف بماند.",
   "tests": [
-    "مجموعهٔ محلی یکپارچه: 188 آزمون OK، 9 skip محیطی",
-    "Mihomo واقعی: 9 OK؛ CI روی SQLite و PostgreSQL موفق",
+    "مجموعهٔ محلی یکپارچه با Xray و Mihomo و worker واقعی: 189 آزمون، 187 موفق، 2 skip محیطی (Unbound و fault PostgreSQL)",
+    "Mihomo واقعی پس از اصلاح race آماده‌شدن با post-up: هر 9 آزمون موفق؛ CI نهایی این شاخه باید بررسی شود",
     "binding هدف: 11 OK شامل restore-history، schema10 migration، concurrency و timeout",
     "مرورگر با مسیر متصل/دستی و موبایل: موفق",
     "قرارداد پین‌شدهٔ worker روی Unix socket: موفق"
   ],
   "blockers": [],
-  "pr_url": null
+  "pr_url": "https://github.com/danialrad04-sketch/donino-panel/pull/18"
 }

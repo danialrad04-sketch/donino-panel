@@ -2,7 +2,7 @@
 
 ## Durable inbound-bound tunnel plans — 2026-10-18
 
-Schema 11 adds persistent node/inbound-to-plan bindings. The local integrated suite initially discovered 188 checks and passed with nine environment-specific cases skipped; the pinned real Mihomo cases passed separately. An additional restore-history regression and the final exact-head suites are included in the release checks.
+Schema 11 adds persistent node/inbound-to-plan bindings. The final local integrated suite discovered 189 checks: 187 passed with real pinned Xray, Mihomo and the Unix-socket tunnel worker enabled. Two environment-specific checks (PostgreSQL restore fault injection and real Unbound) were skipped locally; dedicated CI provides those environments. After correcting Mihomo startup readiness to wait for its post-up running state, all nine real Mihomo tests passed again. Remote results for the final commit are recorded on PR #18 before publication.
 
 Binding coverage checks DB-derived targets and metadata privacy, preservation across reinitialization, changed port/settings/disabled or removed origins, mutation during worker preview, expiry/peer drift and raw-start bypass refusal, single concurrent start, recovery of a lost start response by plan/job identity, refusal of substituted worker targets/jobs, schema-10 upgrade backup and failure-before-DDL. Restore also refuses an otherwise empty destination that still contains binding history.
 
