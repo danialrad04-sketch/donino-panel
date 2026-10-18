@@ -1,15 +1,17 @@
-"""VLESS/VMess/Trojan over WebSocket and gRPC.
+"""VLESS/VMess/Trojan over WebSocket and gRPC: acceptance with real Xray.
 
-Unit checks run everywhere. The real-Xray test is opt-in:
+Unit checks run everywhere. The real-Xray checks are opt-in:
     DONINO_TEST_XRAY=/path/to/xray python -m unittest discover -s tests -v
 
-The real test starts the panel, a node agent and real Xray on both sides. Client
-configs are built from the subscription URIs the panel publishes, so the links
-are exercised as users receive them. TLS is verified against a test CA with
-the correct hostname: verification is never disabled.
+Every real check starts the panel, one node agent and real Xray on both sides.
+Client configs are built from the subscription URIs the panel publishes, so the
+links are exercised as users receive them. TLS is verified against a test CA
+with the correct hostname. Verification is never disabled and allowInsecure is
+never used. Expiry is real wall-clock expiry; the clock is not mocked.
 """
 
 import base64
+import contextlib
 import datetime
 import json
 import os
@@ -21,6 +23,7 @@ import time
 import unittest
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from types import SimpleNamespace
 from urllib.parse import parse_qsl, unquote, urlsplit
 
 from cryptography import x509
@@ -32,18 +35,20 @@ from pydantic import ValidationError
 
 from agent.main import NodeAgent
 from app.core import compile_config, profiles
-from app.main import InboundInput, app
 from app.db import database, hash_password
+from app.main import InboundInput, app
+from support import configure
 
 MARKER = b"donino-transport-ok"
 
-# Inbounds exercised by the real test: (protocol, transport).
+# Inbounds exercised by the real checks: (protocol, transport).
 NEW_TRANSPORTS = [
     ("vless", "ws"),
     ("vless", "grpc"),
     ("vmess", "grpc"),
     ("trojan", "ws"),
 ]
+DEFAULT_CA = object()  # sentinel: trust the lab's CA
 
 
 def _inbound(protocol, transport, **settings):
@@ -183,12 +188,8 @@ class TransportUnitTest(unittest.TestCase):
         for protocol, transport in NEW_TRANSPORTS:
             model = InboundInput(**base, protocol=protocol, transport=transport)
             self.assertEqual(model.transport, transport)
-        self.assertEqual(
-            InboundInput(**base, protocol="vmess").transport, "ws"
-        )
-        self.assertEqual(
-            InboundInput(**base, protocol="trojan").transport, "tcp"
-        )
+        self.assertEqual(InboundInput(**base, protocol="vmess").transport, "ws")
+        self.assertEqual(InboundInput(**base, protocol="trojan").transport, "tcp")
         self.assertEqual(
             InboundInput(**base, protocol="vless", transport="tcp").transport, "tcp"
         )
@@ -216,231 +217,23 @@ class TransportUnitTest(unittest.TestCase):
         )
 
 
-@unittest.skipUnless(
-    os.environ.get("DONINO_TEST_XRAY"), "Set DONINO_TEST_XRAY for live Xray tests"
-)
-class RealTransportTest(unittest.TestCase):
-    def test_new_transports_carry_traffic_and_obey_cut_offs(self):
-        binary = os.path.abspath(os.environ["DONINO_TEST_XRAY"])
-        old = dict(os.environ)
-        processes = []
-        agent = None
-        http = ThreadingHTTPServer(("127.0.0.1", 0), _EchoHandler)
-        thread = threading.Thread(target=http.serve_forever, daemon=True)
-        thread.start()
-        try:
-            with tempfile.TemporaryDirectory() as folder:
-                folder = Path(folder)
-                os.environ.update(
-                    DONINO_DB=str(folder / "panel.db"),
-                    DONINO_SECURE_COOKIE="false",
-                    DONINO_PANEL_URL="http://127.0.0.1:8000",
-                    DONINO_NODE_STATE=str(folder / "node"),
-                    DONINO_XRAY=binary,
-                )
-                ca_path, cert_path, key_path = _write_test_pki(folder)
-                with TestClient(app) as panel:
-                    with database() as db:
-                        db.execute(
-                            "INSERT INTO admins VALUES(?,?,?)",
-                            ("admin", hash_password("test-password-long"), "owner"),
-                        )
-                    panel.headers["X-Donino"] = "1"
-                    self.assertEqual(
-                        panel.post(
-                            "/api/login",
-                            json={"username": "admin", "password": "test-password-long"},
-                        ).status_code,
-                        200,
-                    )
-                    user = panel.post(
-                        "/api/users", json={"name": "transport-user"}
-                    ).json()
-                    uid = user["id"]
-                    with database() as db:
-                        token = db.execute(
-                            "SELECT token FROM users WHERE id=?", (uid,)
-                        ).fetchone()[0]
-                    second = panel.post(
-                        f"/api/users/{uid}/devices", json={"name": "second-phone"}
-                    ).json()
-                    node = panel.post(
-                        "/api/nodes", json={"name": "edge", "host": "127.0.0.1"}
-                    ).json()
-                    os.environ["DONINO_NODE_TOKEN"] = node["token"]
-
-                    for protocol, transport in NEW_TRANSPORTS:
-                        response = panel.post(
-                            "/api/inbounds",
-                            json={
-                                "node_id": node["id"],
-                                "name": f"{protocol}-{transport}",
-                                "protocol": protocol,
-                                "transport": transport,
-                                "port": _free_port(),
-                                "sni": "localhost",
-                                "path": "/donino-ws",
-                                "service_name": f"svc-{protocol}",
-                                "cert_file": str(cert_path),
-                                "key_file": str(key_path),
-                            },
-                        )
-                        self.assertEqual(response.status_code, 201, response.text)
-
-                    agent = NodeAgent()
-                    agent.client.close()
-                    agent.client = _LocalPanel(panel, node["token"])
-                    agent.tick()
-                    checked = subprocess.run(
-                        [binary, "run", "-test", "-c", str(folder / "node/config.json")],
-                        capture_output=True,
-                        text=True,
-                    )
-                    self.assertEqual(checked.returncode, 0, checked.stdout + checked.stderr)
-
-                    subscription = panel.get(f"/sub/{token}?format=raw").text
-                    links = [line for line in subscription.splitlines() if line.strip()]
-                    self.assertTrue(links, "subscription returned no links")
-
-                    def link_for(protocol, transport, device):
-                        for link in links:
-                            if link.startswith("vmess://"):
-                                value = json.loads(base64.b64decode(link[8:]))
-                                label = value["ps"]
-                                scheme_ok = protocol == "vmess" and value["net"] == transport
-                            else:
-                                scheme_ok = link.startswith(protocol + "://")
-                                label = unquote(link.rsplit("#", 1)[1])
-                                if scheme_ok:
-                                    query = dict(parse_qsl(urlsplit(link).query))
-                                    scheme_ok = query.get("type") == transport
-                            if scheme_ok and f" · {protocol}-{transport} · {device} · " in label:
-                                return link
-                        raise AssertionError(f"no {protocol}/{transport} link for {device}")
-
-                    def probe(protocol, transport, device, expect_ok=True, step=""):
-                        link = link_for(protocol, transport, device)
-                        config = _client_config(link, binary, folder, ca_path, _free_port())
-                        client = _start_client(binary, config, folder, processes)
-                        try:
-                            body = _fetch(config["inbounds"][0]["port"], http.server_port)
-                        except OSError:
-                            body = b""
-                        finally:
-                            client.terminate()
-                        if expect_ok:
-                            self.assertIn(MARKER, body, f"{protocol}/{transport} {device} {step}")
-                        else:
-                            self.assertNotIn(MARKER, body, f"{protocol}/{transport} {device} {step}")
-                        return len(body)
-
-                    # 1. Default device and second device, every new transport.
-                    default_device = _device_name(panel, uid, default=True)
-                    for protocol, transport in NEW_TRANSPORTS:
-                        self.assertGreater(
-                            probe(protocol, transport, default_device, step="default"), 0
-                        )
-                        self.assertGreater(
-                            probe(protocol, transport, "second-phone", step="second"), 0
-                        )
-                    agent.tick()
-                    rows = {d["name"]: d for d in panel.get(f"/api/users/{uid}/devices").json()}
-                    self.assertGreater(rows[default_device]["downloaded"], 0)
-                    self.assertGreater(rows["second-phone"]["downloaded"], 0)
-                    print("  Real VLESS/WS, VLESS/gRPC, VMess/gRPC and Trojan/WS transfers passed for two devices")
-
-                    # 2. Negative control: a client that does not trust the test CA must fail.
-                    link = link_for("vless", "ws", default_device)
-                    untrusted = _client_config(link, binary, folder, None, _free_port())
-                    client = _start_client(binary, untrusted, folder, processes)
-                    try:
-                        body = _fetch(untrusted["inbounds"][0]["port"], http.server_port)
-                    except OSError:
-                        body = b""
-                    finally:
-                        client.terminate()
-                    self.assertNotIn(MARKER, body, "untrusted certificate was accepted")
-                    print("  Certificate verification rejected a client without the test CA")
-
-                    # 3. Device cut-off: the second device stops, the default keeps working.
-                    panel.put(
-                        f"/api/devices/{second['id']}",
-                        json={"name": "second-phone", "enabled": False},
-                    )
-                    agent.tick()
-                    for protocol, transport in NEW_TRANSPORTS:
-                        probe(protocol, transport, "second-phone", expect_ok=False, step="device-off")
-                        probe(protocol, transport, default_device, step="device-off-default")
-                    print("  Disabled device was cut off on every new transport; the default device kept working")
-
-                    # 4. User disabled: every device stops on the new transports.
-                    panel.put(
-                        f"/api/users/{uid}",
-                        json={"name": user["name"], "enabled": False, "quota": 0},
-                    )
-                    agent.tick()
-                    config = json.loads((folder / "node/config.json").read_text())
-                    for inbound in config["inbounds"][1:]:
-                        self.assertEqual(inbound["settings"]["clients"], [])
-                    for protocol, transport in NEW_TRANSPORTS:
-                        probe(protocol, transport, default_device, expect_ok=False, step="user-off")
-                    print("  Disabled user was removed from every new inbound and its links stopped working")
-
-                    # 5. Restore the user, then quota exhaustion, then period reset.
-                    panel.put(
-                        f"/api/users/{uid}",
-                        json={"name": user["name"], "enabled": True, "quota": 0},
-                    )
-                    panel.put(
-                        f"/api/devices/{second['id']}",
-                        json={"name": "second-phone", "enabled": True},
-                    )
-                    agent.tick()
-                    panel.put(
-                        f"/api/users/{uid}",
-                        json={"name": user["name"], "enabled": True, "quota": 1},
-                    )
-                    agent.tick()
-                    config = json.loads((folder / "node/config.json").read_text())
-                    for inbound in config["inbounds"][1:]:
-                        self.assertEqual(inbound["settings"]["clients"], [])
-                    self.assertEqual(panel.get("/api/users").json()[0]["status"], "limited")
-
-                    panel.put(
-                        f"/api/users/{uid}",
-                        json={"name": user["name"], "enabled": True, "quota": 50_000_000},
-                    )
-                    panel.post(f"/api/users/{uid}/reset-traffic")
-                    epoch, pid = agent.epoch, agent.proc.pid
-                    agent.tick()
-                    self.assertNotEqual(agent.epoch, epoch)
-                    self.assertNotEqual(agent.proc.pid, pid)
-                    for protocol, transport in NEW_TRANSPORTS:
-                        self.assertGreater(
-                            probe(protocol, transport, default_device, step="after-reset"), 0
-                        )
-                    print("  Quota exhaustion cut off all new transports; period reset restored them")
-
-                    agent.close()
-        finally:
-            if agent:
-                agent.close()
-            for proc in processes:
-                proc.terminate()
-                try:
-                    proc.wait(timeout=5)
-                except subprocess.TimeoutExpired:
-                    proc.kill()
-                    proc.wait()
-            http.shutdown()
-            http.server_close()
-            thread.join(timeout=2)
-            os.environ.clear()
-            os.environ.update(old)
+# ---------------------------------------------------------------- real Xray
 
 
 class _EchoHandler(BaseHTTPRequestHandler):
+    """/echo streams bytes back; every other path returns a fixed marker body."""
+
     def do_GET(self):
+        if self.path == "/echo":
+            self.send_response(200)
+            self.end_headers()
+            try:
+                while value := self.rfile.read(4):
+                    self.wfile.write(value)
+                    self.wfile.flush()
+            except (BrokenPipeError, ConnectionResetError):
+                pass
+            return
         body = MARKER * 500
         self.send_response(200)
         self.send_header("Content-Length", str(len(body)))
@@ -476,6 +269,9 @@ class _LocalPanel:
             200, json=value, request=httpx.Request("GET", "http://test" + path)
         )
 
+    def close(self):
+        pass
+
 
 def _free_port():
     with socket.socket() as s:
@@ -483,15 +279,9 @@ def _free_port():
         return s.getsockname()[1]
 
 
-def _device_name(panel, uid, default):
-    for row in panel.get(f"/api/users/{uid}/devices").json():
-        if bool(row["is_default"]) == default:
-            return row["name"]
-    raise AssertionError("device not found")
-
-
 def _write_test_pki(folder):
     """A test CA and a leaf certificate for localhost, signed by that CA."""
+    folder.mkdir(parents=True, exist_ok=True)
     now = datetime.datetime.now(datetime.timezone.utc)
 
     def name(common):
@@ -553,8 +343,11 @@ def _write_test_pki(folder):
     return ca_path, cert_path, key_path
 
 
-def _client_config(link, binary, folder, ca_path, socks_port):
-    """Build an Xray client outbound from a subscription URI or VMess JSON."""
+def _client_config(link, socks_port, ca_path, server_name=None, loglevel="warning"):
+    """Xray client outbound built from a subscription URI or VMess JSON.
+
+    server_name overrides the SNI and WebSocket Host for negative controls only.
+    """
     if link.startswith("vmess://"):
         value = json.loads(base64.b64decode(link[8:]))
         protocol = "vmess"
@@ -572,6 +365,7 @@ def _client_config(link, binary, folder, ca_path, socks_port):
         network, sni = query["type"], query["sni"]
         path = query.get("path", "")
         service = query.get("serviceName", "")
+    sni = server_name or sni
     if protocol == "vmess":
         settings = {
             "vnext": [
@@ -597,7 +391,7 @@ def _client_config(link, binary, folder, ca_path, socks_port):
     if network == "grpc":
         stream["grpcSettings"] = {"serviceName": service}
     return {
-        "log": {"loglevel": "warning"},
+        "log": {"loglevel": loglevel},
         "inbounds": [
             {
                 "listen": "127.0.0.1",
@@ -610,43 +404,450 @@ def _client_config(link, binary, folder, ca_path, socks_port):
     }
 
 
-def _start_client(binary, config, folder, processes):
-    path = folder / f"client-{time.monotonic_ns()}.json"
-    path.write_text(json.dumps(config))
-    checked = subprocess.run(
-        [binary, "run", "-test", "-c", str(path)], capture_output=True, text=True
-    )
-    if checked.returncode != 0:
-        raise AssertionError(checked.stdout + checked.stderr)
-    proc = subprocess.Popen(
-        [binary, "run", "-c", str(path)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
-    )
-    processes.append(proc)
-    for _ in range(60):
+def _socks_connect(sock, target_port):
+    sock.sendall(b"\x05\x01\x00")
+    if sock.recv(2) != b"\x05\x00":
+        raise OSError("SOCKS auth refused")
+    sock.sendall(b"\x05\x01\x00\x01\x7f\x00\x00\x01" + target_port.to_bytes(2, "big"))
+    reply = sock.recv(10)
+    if len(reply) < 2 or reply[1] != 0:
+        raise OSError("SOCKS connect refused")
+
+
+class Lab:
+    """One panel, one node with the four new inbounds, and a node agent with real Xray."""
+
+    def __init__(self, binary, folder, panel, agent, http, ca_path, processes):
+        self.binary = binary
+        self.folder = folder
+        self.panel = panel
+        self.agent = agent
+        self.http = http
+        self.ca_path = ca_path
+        self.processes = processes
+        self.clients = 0
+        self.last_log = None
+
+    # panel helpers
+    def new_user(self, name, **fields):
+        return self.panel.post("/api/users", json={"name": name, **fields}).json()
+
+    def token(self, uid):
+        with database() as db:
+            return db.execute("SELECT token FROM users WHERE id=?", (uid,)).fetchone()[0]
+
+    def devices(self, uid):
+        return self.panel.get(f"/api/users/{uid}/devices").json()
+
+    def default_device(self, uid):
+        return next(row["name"] for row in self.devices(uid) if row["is_default"])
+
+    def add_device(self, uid, name):
+        return self.panel.post(f"/api/users/{uid}/devices", json={"name": name}).json()
+
+    def set_device(self, device, name, enabled):
+        return self.panel.put(
+            f"/api/devices/{device['id']}", json={"name": name, "enabled": enabled}
+        )
+
+    def set_user(self, user, **fields):
+        body = {"name": user["name"], "enabled": True, "quota": 0, **fields}
+        return self.panel.put(f"/api/users/{user['id']}", json=body)
+
+    def subscription(self, token, fmt="raw"):
+        return self.panel.get(f"/sub/{token}?format={fmt}")
+
+    def links(self, token):
+        response = self.subscription(token)
+        if response.status_code != 200:
+            raise AssertionError(f"subscription returned {response.status_code}")
+        return [line for line in response.text.splitlines() if line.strip()]
+
+    @staticmethod
+    def find(links, protocol, transport, device):
+        for link in links:
+            if link.startswith("vmess://"):
+                value = json.loads(base64.b64decode(link[8:]))
+                label = value["ps"]
+                matches = protocol == "vmess" and value["net"] == transport
+            else:
+                matches = link.startswith(protocol + "://")
+                label = unquote(link.rsplit("#", 1)[1])
+                if matches:
+                    matches = dict(parse_qsl(urlsplit(link).query)).get("type") == transport
+            if matches and f" · {protocol}-{transport} · {device} · " in label:
+                return link
+        raise AssertionError(f"no {protocol}/{transport} link for device {device}")
+
+    # node helpers
+    def tick(self):
+        self.agent.tick()
+
+    def node_config(self):
+        return json.loads((self.folder / "node/config.json").read_text())
+
+    # traffic
+    def fetch(self, link, ca=DEFAULT_CA, server_name=None, loglevel="warning"):
+        """Start a real client from the link, fetch through it, stop it. Returns the body or b''."""
+        self.clients += 1
+        socks = _free_port()
+        ca_path = self.ca_path if ca is DEFAULT_CA else ca
+        config = _client_config(link, socks, ca_path, server_name, loglevel)
+        path = self.folder / f"client-{self.clients}.json"
+        path.write_text(json.dumps(config))
+        log = self.folder / f"client-{self.clients}.log"
+        checked = subprocess.run(
+            [self.binary, "run", "-test", "-c", str(path)], capture_output=True, text=True
+        )
+        if checked.returncode != 0:
+            raise AssertionError(checked.stdout + checked.stderr)
+        with open(log, "w") as handle:
+            proc = subprocess.Popen(
+                [self.binary, "run", "-c", str(path)],
+                stdout=handle,
+                stderr=subprocess.STDOUT,
+            )
+        self.processes.append(proc)
         try:
-            with socket.create_connection(
-                ("127.0.0.1", config["inbounds"][0]["port"]), timeout=0.1
-            ):
-                return proc
-        except OSError:
-            time.sleep(0.1)
-    raise AssertionError("client SOCKS port did not open")
-
-
-def _fetch(socks_port, target_port, timeout=15):
-    with socket.create_connection(("127.0.0.1", socks_port), timeout=timeout) as sock:
-        sock.sendall(b"\x05\x01\x00")
-        if sock.recv(2) != b"\x05\x00":
-            raise OSError("SOCKS auth refused")
-        sock.sendall(b"\x05\x01\x00\x01\x7f\x00\x00\x01" + target_port.to_bytes(2, "big"))
-        reply = sock.recv(10)
-        if len(reply) < 2 or reply[1] != 0:
-            raise OSError("SOCKS connect refused")
-        sock.sendall(b"GET / HTTP/1.0\r\nHost: localhost\r\n\r\n")
-        body = b""
-        while chunk := sock.recv(65536):
-            body += chunk
+            for _ in range(60):
+                try:
+                    with socket.create_connection(("127.0.0.1", socks), timeout=0.1):
+                        break
+                except OSError:
+                    time.sleep(0.1)
+            try:
+                with socket.create_connection(("127.0.0.1", socks), timeout=15) as sock:
+                    _socks_connect(sock, self.http.server_port)
+                    sock.sendall(b"GET / HTTP/1.0\r\nHost: localhost\r\n\r\n")
+                    body = b""
+                    while chunk := sock.recv(65536):
+                        body += chunk
+            except OSError:
+                body = b""
+        finally:
+            proc.terminate()
+            try:
+                proc.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+                proc.wait()
+        self.last_log = log.read_text()
         return body
+
+    def expect(self, link, ok, step, ca=DEFAULT_CA, server_name=None):
+        body = self.fetch(link, ca=ca, server_name=server_name)
+        label = f"{link.split('://', 1)[0]} {step}"
+        if ok:
+            self.assertIn(MARKER, body, label)
+        else:
+            self.assertNotIn(MARKER, body, label)
+        return len(body)
+
+    def assertIn(self, needle, haystack, label):
+        if needle not in haystack:
+            raise AssertionError(f"{label}: expected transfer to succeed")
+
+    def assertNotIn(self, needle, haystack, label):
+        if needle in haystack:
+            raise AssertionError(f"{label}: transfer should have been refused")
+
+
+@contextlib.contextmanager
+def _lab(binary, folder):
+    old = dict(os.environ)
+    http = ThreadingHTTPServer(("127.0.0.1", 0), _EchoHandler)
+    thread = threading.Thread(target=http.serve_forever, daemon=True)
+    thread.start()
+    processes = []
+    agent = None
+    try:
+        # Isolated database: SQLite file by default, or a disposable PostgreSQL schema.
+        configure(folder)
+        os.environ.update(
+            DONINO_SECURE_COOKIE="false",
+            DONINO_PANEL_URL="http://127.0.0.1:8000",
+            DONINO_NODE_STATE=str(folder / "node"),
+            DONINO_XRAY=binary,
+        )
+        ca_path, cert_path, key_path = _write_test_pki(folder / "pki")
+        with TestClient(app) as panel:
+            with database() as db:
+                db.execute(
+                    "INSERT INTO admins VALUES(?,?,?)",
+                    ("admin", hash_password("test-password-long"), "owner"),
+                )
+            panel.headers["X-Donino"] = "1"
+            if panel.post(
+                "/api/login",
+                json={"username": "admin", "password": "test-password-long"},
+            ).status_code != 200:
+                raise AssertionError("owner login failed")
+            node = panel.post("/api/nodes", json={"name": "edge", "host": "127.0.0.1"}).json()
+            os.environ["DONINO_NODE_TOKEN"] = node["token"]
+            for protocol, transport in NEW_TRANSPORTS:
+                response = panel.post(
+                    "/api/inbounds",
+                    json={
+                        "node_id": node["id"],
+                        "name": f"{protocol}-{transport}",
+                        "protocol": protocol,
+                        "transport": transport,
+                        "port": _free_port(),
+                        "sni": "localhost",
+                        "path": "/donino-ws",
+                        "service_name": f"svc-{protocol}",
+                        "cert_file": str(cert_path),
+                        "key_file": str(key_path),
+                    },
+                )
+                if response.status_code != 201:
+                    raise AssertionError(response.text)
+            agent = NodeAgent()
+            agent.client.close()
+            agent.client = _LocalPanel(panel, node["token"])
+            lab = Lab(binary, folder, panel, agent, http, ca_path, processes)
+            agent.tick()
+            checked = subprocess.run(
+                [binary, "run", "-test", "-c", str(folder / "node/config.json")],
+                capture_output=True,
+                text=True,
+            )
+            if checked.returncode != 0:
+                raise AssertionError(checked.stdout + checked.stderr)
+            yield lab
+    finally:
+        if agent:
+            agent.close()
+        for proc in processes:
+            proc.terminate()
+            try:
+                proc.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+                proc.wait()
+        http.shutdown()
+        http.server_close()
+        thread.join(timeout=2)
+        os.environ.clear()
+        os.environ.update(old)
+
+
+@unittest.skipUnless(
+    os.environ.get("DONINO_TEST_XRAY"), "Set DONINO_TEST_XRAY for live Xray tests"
+)
+class RealTransportTest(unittest.TestCase):
+    def setUp(self):
+        self.binary = os.path.abspath(os.environ["DONINO_TEST_XRAY"])
+        self._tmp = tempfile.TemporaryDirectory()
+        self.folder = Path(self._tmp.name)
+
+    def tearDown(self):
+        self._tmp.cleanup()
+
+    def test_device_user_quota_and_period_cut_offs(self):
+        """Per-device accounting, device and user cut-off, quota exhaustion and period reset."""
+        with _lab(self.binary, self.folder) as lab:
+            user = lab.new_user("transport-user")
+            second = lab.add_device(user["id"], "second-phone")
+            lab.tick()
+            token = lab.token(user["id"])
+            links = lab.links(token)
+            default = lab.default_device(user["id"])
+
+            for protocol, transport in NEW_TRANSPORTS:
+                self.assertGreater(
+                    lab.expect(lab.find(links, protocol, transport, default), True, "default"), 0
+                )
+                self.assertGreater(
+                    lab.expect(lab.find(links, protocol, transport, "second-phone"), True, "second"), 0
+                )
+            lab.tick()
+            rows = {d["name"]: d for d in lab.devices(user["id"])}
+            self.assertGreater(rows[default]["downloaded"], 0)
+            self.assertGreater(rows["second-phone"]["downloaded"], 0)
+            print("  Transfers passed on all four transports for two devices; device counters increased")
+
+            # Untrusted certificate: a client without the test CA must be refused.
+            link = lab.find(links, "vless", "ws", default)
+            untrusted = lab.fetch(link, ca=None)
+            self.assertNotIn(MARKER, untrusted)
+
+            lab.set_device(second, "second-phone", enabled=False)
+            lab.tick()
+            for protocol, transport in NEW_TRANSPORTS:
+                lab.expect(lab.find(links, protocol, transport, "second-phone"), False, "device-off")
+                lab.expect(lab.find(links, protocol, transport, default), True, "device-off-default")
+            print("  Disabled device was cut off on every transport; the default device kept working")
+
+            lab.set_user(user, enabled=False)
+            lab.tick()
+            for inbound in lab.node_config()["inbounds"][1:]:
+                self.assertEqual(inbound["settings"]["clients"], [])
+            for protocol, transport in NEW_TRANSPORTS:
+                lab.expect(lab.find(links, protocol, transport, default), False, "user-off")
+            print("  Disabled user was removed from every new inbound and its links stopped working")
+
+            lab.set_user(user, enabled=True, quota=1)
+            lab.tick()
+            for inbound in lab.node_config()["inbounds"][1:]:
+                self.assertEqual(inbound["settings"]["clients"], [])
+            self.assertEqual(lab.panel.get("/api/users").json()[0]["status"], "limited")
+
+            lab.set_user(user, enabled=True, quota=50_000_000)
+            lab.panel.post(f"/api/users/{user['id']}/reset-traffic")
+            epoch, pid = lab.agent.epoch, lab.agent.proc.pid
+            lab.tick()
+            self.assertNotEqual(lab.agent.epoch, epoch)
+            self.assertNotEqual(lab.agent.proc.pid, pid)
+            for protocol, transport in NEW_TRANSPORTS:
+                lab.expect(lab.find(links, protocol, transport, default), True, "after-reset")
+            print("  Quota exhaustion cut off all new transports; period reset restored them")
+
+    def test_live_add_is_hot_and_keeps_an_open_stream(self):
+        with _lab(self.binary, self.folder) as lab:
+            owner = lab.new_user("live-owner")
+            lab.tick()
+            owner_links = lab.links(lab.token(owner["id"]))
+            owner_default = lab.default_device(owner["id"])
+
+            # Open a long-lived stream through VLESS/WS before the change.
+            link = lab.find(owner_links, "vless", "ws", owner_default)
+            stream_socks = _free_port()
+            config = _client_config(link, stream_socks, lab.ca_path)
+            path = self.folder / "stream-client.json"
+            path.write_text(json.dumps(config))
+            proc = subprocess.Popen(
+                [self.binary, "run", "-c", str(path)],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+            lab.processes.append(proc)
+            stream = None
+            try:
+                for _ in range(60):
+                    try:
+                        socket.create_connection(("127.0.0.1", stream_socks), timeout=0.1).close()
+                        break
+                    except OSError:
+                        time.sleep(0.1)
+                stream = socket.create_connection(("127.0.0.1", stream_socks), timeout=15)
+                _socks_connect(stream, lab.http.server_port)
+                stream.sendall(b"GET /echo HTTP/1.0\r\nHost: localhost\r\n\r\n")
+                header = b""
+                while not header.endswith(b"\r\n\r\n"):
+                    header += stream.recv(1)
+                stream.sendall(b"PING")
+                self.assertEqual(stream.recv(4), b"PING")
+
+                pid, epoch = lab.agent.proc.pid, lab.agent.epoch
+                newcomer = lab.new_user("live-newcomer")
+                newdevice = lab.add_device(owner["id"], "live-device")
+                lab.tick()
+                self.assertEqual(lab.agent.proc.pid, pid, "live add restarted Xray")
+                self.assertEqual(lab.agent.epoch, epoch, "live add changed the epoch")
+                self.assertEqual(lab.agent.apply_mode, "hot")
+
+                stream.sendall(b"PONG")
+                self.assertEqual(stream.recv(4), b"PONG")
+                print("  Live add applied hot: Xray PID and epoch unchanged; open stream intact")
+
+                newcomer_links = lab.links(lab.token(newcomer["id"]))
+                owner_links = lab.links(lab.token(owner["id"]))
+                newcomer_default = lab.default_device(newcomer["id"])
+                for protocol, transport in NEW_TRANSPORTS:
+                    lab.expect(
+                        lab.find(newcomer_links, protocol, transport, newcomer_default),
+                        True,
+                        "newcomer",
+                    )
+                    lab.expect(
+                        lab.find(owner_links, protocol, transport, "live-device"),
+                        True,
+                        "new-device",
+                    )
+                lab.tick()
+
+                counters = {d["name"]: d for d in lab.devices(newcomer["id"])}
+                self.assertGreater(
+                    counters[newcomer_default]["uploaded"] + counters[newcomer_default]["downloaded"],
+                    0,
+                )
+                device_rows = {d["id"]: d for d in lab.devices(owner["id"])}
+                self.assertGreater(
+                    device_rows[newdevice["id"]]["uploaded"] + device_rows[newdevice["id"]]["downloaded"],
+                    0,
+                    "new device bytes were not attributed to its device id",
+                )
+                periods = lab.panel.get(f"/api/users/{newcomer['id']}/periods").json()
+                total = sum(p["uploaded"] + p["downloaded"] for p in periods)
+                self.assertGreater(total, 0, "newcomer period did not accumulate bytes")
+                print("  Live-added user and device bytes reached their device ids and the current period")
+            finally:
+                if stream is not None:
+                    stream.close()
+
+    def test_real_expiry_stops_stored_and_new_links(self):
+        with _lab(self.binary, self.folder) as lab:
+            expires = int(time.time()) + 30
+            user = lab.new_user("expiring-user", expires=expires)
+            lab.tick()
+            links = lab.links(lab.token(user["id"]))
+            default = lab.default_device(user["id"])
+            for protocol, transport in NEW_TRANSPORTS:
+                lab.expect(lab.find(links, protocol, transport, default), True, "before-expiry")
+            print("  Transfers passed on all four transports before the real expiry time")
+
+            pid = lab.agent.proc.pid
+            time.sleep(max(0.0, expires + 1 - time.time()))
+            lab.tick()
+            self.assertEqual(lab.agent.apply_mode, "restart")
+            self.assertNotEqual(lab.agent.proc.pid, pid, "expiry removal should restart Xray")
+            for inbound in lab.node_config()["inbounds"][1:]:
+                self.assertEqual(inbound["settings"]["clients"], [])
+            for protocol, transport in NEW_TRANSPORTS:
+                lab.expect(lab.find(links, protocol, transport, default), False, "after-expiry")
+            self.assertEqual(lab.subscription(lab.token(user["id"])).status_code, 404)
+            self.assertEqual(lab.subscription(lab.token(user["id"]), "clash").status_code, 404)
+            print("  Real expiry removed the credential from Xray; stored links and new subscriptions stopped")
+
+    def test_expiry_set_to_past_via_api_revokes_on_tick(self):
+        with _lab(self.binary, self.folder) as lab:
+            user = lab.new_user("api-expiry-user", expires=int(time.time()) + 3600)
+            lab.tick()
+            links = lab.links(lab.token(user["id"]))
+            default = lab.default_device(user["id"])
+            for protocol, transport in NEW_TRANSPORTS:
+                lab.expect(lab.find(links, protocol, transport, default), True, "before-change")
+
+            lab.set_user(user, expires=int(time.time()) - 60)
+            lab.tick()
+            self.assertEqual(lab.agent.apply_mode, "restart")
+            for protocol, transport in NEW_TRANSPORTS:
+                lab.expect(lab.find(links, protocol, transport, default), False, "after-change")
+            self.assertEqual(lab.subscription(lab.token(user["id"])).status_code, 404)
+            print("  Expiry moved to the past through the API revoked the user on the next tick")
+
+    def test_tls_controls_for_each_transport(self):
+        """Valid CA and correct hostname succeed; wrong CA and wrong hostname are refused."""
+        with _lab(self.binary, self.folder) as lab:
+            user = lab.new_user("tls-user")
+            lab.tick()
+            links = lab.links(lab.token(user["id"]))
+            default = lab.default_device(user["id"])
+            other_ca, _, _ = _write_test_pki(self.folder / "other-pki")
+            for protocol, transport in NEW_TRANSPORTS:
+                link = lab.find(links, protocol, transport, default)
+                lab.expect(link, True, "valid-ca-and-hostname")
+                wrong_ca = lab.fetch(link, ca=other_ca, loglevel="info")
+                self.assertNotIn(MARKER, wrong_ca, f"{protocol}/{transport} accepted an untrusted CA")
+                self.assertIn("certificate", lab.last_log.lower(), f"{protocol}/{transport}: TLS error not logged")
+                if protocol == "vless" and transport == "ws":
+                    line = next(l for l in lab.last_log.splitlines() if "certificate" in l.lower())
+                    print("  Client log (wrong CA):", line.strip()[:200])
+                wrong_host = lab.fetch(link, server_name="wrong.example", loglevel="info")
+                self.assertNotIn(MARKER, wrong_host, f"{protocol}/{transport} accepted a wrong hostname")
+                self.assertIn("certificate", lab.last_log.lower(), f"{protocol}/{transport}: hostname error not logged")
+            print("  TLS: valid CA with localhost succeeded on all four; wrong CA and wrong hostname were refused")
 
 
 if __name__ == "__main__":
