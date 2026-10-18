@@ -24,6 +24,7 @@ jobs:
       - run: node --check app/static/app.js
       - run: node --check app/static/portal.js
       - run: node --check app/static/dns.js
+      - run: node --check app/static/smart-dns.js
       - run: node --check app/static/tunnels.js
   tunnel-contract:
     runs-on: ubuntu-24.04

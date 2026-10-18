@@ -19,6 +19,7 @@ from .common import InstallError, atomic_write, read_env, run, save_state
 from .manifest import source_inventory, verify_manifest
 from .preflight import domain_name, inspect
 from .tls import install_certificate, validate_certificate
+from . import smart_front
 
 SOURCE = Path(__file__).resolve().parent.parent
 STATE = Path("/var/lib/donino-installer/state.json")
@@ -27,7 +28,7 @@ DATA = Path("/var/lib/donino-panel")
 CURRENT = Path("/opt/donino-panel/current")
 
 
-def nginx_config(domain, *, tls=False, ipv6=True):
+def nginx_config(domain, *, tls=False, ipv6=True, smart=False):
     domain = domain_name(domain)
     common = """
     client_max_body_size 2m;
@@ -55,8 +56,9 @@ def nginx_config(domain, *, tls=False, ipv6=True):
     return (
         http
         + f"""server {{
-    listen 443 ssl;
-    {"listen [::]:443 ssl;" if ipv6 else ""}
+    {"listen 127.0.0.1:8443 ssl proxy_protocol;" if smart else "listen 443 ssl;"}
+    {"listen [::]:443 ssl;" if ipv6 and not smart else ""}
+    {"set_real_ip_from 127.0.0.1; real_ip_header proxy_protocol; real_ip_recursive off;" if smart else ""}
     server_name {domain};
     ssl_certificate /etc/donino/tls/panel.crt;
     ssl_certificate_key /etc/donino/tls/panel.key;
@@ -253,6 +255,7 @@ WantedBy=timers.target
                 "postgresql",
                 "postgresql-client",
                 "certbot",
+                *(["libnginx-mod-stream"] if self.state.get("smart_dns") else []),
                 *(["unbound", "dns-root-data"] if self.state.get("dns") else []),
             ],
             env=env,
@@ -362,6 +365,7 @@ WantedBy=timers.target
                     path,
                     "".join(key + "=" + value + "\n" for key, value in values.items()),
                 )
+            self.smart_environment(values)
             return values
         password = secrets.token_urlsafe(36)
         bootstrap = secrets.token_urlsafe(40)
@@ -380,6 +384,7 @@ WantedBy=timers.target
             ).hexdigest(),
             "DONINO_BOOTSTRAP_EXPIRES": str(int(time.time()) + 3600),
         }
+        self.smart_environment(values)
         atomic_write(
             path, "".join(key + "=" + value + "\n" for key, value in values.items())
         )
@@ -393,6 +398,17 @@ WantedBy=timers.target
         )
         self.checkpoint("environment")
         return values
+
+    def smart_environment(self, values):
+        if self.state.get("smart_dns"):
+            values.update(
+                DONINO_SMART_DNS="1",
+                DONINO_SMART_DNS_IPS=",".join(self.state["smart_dns"]["addresses"]),
+            )
+            atomic_write(
+                CONFIG / "panel.env",
+                "".join(key + "=" + value + "\n" for key, value in values.items()),
+            )
 
     def database(self, values):
         from urllib.parse import urlsplit
@@ -504,21 +520,33 @@ WantedBy=timers.target
             0o600,
         )
         path = Path("/etc/nginx/conf.d/donino-panel.conf")
-        previous = path.read_bytes() if path.exists() else None
+        smart = bool(tls and self.state.get("smart_dns"))
+        targets = (path, smart_front.FRONT) if smart else (path,)
+        previous = {p: p.read_bytes() if p.exists() else None for p in targets}
+        inventory = dict(self.state.get("managed_files", {}))
         try:
+            if smart:
+                self.managed_write(
+                    smart_front.FRONT,
+                    smart_front.config(domain, ipv6=self.state.get("ipv6", True)),
+                )
             self.managed_write(
                 path,
-                nginx_config(domain, tls=tls, ipv6=self.state.get("ipv6", True)),
+                nginx_config(
+                    domain, tls=tls, ipv6=self.state.get("ipv6", True), smart=smart
+                ),
                 0o644,
             )
             run(["nginx", "-t"], capture=True)
             run(["systemctl", "enable", "--now", "nginx"])
             run(["systemctl", "reload", "nginx"])
         except BaseException:
-            if previous is None:
-                path.unlink(missing_ok=True)
-            else:
-                atomic_write(path, previous, 0o644)
+            for target, content in previous.items():
+                if content is None:
+                    target.unlink(missing_ok=True)
+                else:
+                    atomic_write(target, content, 0o644)
+            self.state["managed_files"] = inventory
             raise
 
     def certificate(self, domain):
@@ -585,13 +613,49 @@ WantedBy=timers.target
         run(["systemctl", "stop", "donino-panel"])
         if Path("/etc/systemd/system/donino-dns.service").exists():
             run(["systemctl", "stop", "donino-dns"])
+        if smart_front.UNIT.exists():
+            run(["systemctl", "stop", "donino-smart-gateway"])
         self.app_cli("migrate", release=release)
         self.activate(release)
         run(["systemctl", "enable", "--now", "donino-panel"])
         run(["systemctl", "restart", "donino-panel"])
         if self.state.get("dns"):
             self.dns_services()
+        if self.state.get("smart_dns"):
+            self.smart_service()
         self.checkpoint("services")
+
+    def smart_service(self):
+        self.managed_write(
+            smart_front.UNIT,
+            (SOURCE / "deploy/donino-smart-gateway.service").read_text(),
+        )
+        run(["systemctl", "daemon-reload"])
+        run(["systemctl", "enable", "--now", "donino-smart-gateway"])
+        run(["systemctl", "restart", "donino-smart-gateway"])
+        run(["systemctl", "is-active", "--quiet", "donino-smart-gateway"])
+        run(
+            [
+                str(CURRENT / ".venv/bin/python"),
+                "-c",
+                """import os,time
+from ops.common import read_env
+os.environ.update(read_env('/etc/donino/panel.env'))
+from app.db import database
+from app.smart_dns import gateway_ready
+for attempt in range(60):
+    with database() as db:
+        ready=gateway_ready(db)
+    if ready:
+        break
+    if attempt==59:
+        raise RuntimeError('Smart DNS gateway did not become ready')
+    time.sleep(0.5)
+""",
+            ],
+            cwd=CURRENT,
+            capture=True,
+        )
 
     def dns_services(self):
         settings = self.state["dns"]
@@ -717,6 +781,8 @@ for attempt in range(20):
         run(["systemctl", "restart", "donino-panel"])
         if self.state.get("dns"):
             self.dns_services()
+        if self.state.get("smart_dns"):
+            self.smart_service()
         self.health()
         self.checkpoint("complete")
 
@@ -737,6 +803,7 @@ for attempt in range(20):
                     "A managed file has local changes; preserve/reconcile it before uninstall"
                 )
         for unit in (
+            "donino-smart-gateway.service",
             "donino-dns.service",
             "donino-unbound.service",
             "donino-panel.service",
@@ -784,6 +851,19 @@ for attempt in range(20):
             development=self.args.development_source,
         )
         settings = dns_options(self.args, self.state)
+        smart = smart_front.options(self.args, self.state, settings)
+        if smart:
+            inventory = self.state.get("managed_files", {})
+            for target in (smart_front.FRONT, smart_front.PANEL, smart_front.UNIT):
+                if (
+                    target.exists()
+                    and inventory.get(str(target))
+                    != hashlib.sha256(target.read_bytes()).hexdigest()
+                ):
+                    raise InstallError(
+                        "Refusing to overwrite unmanaged or modified Smart DNS configuration"
+                    )
+            smart_front.preflight(self.state)
         if settings:
             inventory = self.state.get("managed_files", {})
             for path in (
@@ -826,6 +906,8 @@ for attempt in range(20):
         self.state["ipv6"] = report["ipv6"]
         if settings:
             self.state["dns"] = settings
+        if smart:
+            self.state["smart_dns"] = smart
         self.checkpoint("preflight")
         self.packages()
         release = self.code()
@@ -908,6 +990,17 @@ def arguments(argv=None):
         "--dns-port", type=int, help="UDP/TCP gateway port (default: 5353)"
     )
     parser.add_argument("--dot-port", type=int, help="DoT gateway port (default: 8530)")
+    parser.add_argument(
+        "--with-smart-dns",
+        action="store_true",
+        help="Opt in to same-IP HTTPS SNI routing; requires --with-dns",
+    )
+    parser.add_argument(
+        "--smart-dns-ip",
+        action="append",
+        default=[],
+        help="Advertised gateway IP, repeat for IPv4/IPv6",
+    )
     return parser.parse_args(argv)
 
 
@@ -925,6 +1018,11 @@ def main(argv=None):
             report["dns"] = dns_options(
                 args, json.loads(STATE.read_text()) if STATE.exists() else {}
             )
+            report["smart_dns"] = smart_front.options(
+                args,
+                json.loads(STATE.read_text()) if STATE.exists() else {},
+                report["dns"],
+            )
             print(json.dumps(report, ensure_ascii=False, indent=2))
             return 2 if report["errors"] else 0
         if args.command == "doctor":
@@ -936,6 +1034,7 @@ def main(argv=None):
                 "app_version": state.get("app_version"),
                 "installation_complete": state.get("last_stage") == "complete",
                 "dns": state.get("dns"),
+                "smart_dns": state.get("smart_dns"),
             }
             try:
                 with urllib.request.urlopen(

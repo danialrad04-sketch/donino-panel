@@ -1,0 +1,31 @@
+{
+  "task_id": "codex-v1-progress",
+  "status": "in_progress",
+  "branch": "development/tunnel-verification",
+  "last_verified_commit": "108f72a4cfff94cbcf7d23e3eddb9fc641dd3352",
+  "completed": [
+    "بررسی PR ۱۷ و اصلاح SNI خروجی Trojan برای Mihomo",
+    "هر ۹ آزمون Mihomo با شش مسیر واقعی و بدون expected failure موفق شد",
+    "binding پایدار node/inbound در schema 11، guard و بازیابی پاسخ گم‌شده",
+    "پذیرش مرورگر دسکتاپ/موبایل و قرارداد worker واقعی با نقشهٔ متصل",
+    "رفع علت قطع زودهنگام fixture Mihomo: انتظار برای Running پس از post-up، بدون retry انتقال یا تضعیف TLS",
+    "PR ۱۸ ادغام و alpha.9 منتشر شد؛ هر ۹ CI در push و PR موفق بود",
+    "آزمون واقعی VPN و انتشار اضافهٔ آدرس با lease ۲۴ ساعته، schema 12 و محافظت restore/replacement",
+    "شش profile واقعی روی FRP WSS/QUIC، قطع حامل‌ها و restart محلی؛ رابط تأیید انتشار و موبایل",
+    "watchdog اکنون پاسخ ناقص یا منقضی را رد می‌کند؛ خاموشی bridge مسیر اضافه را از خروجی حذف می‌کند"
+  ],
+  "remaining": [
+    "CI و انتشار بستهٔ alpha.10 از همین شاخه",
+    "آزمون روی دو VPS واقعی، مانیتور/تمدید امن lease و نصب اولیهٔ نقش‌ها",
+    "WireGuard/OpenVPN و دیگر مراحل باقی‌ماندهٔ master plan"
+  ],
+  "next_action": "بررسی‌های نهایی PR ۱۹ را روی آخرین head دنبال کن؛ پس از موفقیت 10 job، merge و prerelease alpha.10. مرحلهٔ بعد مانیتور/تمدید امن و نصب نقش‌ها/مراحل موتور طبق master plan است. کلاد متوقف بماند.",
+  "tests": [
+    "مجموعهٔ یکپارچهٔ محلی با Xray/Mihomo/FRP و worker واقعی: 207 آزمون، 205 موفق، 2 skip (fault PostgreSQL و Unbound محلی)",
+    "آخرین delta خاموشی bridge و publication: 11 آزمون endpoint موفق؛ HTTPS/watchdog/parent-death: 6 موفق",
+    "Chromium با آزمون/تأیید/انتشار/لغو، تغییر فرم حین پاسخ، 390px و مسیرهای قبلی: موفق",
+    "CI روی runtime قبلی: PostgreSQL، دو نصب بومی، Mihomo هر دو DB و carrier واقعی موفق؛ انتظار دیدن فرم مرورگر اصلاح و محلی تأیید شد. بررسی CI نهایی این commit لازم است"
+  ],
+  "blockers": [],
+  "pr_url": "https://github.com/danialrad04-sketch/donino-panel/pull/19"
+}

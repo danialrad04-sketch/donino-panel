@@ -1,0 +1,27 @@
+[Unit]
+Description=Donino Smart DNS HTTPS passthrough gateway (optional preview)
+After=network-online.target donino-panel.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=donino
+Group=donino
+WorkingDirectory=/opt/donino-panel/current
+EnvironmentFile=/etc/donino/panel.env
+ExecStart=/opt/donino-panel/current/.venv/bin/python -m agent.smart_gateway --listen 127.0.0.1 --port 8444 --proxy-protocol
+Restart=on-failure
+RestartSec=12
+MemoryMax=256M
+TasksMax=128
+LimitNOFILE=1024
+TimeoutStopSec=10
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/donino-panel
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

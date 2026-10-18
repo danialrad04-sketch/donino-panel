@@ -5,6 +5,7 @@ import ipaddress
 import os
 import threading
 import time
+import uuid
 
 import dns.exception
 import dns.flags
@@ -21,8 +22,9 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 
 class DNSRule(BaseModel):
     domain: str = Field(min_length=1, max_length=253)
-    action: str = Field(pattern=r"^(allow|block|rewrite)$")
+    action: str = Field(pattern=r"^(allow|block|rewrite|route)$")
     addresses: list[str] = Field(default_factory=list, max_length=8)
+    exit_ids: list[str] = Field(default_factory=list, max_length=3)
 
     @field_validator("domain")
     @classmethod
@@ -63,6 +65,13 @@ class DNSRule(BaseModel):
     def address_action(self):
         if (self.action == "rewrite") != bool(self.addresses):
             raise ValueError("Only rewrite rules require addresses")
+        if (self.action == "route") != bool(self.exit_ids):
+            raise ValueError("Only route rules require exit nodes")
+        if len(set(self.exit_ids)) != len(self.exit_ids):
+            raise ValueError("Duplicate exit node")
+        for value in self.exit_ids:
+            if str(uuid.UUID(value)) != value:
+                raise ValueError("Use canonical exit node IDs")
         return self
 
 
@@ -118,7 +127,9 @@ def synthetic(query, rule):
     response.flags |= dns.flags.RA
     response.flags &= ~dns.flags.AD
     question = query.question[0]
-    if rule["action"] == "block":
+    if rule["action"] == "unavailable":
+        response.set_rcode(dns.rcode.SERVFAIL)
+    elif rule["action"] == "block":
         response.set_rcode(dns.rcode.NXDOMAIN)
     else:
         addresses = [
@@ -136,7 +147,7 @@ def synthetic(query, rule):
         if addresses:
             response.answer.append(
                 dns.rrset.from_text(
-                    question.name, 60, "IN", question.rdtype, *addresses
+                    question.name, rule.get("ttl", 60), "IN", question.rdtype, *addresses
                 )
             )
     if not response.answer:

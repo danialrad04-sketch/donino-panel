@@ -278,6 +278,10 @@ def restore(source, replace=False):
             from .tunnel_endpoints import invalidate_all
 
             invalidate_all(db)
+        if version >= 13:
+            from .smart_dns import invalidate_restored
+
+            invalidate_restored(db)
     os.replace(staging, target)
     return {
         "restored_from": str(source),
@@ -346,6 +350,10 @@ def _restore_postgres(source, manifest, replace):
             from .tunnel_endpoints import invalidate_all
 
             invalidate_all(db)
+        if table_exists(db, "smart_exits"):
+            from .smart_dns import invalidate_restored
+
+            invalidate_restored(db)
     return {
         "restored_from": str(source),
         "schema_version": version,

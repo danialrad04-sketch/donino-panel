@@ -60,13 +60,16 @@ class CatalogGroup(BaseModel):
 class CatalogPolicyInput(BaseModel):
     name: str = Field(min_length=1, max_length=80)
     groups: list[CatalogGroup] = Field(min_length=1, max_length=100)
-    relay_addresses: list[str] = Field(min_length=1, max_length=8)
+    relay_addresses: list[str] = Field(default_factory=list, max_length=8)
+    exit_ids: list[str] = Field(default_factory=list, max_length=3)
     domains_off: list[str] = Field(default_factory=list, max_length=1000)
     custom_domains: list[str] = Field(default_factory=list, max_length=500)
 
     @field_validator("relay_addresses")
     @classmethod
     def addresses(cls, values):
+        if not values:
+            return []
         return DNSRule(
             domain="relay.example", action="rewrite", addresses=values
         ).addresses
@@ -78,6 +81,8 @@ class CatalogPolicyInput(BaseModel):
 
 
 def compile_policy(body):
+    if bool(body.relay_addresses) == bool(body.exit_ids):
+        raise ValueError("Choose managed exit nodes or external relay addresses")
     known = {
         (s["key"], g["key"]): g["domains"]
         for s in catalog()["services"]
@@ -94,6 +99,8 @@ def compile_policy(body):
     rules = [
         {"domain": d, "action": "allow"}
         if d in body.domains_off
+        else {"domain": d, "action": "route", "exit_ids": body.exit_ids}
+        if body.exit_ids
         else {"domain": d, "action": "rewrite", "addresses": body.relay_addresses}
         for d in sorted(domains)
     ]

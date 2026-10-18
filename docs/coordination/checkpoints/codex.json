@@ -1,31 +1,30 @@
 {
   "task_id": "codex-v1-progress",
   "status": "in_progress",
-  "branch": "development/tunnel-verification",
-  "last_verified_commit": "108f72a4cfff94cbcf7d23e3eddb9fc641dd3352",
+  "branch": "development/smart-dns-routing",
+  "last_verified_commit": "388c33bb27ed0413b0519d51445064a0d78ce74f",
   "completed": [
-    "بررسی PR ۱۷ و اصلاح SNI خروجی Trojan برای Mihomo",
-    "هر ۹ آزمون Mihomo با شش مسیر واقعی و بدون expected failure موفق شد",
-    "binding پایدار node/inbound در schema 11، guard و بازیابی پاسخ گم‌شده",
-    "پذیرش مرورگر دسکتاپ/موبایل و قرارداد worker واقعی با نقشهٔ متصل",
-    "رفع علت قطع زودهنگام fixture Mihomo: انتظار برای Running پس از post-up، بدون retry انتقال یا تضعیف TLS",
-    "PR ۱۸ ادغام و alpha.9 منتشر شد؛ هر ۹ CI در push و PR موفق بود",
-    "آزمون واقعی VPN و انتشار اضافهٔ آدرس با lease ۲۴ ساعته، schema 12 و محافظت restore/replacement",
-    "شش profile واقعی روی FRP WSS/QUIC، قطع حامل‌ها و restart محلی؛ رابط تأیید انتشار و موبایل",
-    "watchdog اکنون پاسخ ناقص یا منقضی را رد می‌کند؛ خاموشی bridge مسیر اضافه را از خروجی حذف می‌کند"
+    "PR ۱۹ ادغام و alpha.10 با ۱۰ job موفق منتشر شد",
+    "Smart DNS با TLS passthrough، دو جایگزین، مجوز IP، حجم مستقل و schema 13",
+    "رابط نود/مسیریابی/حجم و نصب اختیاری frontend هم‌پورت 443",
+    "رفع حفظ credential در ویرایش UI و حفظ UUIDهای route در فرم متنی",
+    "نصب Debian/Ubuntu و بازیابی دومیزبان با توقف نقش‌ها؛ heartbeat موقت دادهٔ کاربر محسوب نمی‌شود",
+    "پذیرش نهایی شبکه، مرورگر و مجموعهٔ یکپارچه؛ ثبت PR ۲۰"
   ],
   "remaining": [
-    "CI و انتشار بستهٔ alpha.10 از همین شاخه",
-    "آزمون روی دو VPS واقعی، مانیتور/تمدید امن lease و نصب اولیهٔ نقش‌ها",
-    "WireGuard/OpenVPN و دیگر مراحل باقی‌ماندهٔ master plan"
+    "بررسی ۱۰ job متمایز CI روی head نهایی PR ۲۰، سپس ادغام و prerelease alpha.11",
+    "آزمون VPS/دامنه/بازی واقعی، ظرفیت/retention و آماده‌سازی خودکار خروجی دوردست",
+    "WireGuard/OpenVPN و دیگر فازهای باقی‌ماندهٔ طرح v1"
   ],
-  "next_action": "بررسی‌های نهایی PR ۱۹ را روی آخرین head دنبال کن؛ پس از موفقیت 10 job، merge و prerelease alpha.10. مرحلهٔ بعد مانیتور/تمدید امن و نصب نقش‌ها/مراحل موتور طبق master plan است. کلاد متوقف بماند.",
+  "next_action": "PR ۲۰ را روی head نهایی بررسی کن. فقط پس از موفقیت jobهای CI و تطبیق SHA، merge و v1.0.0-alpha.11 prerelease (latest=false) منتشر کن. اگر قطع شد، از همین PR/checkpoint ادامه بده. کلاد متوقف بماند.",
   "tests": [
-    "مجموعهٔ یکپارچهٔ محلی با Xray/Mihomo/FRP و worker واقعی: 207 آزمون، 205 موفق، 2 skip (fault PostgreSQL و Unbound محلی)",
-    "آخرین delta خاموشی bridge و publication: 11 آزمون endpoint موفق؛ HTTPS/watchdog/parent-death: 6 موفق",
-    "Chromium با آزمون/تأیید/انتشار/لغو، تغییر فرم حین پاسخ، 390px و مسیرهای قبلی: موفق",
-    "CI روی runtime قبلی: PostgreSQL، دو نصب بومی، Mihomo هر دو DB و carrier واقعی موفق؛ انتظار دیدن فرم مرورگر اصلاح و محلی تأیید شد. بررسی CI نهایی این commit لازم است"
+    "مجموعهٔ یکپارچهٔ محلی با Xray/Mihomo/FRP و worker واقعی: 227 آزمون، 225 موفق، 2 skip (fault PostgreSQL و Unbound محلی؛ CI محیط هر دو را دارد)",
+    "17 آزمون Smart DNS شامل UDP، دو خروجی TLS، HTTPS مقصد، تغییر سیاست، failover، quota، ابطال، ECH و مهاجرت/restore موفق",
+    "10 آزمون نصب/پیش‌پرواز/rollback و heartbeat مقصد خالی موفق",
+    "Debian 12 و Ubuntu 24.04: نصب، نصب مجدد، restart، TLS/mTLS، backup رمزگذاری‌شده، restore دومیزبان و uninstall با حفظ داده موفق",
+    "Chromium: نود، probe نمایشی، فعال‌سازی با حفظ credential، route متنی، کاتالوگ، quota، فرم موبایل 390px و مسیرهای قبلی؛ بدون JS error و third-party request",
+    "manifest، coordination check، diff check، syntax و lint فایل‌های جدید موفق؛ نتیجهٔ CI روی head نهایی باید بررسی شود"
   ],
   "blockers": [],
-  "pr_url": "https://github.com/danialrad04-sketch/donino-panel/pull/19"
+  "pr_url": "https://github.com/danialrad04-sketch/donino-panel/pull/20"
 }

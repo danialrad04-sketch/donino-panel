@@ -114,6 +114,9 @@ async function loadDNSPortal() {
   const value = await response.json();
   $("#dns-summary").textContent =
     `${number(value.queries)} درخواست از ${value.query_limit ? number(value.query_limit) : "سهمیهٔ نامحدود"}؛ ${bytes(value.request_bytes + value.response_bytes)} بایت DNS. سیاست: ${value.policy_name}. DoH: ${value.doh_url}`;
+  if (value.relay_enabled)
+    $("#dns-summary").textContent +=
+      ` · Smart DNS: ${bytes((value.relay_up || 0) + (value.relay_down || 0))} از ${value.relay_limit ? bytes(value.relay_limit) : "حجم نامحدود"}. برای HTTPS منتخب، IP همین اتصال را ثبت کنید.`;
   $("#dns-ip-list").textContent = value.ip_leases.length
     ? value.ip_leases
         .map(

@@ -16,6 +16,93 @@ from app.security import hotp
 from playwright.sync_api import sync_playwright
 
 
+def exercise_smart_dns_ui(page):
+    """Real API forms; only the link-probe observation is simulated here."""
+    from app.db import database
+    from app.smart_dns import health
+
+    def probe(route):
+        exit_id = route.request.url.rsplit("/", 2)[-2]
+        with database() as db:
+            revision = db.execute(
+                "SELECT revision FROM smart_exits WHERE id=?", (exit_id,)
+            ).fetchone()[0]
+        health(exit_id, revision, True, 4)
+        route.fulfill(json={"ok": True, "application_verified": False})
+
+    pattern = "**/api/dns/smart/exits/*/probe"
+    page.route(pattern, probe)
+    try:
+        for index in (1, 2):
+            page.locator('[data-action="dns-smart-add"]').click()
+            for key, value in {
+                "name": f"خروجی آزمایشی {index}",
+                "host": f"exit{index}.example.com",
+                "sni": f"exit{index}.example.com",
+                "username": "fixture-private-user",
+                "password": secrets.token_urlsafe(24),
+            }.items():
+                page.locator(f"#edit-form [name={key}]").fill(value)
+            page.locator("#edit-form button[type=submit]").click()
+            page.locator("#modal").wait_for(state="hidden")
+            page.locator('[data-action="dns-smart-edit"]').nth(index - 1).wait_for()
+            exit_id = (
+                page.locator('[data-action="dns-smart-edit"]')
+                .nth(index - 1)
+                .get_attribute("data-id")
+            )
+            page.locator(
+                f'[data-action="dns-smart-probe"][data-id="{exit_id}"]'
+            ).click()
+            page.wait_for_function(
+                "id => smartData.exits.some(n => n.id === id && n.healthy === 1)",
+                arg=exit_id,
+            )
+            page.locator(f'[data-action="dns-smart-edit"][data-id="{exit_id}"]').click()
+            assert page.locator("#edit-form [name=password]").input_value() == ""
+            page.locator("#edit-form [name=mode]").select_option("active")
+            page.locator("#edit-form button[type=submit]").click()
+            page.locator("#modal").wait_for(state="hidden")
+        ids = page.evaluate("smartData.exits.map(n => n.id)")
+        policy_id = page.evaluate(
+            "dnsData.policies.find(p=>p.name==='سیاست آزمایشی DNS').id"
+        )
+        page.locator(f'[data-action="dns-smart-route"][data-id="{policy_id}"]').click()
+        page.locator("#edit-form [name=domains]").fill("play.example.com")
+        page.locator("#edit-form [name=primary]").select_option(ids[0])
+        page.locator("#edit-form [name=fallback1]").select_option(ids[1])
+        page.locator("#edit-form button[type=submit]").click()
+        page.locator("#modal").wait_for(state="hidden")
+        page.locator(f'[data-action="dns-edit-policy"][data-id="{policy_id}"]').click()
+        assert (
+            f"route play.example.com {ids[0]},{ids[1]}"
+            in page.locator("#edit-form [name=rules]").input_value()
+        )
+        page.locator("#edit-form button[type=submit]").click()
+        page.locator("#modal").wait_for(state="hidden")
+        page.locator('[data-action="dns-smart-account"]').click()
+        page.locator("#edit-form [name=relay_enabled]").select_option("true")
+        page.locator("#edit-form [name=gib]").fill("2")
+        page.locator("#edit-form [name=connections]").fill("4")
+        page.locator("#edit-form button[type=submit]").click()
+        page.locator("#modal").wait_for(state="hidden")
+        page.locator('[data-action="dns-edit-account"]').click()
+        page.locator("#edit-form button[type=submit]").click()
+        page.locator("#modal").wait_for(state="hidden")
+        account = page.evaluate("api('/dns/accounts').then(a=>a[0])")
+        assert account["relay_enabled"] and account["relay_limit"] == 2 * 1073741824
+        assert account["relay_connections"] == 4 and account["query_limit"] == 500
+        page.locator('[data-action="dns-smart-catalog"]').click()
+        page.locator("#edit-form [name=name]").fill("کاتالوگ خروجی مدیریت‌شده")
+        page.locator("#edit-form [name=group_0]").check()
+        page.locator("#edit-form [name=primary]").select_option(ids[1])
+        page.locator("#edit-form button[type=submit]").click()
+        page.locator("#modal").wait_for(state="hidden")
+        page.get_by_text("کاتالوگ خروجی مدیریت‌شده", exact=True).wait_for()
+    finally:
+        page.unroute(pattern, probe)
+
+
 def exercise_tunnel_ui(page):
     page.locator("a[data-page=tunnels]").click()
     page.get_by_role("heading", name="آماده‌سازی اتصال تانل").wait_for()
@@ -365,6 +452,7 @@ def main():
                     has_text="اعتبارنامهٔ خصوصی DoH"
                 ).wait_for()
                 page.locator("#close-modal").click()
+                exercise_smart_dns_ui(page)
                 exercise_tunnel_ui(page)
                 page.locator("a[data-page=overview]").click()
                 page.locator("#main h1").filter(has_text="شبکه، در یک نگاه").wait_for()
@@ -412,6 +500,12 @@ def main():
                         assert page.evaluate(
                             "document.documentElement.scrollWidth <= innerWidth"
                         ), "Mobile catalog form overflow"
+                        page.locator("#close-modal").click()
+                        page.locator('[data-action="dns-smart-route"]').first.click()
+                        page.locator("#edit-form [name=domains]").wait_for()
+                        assert page.evaluate(
+                            "document.documentElement.scrollWidth <= innerWidth"
+                        ), "Mobile Smart DNS routing form overflow"
                         page.locator("#close-modal").click()
                 page.locator('[data-action="mfa-setup"]').click()
                 page.locator("#edit-form [name=password]").fill(password)
@@ -484,7 +578,7 @@ def main():
                 assert not errors, errors
                 browser.close()
             print(
-                "Browser acceptance passed: admin flows, inbound editing, guest portal, local QR images, zero third-party requests, mobile layouts, themes and logout. No JavaScript errors."
+                "Browser acceptance passed: admin flows, inbound editing, Smart DNS exits/routing/catalog/quotas, guest portal, local QR images, zero third-party requests, mobile layouts, themes and logout. No JavaScript errors."
             )
         finally:
             process.terminate()

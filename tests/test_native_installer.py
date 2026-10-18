@@ -17,12 +17,122 @@ from fastapi.testclient import TestClient
 from app.db import database, digest
 from app.main import app
 from ops.common import InstallError, atomic_write
-from ops.install import nginx_config, arguments, dns_options, available_dns_ports
+from ops.install import (
+    Installer,
+    nginx_config,
+    arguments,
+    dns_options,
+    available_dns_ports,
+)
+from ops import smart_front
 from ops.preflight import domain_name, resolve_and_check
 from ops.tls import install_certificate, validate_certificate
 
 
 class InstallerTest(unittest.TestCase):
+    def test_smart_front_is_explicit_and_preserves_verified_panel_tls(self):
+        self.assertIsNone(smart_front.options(arguments([]), {}, None))
+        for flags in (
+            ["--with-smart-dns", "--smart-dns-ip", "1.2.3.4"],
+            ["--with-dns", "--with-smart-dns"],
+            ["--with-dns", "--with-smart-dns", "--smart-dns-ip", "0.0.0.0"],
+            ["--smart-dns-ip", "1.2.3.4"],
+        ):
+            with self.assertRaises(InstallError):
+                args = arguments(flags)
+                smart_front.options(args, {}, dns_options(args, {}))
+        settings = {"addresses": ["1.2.3.4", "2606:4700::1111"]}
+        args = arguments(
+            [
+                "--with-dns",
+                "--with-smart-dns",
+                "--smart-dns-ip",
+                "1.2.3.4",
+                "--smart-dns-ip",
+                "2606:4700::1111",
+            ]
+        )
+        self.assertEqual(smart_front.options(args, {}, dns_options(args, {})), settings)
+        self.assertEqual(
+            smart_front.options(arguments([]), {"smart_dns": settings}, {"port": 53}),
+            settings,
+        )
+        front = smart_front.config("panel.example.com")
+        panel = nginx_config("panel.example.com", tls=True, smart=True)
+        self.assertIn("ssl_preread on", front)
+        self.assertNotIn("ssl_certificate", front)
+        self.assertIn("proxy_protocol on", front)
+        self.assertIn("listen 127.0.0.1:8443 ssl proxy_protocol", panel)
+        self.assertNotIn("listen 443", panel)
+        self.assertIn("real_ip_header proxy_protocol", panel)
+        self.assertIn("ssl_verify_client optional", panel)
+        with (
+            patch("ops.smart_front.Path.exists", return_value=True),
+            patch(
+                "ops.smart_front.Path.read_text",
+                return_value="include /etc/nginx/modules-enabled/*.conf;",
+            ),
+            patch("ops.smart_front.shutil.which", return_value="/usr/sbin/nginx"),
+        ):
+            for content in (
+                "stream { }",
+                "server { listen [::]:443 ssl; }",
+                "server { listen 443; }",
+            ):
+                with patch(
+                    "ops.smart_front.run",
+                    return_value="# configuration file /etc/nginx/unknown.conf:\n"
+                    + content,
+                ):
+                    with self.assertRaises(InstallError):
+                        smart_front.preflight({"smart_dns": settings})
+
+    def test_smart_front_failed_nginx_check_restores_both_files_and_inventory(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            config = root / "config"
+            config.mkdir()
+            (config / "panel.env").write_text("DONINO_PROXY_KEY=" + "a" * 40 + "\n")
+            panel, front = root / "panel.conf", root / "front.conf"
+            panel.write_text("previous panel")
+            front.write_text("previous front")
+            instance = Installer.__new__(Installer)
+            instance.state = {
+                "smart_dns": {"addresses": ["1.2.3.4"]},
+                "managed_files": {"existing": "hash"},
+            }
+
+            def mapped(value):
+                return (
+                    panel
+                    if str(value) == "/etc/nginx/conf.d/donino-panel.conf"
+                    else root / "snippets"
+                    if str(value) == "/etc/nginx/snippets"
+                    else Path(value)
+                )
+
+            with (
+                patch("ops.install.CONFIG", config),
+                patch("ops.install.Path", side_effect=mapped),
+                patch("ops.smart_front.FRONT", front),
+                patch(
+                    "ops.install.run", side_effect=InstallError("nginx check failed")
+                ),
+            ):
+                with self.assertRaises(InstallError):
+                    instance.proxy("panel.example.com", tls=True)
+            self.assertEqual(panel.read_text(), "previous panel")
+            self.assertEqual(front.read_text(), "previous front")
+            self.assertEqual(
+                instance.state["managed_files"],
+                {
+                    "existing": "hash",
+                    str(root / "snippets/donino-proxy.conf"): __import__("hashlib")
+                    .sha256((root / "snippets/donino-proxy.conf").read_bytes())
+                    .hexdigest(),
+                },
+            )
+
     def test_optional_dns_options_and_occupied_ports_are_not_adopted(self):
         self.assertIsNone(dns_options(arguments([]), {}))
         expected = {"listen": "127.0.0.1", "port": 5353, "dot_port": 8530}
@@ -218,6 +328,16 @@ class BootstrapTest(unittest.TestCase):
                 "password": "long-test-password",
             },
         )
+
+    def test_empty_restore_ignores_only_runtime_gateway_heartbeat(self):
+        from app.storage import require_empty
+
+        with database() as db:
+            db.execute("INSERT INTO smart_gateway VALUES(1,'runtime','[]',9999999999)")
+        require_empty()
+        self.assertEqual(self.submit().status_code, 201)
+        with self.assertRaisesRegex(ValueError, "empty destination"):
+            require_empty()
 
     def test_first_owner_setup_is_atomic_one_use_and_requires_csrf_header(self):
         self.assertEqual(

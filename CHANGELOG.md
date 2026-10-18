@@ -1,5 +1,12 @@
 # Donino releases
 
+## 1.0.0-alpha.11 — managed Smart DNS HTTPS routing, 2026-10-18
+
+- Add opt-in SNI passthrough through authenticated TLS exit nodes, ordered primary/two fallback routes and per-domain exceptions; fail closed without a direct fallback.
+- Add source-IP ownership, independent relay byte quotas and connection limits, draining, live authorization guards, sealed exit credentials and restore invalidation (schema 13, pre-migration backup).
+- Add Persian node/routing/catalog/quota forms and optional native NGINX stream frontend sharing public 443 with the verified panel HTTPS/mTLS backend. Remote exits are explicitly provisioned.
+- Exercise real UDP DNS → TLS passthrough → two exits/origins, switching, carrier loss, TLS/auth refusal, quota and revocation. Gaming/WAN/public ACME and stable-v1 acceptance remain open.
+
 ## 1.0.0-alpha.10 — real tunnel VPN verification and leased endpoints, 2026-10-18
 
 - Add owner-only real Mihomo acceptance against an operator-configured HTTPS target, with TLS verification at both layers, a known bounded response digest, private temporary credentials and no direct fallback or HTTP redirects.

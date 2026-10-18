@@ -7,6 +7,7 @@ import os
 import secrets
 import shutil
 import stat
+import subprocess
 import tempfile
 import time
 import urllib.request
@@ -322,7 +323,18 @@ def main():
             restore_bundle(args.path, args.key_file, apply=False)
             with panel_environment(Path("/etc/donino/panel.env")):
                 require_empty()
-            run(["systemctl", "stop", "donino-panel"])
+            optional = [
+                unit
+                for unit in ("donino-smart-gateway", "donino-dns")
+                if Path("/etc/systemd/system/" + unit + ".service").exists()
+                and subprocess.run(
+                    ["systemctl", "is-active", "--quiet", unit],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                ).returncode
+                == 0
+            ]
+            run(["systemctl", "stop", *optional, "donino-panel"])
             try:
                 result = restore_bundle(args.path, args.key_file, apply=True)
                 run(["nginx", "-t"], capture=True)
@@ -330,6 +342,8 @@ def main():
             finally:
                 run(["systemctl", "start", "donino-panel"])
                 wait_ready()
+                if optional:
+                    run(["systemctl", "start", *optional])
         else:
             result = restore_bundle(args.path, args.key_file, apply=False)
         print(

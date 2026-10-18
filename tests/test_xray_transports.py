@@ -280,7 +280,7 @@ def _free_port():
         return s.getsockname()[1]
 
 
-def _write_test_pki(folder):
+def _write_test_pki(folder, server_names=("localhost",)):
     """A test CA and a leaf certificate for localhost, signed by that CA."""
     folder.mkdir(parents=True, exist_ok=True)
     now = datetime.datetime.now(datetime.timezone.utc)
@@ -324,7 +324,8 @@ def _write_test_pki(folder):
     leaf_cert = (
         builder(name("localhost"), ca_cert.subject, leaf_key)
         .add_extension(
-            x509.SubjectAlternativeName([x509.DNSName("localhost")]), critical=False
+            x509.SubjectAlternativeName([x509.DNSName(name) for name in server_names]),
+            critical=False,
         )
         .add_extension(x509.BasicConstraints(ca=False, path_length=None), critical=True)
         .sign(ca_key, hashes.SHA256())
