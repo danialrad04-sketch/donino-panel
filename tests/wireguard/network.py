@@ -36,6 +36,11 @@ def run():
             DONINO_WG_STATE=str(root / "node"),
             DONINO_SECURE_COOKIE="false",
         )
+        # wg-quick decides between kernel and userspace WireGuard from this
+        # variable; without it the kernel path is tried and fails in the fixture.
+        os.environ["WG_QUICK_USERSPACE_IMPLEMENTATION"] = os.environ[
+            "DONINO_WG_USERSPACE"
+        ]
         (root / "origin").mkdir()
         (root / "origin/data").write_bytes(BODY)
         (root / "origin/large").write_bytes(b"x" * (64 * 1024 * 1024))
