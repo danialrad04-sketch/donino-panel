@@ -13,7 +13,13 @@ def main():
     parser.add_argument("--version", action="version", version=__version__)
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("migrate", help="Back up and migrate an older supported database")
-    sub.add_parser("pki-init", help="Initialize private node CA and config signing material")
+    sub.add_parser(
+        "tunnel-monitor-disable",
+        help="Fence automatic tunnel grants and withdraw their publications",
+    )
+    sub.add_parser(
+        "pki-init", help="Initialize private node CA and config signing material"
+    )
     sub.add_parser(
         "bootstrap-status", help="Report first-owner setup availability without secrets"
     )
@@ -71,6 +77,20 @@ def main():
         )
         return
     initialize()
+    if args.command == "tunnel-monitor-disable":
+        from . import tunnel_monitor
+
+        with database() as db:
+            for row in db.execute(
+                "SELECT binding_id FROM tunnel_monitors WHERE enabled=1"
+            ).fetchall():
+                tunnel_monitor.fence(db, row[0], error="monitor_operator_disabled")
+            db.execute("DELETE FROM tunnel_monitor_runtime")
+            audit(db, "local-cli", "tunnel.monitor.disable-all", "all")
+        print(
+            "Automatic tunnel grants disabled; fresh acceptance and consent are required."
+        )
+        return
     if args.command == "bootstrap-status":
         with database() as db:
             print(

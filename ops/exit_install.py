@@ -498,6 +498,8 @@ asyncio.run(check())
 def main(args):
     if (
         args.with_dns
+        or args.with_tunnel_monitor
+        or args.without_tunnel_monitor
         or args.with_smart_dns
         or args.smart_dns_ip
         or any(v is not None for v in (args.dns_listen, args.dns_port, args.dot_port))

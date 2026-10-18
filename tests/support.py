@@ -36,6 +36,7 @@ sqlite_only = unittest.skipIf(
 
 def strip_smart_schema(db):
     """Build an actual pre-13 fixture before testing earlier upgrade steps."""
+    strip_monitor_schema(db)
     for table in ("smart_sessions", "smart_exits", "smart_gateway"):
         db.execute(f"DROP TABLE {table}")
     for table, columns in (
@@ -44,3 +45,9 @@ def strip_smart_schema(db):
     ):
         for column in columns:
             db.execute(f"ALTER TABLE {table} DROP COLUMN {column}")
+
+
+def strip_monitor_schema(db):
+    """Build an actual pre-14 fixture without orphaning monitoring consent."""
+    db.execute("DROP TABLE tunnel_monitors")
+    db.execute("DROP TABLE tunnel_monitor_runtime")

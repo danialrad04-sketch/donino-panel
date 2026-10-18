@@ -325,7 +325,7 @@ def main():
                 require_empty()
             optional = [
                 unit
-                for unit in ("donino-smart-gateway", "donino-dns")
+                for unit in ("donino-tunnel-monitor", "donino-smart-gateway", "donino-dns")
                 if Path("/etc/systemd/system/" + unit + ".service").exists()
                 and subprocess.run(
                     ["systemctl", "is-active", "--quiet", unit],

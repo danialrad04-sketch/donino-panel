@@ -130,7 +130,7 @@ def exercise_tunnel_ui(page):
     def worker(route):
         path = route.request.url.split("/api/tunnels/", 1)[-1]
         endpoint = path.rsplit("/", 1)[-1]
-        body = route.request.post_data_json if route.request.method == "POST" else None
+        body = route.request.post_data_json if route.request.method in ("POST", "PUT") else None
         if endpoint == "state":
             return route.fulfill(json=state)
         if path.startswith("bindings/") and route.request.method == "GET":
@@ -148,6 +148,7 @@ def exercise_tunnel_ui(page):
                 "job_id": None,
                 "services": body["services"],
                 "checks": [],
+                "monitor": {"enabled": False, "phase": "disabled", "service_ready": True},
                 "summary": {
                     "iran": body["iran"],
                     "foreign": "198.51.100.20",
@@ -201,8 +202,17 @@ def exercise_tunnel_ui(page):
             state["bindings"][0]["checks"] = [check]
             return route.fulfill(status=201, json=check)
         if endpoint == "publication":
-            state["bindings"][0]["endpoint_published"] = route.request.method == "POST"
-            return route.fulfill(json=state["bindings"][0])
+            binding = state["bindings"][0]
+            binding["endpoint_published"] = route.request.method == "POST"
+            binding["published_inbounds"] = [{"inbound_id": inbound["id"], "check_id": "f" * 32}] if binding["endpoint_published"] else []
+            return route.fulfill(json=binding)
+        if endpoint == "monitor":
+            binding = state["bindings"][0]
+            active = route.request.method == "PUT"
+            binding["monitor"].update(enabled=active, phase="healthy" if active else "disabled", last_success=int(time.time()), next_run=int(time.time())+300)
+            if not active:
+                binding.update(endpoint_published=False, published_inbounds=[])
+            return route.fulfill(json=binding["monitor"])
         return route.fulfill(status=500, json={"detail": "Unexpected fixture route"})
 
     page.route("**/api/tunnels/**", worker)
@@ -275,12 +285,20 @@ def exercise_tunnel_ui(page):
         assert page.evaluate("document.documentElement.scrollWidth <= innerWidth"), (
             "Publication mobile overflow"
         )
-        page.get_by_role("button", name="لغو انتشار", exact=True).click()
+        page.get_by_role("button", name="پایش و تمدید خودکار", exact=True).click()
+        page.locator("#tunnel-monitor-form").wait_for()
+        assert page.locator("#tunnel-monitor-form button").is_disabled()
+        page.locator("#tunnel-monitor-form [name=consent]").check()
+        page.locator("#tunnel-monitor-form button").click()
+        page.locator("#tunnel-monitor-stop").wait_for()
+        assert requests[-1] == ("monitor", {"check_id": "f" * 32, "confirm_auto_renew": True, "interval_seconds": 300})
+        assert page.evaluate("document.documentElement.scrollWidth <= innerWidth"), "Monitor mobile overflow"
+        page.locator("#tunnel-monitor-stop").click()
         page.get_by_text(
-            "آدرس تانل از اشتراک‌های بعدی حذف شد؛ نصب تانل و اعتبارنامه‌ها باقی هستند.",
+            "پایش خاموش و انتشار لغو شد؛ نتیجهٔ آزمون قبلی آن را دوباره فعال نمی‌کند.",
             exact=True,
         ).wait_for()
-        assert requests[-1] == ("publication", None)
+        assert requests[-1] == ("monitor", None)
         page.get_by_role("button", name="آزمون و انتشار", exact=True).click()
         page.locator("#tunnel-acceptance").wait_for(state="visible")
         page.locator("#tunnel-verify-form [name=device_id] option").first.wait_for(

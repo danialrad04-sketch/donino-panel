@@ -1,4 +1,81 @@
 "use strict";
+function tunnelMonitorPhase(monitor) {
+  if (!monitor.service_ready) return "سرویس پایش در دسترس نیست";
+  return (
+    {
+      healthy: "سالم؛ تمدید خودکار فعال",
+      checking: "در حال آزمون واقعی",
+      unhealthy: "ناموفق؛ انتشار متوقف و بازیابی در انتظار",
+      disabled: "خاموش",
+      stale: "اعتبار سلامت پایان یافته؛ انتشار متوقف است",
+    }[monitor.phase] || "نامشخص"
+  );
+}
+
+function renderTunnelMonitor(box, binding, action, message) {
+  const section = box.querySelector("#tunnel-acceptance");
+  section.hidden = false;
+  const monitor = binding.monitor || { service_ready: false, enabled: false };
+  const published = binding.published_inbounds || [];
+  const fresh = (binding.checks || []).find(
+    (c) =>
+      c.phase === "succeeded" &&
+      c.expires * 1000 > Date.now() &&
+      published.length === c.inbound_ids.length &&
+      published.every(
+        (p) => p.check_id === c.id && c.inbound_ids.includes(p.inbound_id),
+      ),
+  );
+  const stamp = (value) =>
+    value ? new Date(value * 1000).toLocaleString("fa-IR") : "—";
+  section.innerHTML = `<h2>پایش و تمدید خودکار تانل</h2><p>وضعیت: ${esc(tunnelMonitorPhase(monitor))}</p><p>آخرین موفقیت: ${esc(stamp(monitor.last_success))} · آزمون بعدی: ${esc(stamp(monitor.next_run))} · خطاهای پیاپی: ${Number(monitor.failures || 0)}</p><p>پایش از حجم دستگاه آزمون مصرف می‌کند. فقط همین نصب، دستگاه و اتصال‌های تأییدشده تمدید می‌شوند. قطع مسیر یا توقف سرویس، آدرس تانل را از اشتراک‌های تازه حذف می‌کند؛ بازیابی مسیر در همان محدوده می‌تواند آن را دوباره منتشر کند. کانفیگ ذخیره‌شدهٔ کلاینت با این کار باطل نمی‌شود.</p>${monitor.enabled ? '<button type="button" id="tunnel-monitor-stop">خاموش‌کردن پایش و لغو انتشار</button>' : monitor.service_ready && fresh ? `<form id="tunnel-monitor-form" class="form-grid"><label>فاصلهٔ آزمون<select name="interval"><option value="300">۵ دقیقه</option><option value="900">۱۵ دقیقه</option><option value="1800">۳۰ دقیقه</option><option value="3600">۶۰ دقیقه</option></select></label><label class="full"><input type="checkbox" name="consent">مصرف حجم آزمون، تمدید خودکار و بازنشر پس از بازیابی همین مسیر را تأیید می‌کنم.</label><button type="submit" class="primary" disabled>فعال‌کردن پایش خودکار</button></form>` : `<p>${monitor.service_ready ? "برای فعال‌سازی، ابتدا آزمون تازه و انتشار دقیقاً همان اتصال‌ها لازم است." : "نصب سرویس اختیاری و تنظیم کلاینت آزمون روی میزبان پنل لازم است؛ راهنمای تانل را بررسی کنید."}</p>`}`;
+  const stop = section.querySelector("#tunnel-monitor-stop");
+  if (stop)
+    stop.onclick = () =>
+      action(stop, async () => {
+        await api(`/tunnels/bindings/${binding.id}/monitor`, {
+          method: "DELETE",
+        });
+        message.textContent =
+          "پایش خاموش و انتشار لغو شد؛ نتیجهٔ آزمون قبلی آن را دوباره فعال نمی‌کند.";
+        renderTunnelMonitor(
+          box,
+          await api(`/tunnels/bindings/${binding.id}`),
+          action,
+          message,
+        );
+        await loadTunnelJobs();
+      });
+  const form = section.querySelector("#tunnel-monitor-form");
+  if (form) {
+    form.elements.consent.onchange = () => {
+      form.querySelector("button").disabled = !form.elements.consent.checked;
+    };
+    form.onsubmit = (event) => {
+      event.preventDefault();
+      if (!form.elements.consent.checked) return;
+      action(form.querySelector("button"), async () => {
+        await api(`/tunnels/bindings/${binding.id}/monitor`, {
+          method: "PUT",
+          body: JSON.stringify({
+            check_id: fresh.id,
+            confirm_auto_renew: true,
+            interval_seconds: Number(form.elements.interval.value),
+          }),
+        });
+        message.textContent = "پایش فقط برای محدودهٔ تأییدشده فعال شد.";
+        renderTunnelMonitor(
+          box,
+          await api(`/tunnels/bindings/${binding.id}`),
+          action,
+          message,
+        );
+        await loadTunnelJobs();
+      });
+    };
+  }
+}
+
 function renderTunnels() {
   return (
     heading(
@@ -38,7 +115,7 @@ function tunnelOperationContent(state) {
     rollback_failed: "بازگشت نیازمند بررسی",
   };
   const bound = bindings.length
-    ? `<h3>نقشه‌های متصل به پنل</h3><div class="table-scroll"><table><thead><tr><th>نود / نقشه</th><th>وضعیت</th><th>تنظیمات مبدأ</th><th>عملیات</th></tr></thead><tbody>${bindings.map((b) => `<tr><td>${esc(data.nodes.find((n) => n.id === b.node_id)?.name || "نود حذف‌شده")}<span class="subline mono">${esc(b.id.slice(0, 8))}</span></td><td>${esc(labels[b.phase] || b.phase)}${b.endpoint_published ? '<span class="subline">آدرس تانل در اشتراک منتشر شده</span>' : ""}${(b.checks || []).length ? `<span class="subline">آخرین آزمون VPN: ${esc({ succeeded: "موفق", failed: "ناموفق", running: "در حال اجرا", invalidated: "باطل‌شده" }[b.checks[0].phase] || b.checks[0].phase)}</span>` : ""}</td><td>${b.source_matches ? "مطابق" : "تغییر کرده؛ نقشهٔ تازه لازم است"}</td><td>${b.can_start ? `<button type="button" data-binding-review="${esc(b.id)}">مرور نقشه</button>` : ""}${b.phase === "succeeded" && b.source_matches ? `<button type="button" data-binding-verify="${esc(b.id)}">آزمون و انتشار</button>` : ""}${b.endpoint_published ? `<button type="button" data-binding-unpublish="${esc(b.id)}">لغو انتشار</button>` : ""}</td></tr>`).join("")}</tbody></table></div>`
+    ? `<h3>نقشه‌های متصل به پنل</h3><div class="table-scroll"><table><thead><tr><th>نود / نقشه</th><th>وضعیت</th><th>تنظیمات مبدأ</th><th>عملیات</th></tr></thead><tbody>${bindings.map((b) => `<tr><td>${esc(data.nodes.find((n) => n.id === b.node_id)?.name || "نود حذف‌شده")}<span class="subline mono">${esc(b.id.slice(0, 8))}</span></td><td>${esc(labels[b.phase] || b.phase)}${b.endpoint_published ? '<span class="subline">آدرس تانل در اشتراک منتشر شده</span>' : ""}${b.monitor?.enabled ? `<span class="subline">پایش: ${esc(tunnelMonitorPhase(b.monitor))}</span>` : ""}${(b.checks || []).length ? `<span class="subline">آخرین آزمون VPN: ${esc({ succeeded: "موفق", failed: "ناموفق", running: "در حال اجرا", invalidated: "باطل‌شده" }[b.checks[0].phase] || b.checks[0].phase)}</span>` : ""}</td><td>${b.source_matches ? "مطابق" : "تغییر کرده؛ نقشهٔ تازه لازم است"}</td><td>${b.can_start ? `<button type="button" data-binding-review="${esc(b.id)}">مرور نقشه</button>` : ""}${b.phase === "succeeded" && b.source_matches ? `<button type="button" data-binding-verify="${esc(b.id)}">آزمون و انتشار</button>` : ""}${b.phase === "succeeded" ? `<button type="button" data-binding-monitor="${esc(b.id)}">پایش و تمدید خودکار</button>` : ""}${b.endpoint_published ? `<button type="button" data-binding-unpublish="${esc(b.id)}">لغو انتشار</button>` : ""}</td></tr>`).join("")}</tbody></table></div>`
     : "";
   const known = new Set(bindings.map((b) => b.job_id));
   const other = state.jobs.filter((j) => !known.has(j.id));
@@ -162,6 +239,16 @@ async function loadTunnels() {
     });
     renderInboundChoices();
     box.addEventListener("click", async (e) => {
+      const monitor = e.target.closest("[data-binding-monitor]");
+      if (monitor) {
+        action(monitor, async () => {
+          const binding = await api(
+            `/tunnels/bindings/${monitor.dataset.bindingMonitor}`,
+          );
+          renderTunnelMonitor(box, binding, action, message);
+        });
+        return;
+      }
       const remove = e.target.closest("[data-binding-unpublish]");
       if (remove) {
         action(remove, async () => {

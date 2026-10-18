@@ -1,5 +1,11 @@
 # Validation record
 
+## Consented tunnel monitor — 2026-10-18
+
+The real six-profile TLS fixture passed WSS transfer/accounting, WSS loss → QUIC, WSS restart, both-carrier failure with automatic withdrawal/old-proof refusal, and QUIC recovery with scoped automatic renewal. The controller observation is fixture supplied; carriers, gateway, Xray, Mihomo and HTTPS transfer are real pinned loopback processes. This is not two-VPS/Iran/WAN acceptance. Chromium passed the Persian monitor consent, status and disable flow at 390px, alongside existing admin, Smart DNS, portal/MFA and tunnel flows, with no JavaScript errors or third-party requests.
+
+Focused DB/API checks cover exact published-scope consent, owner authorization, lease renewal, failure/backoff/recovery, dead/hung heartbeat export filtering, configuration/role/source/device/period drift, late-result fencing against manual publication/cancellation, singleton/expired claims, bounded proof retention and schema-13 migration/restore. Native preflight/lifecycle and full-suite exact-commit results are recorded in the PR/release after completion; public ACME and stable-v1 gates remain separate.
+
 ## Independent Smart DNS exit role — 2026-10-18
 
 `install.sh --role smart-exit` provisions an independent TLS exit with a dedicated service user, verified immutable source releases and a private stable gateway credential. It does not install PostgreSQL or a control DB. Native systemd fixtures on Debian 12 and Ubuntu 24.04 passed installation, bare upgrade preserving TLS mode/allowlist/credential, verified TLS/auth, refusal of wrong CA/SNI/password/disallowed domain, protected private files, high-port capability removal, renewal, bad-pair refusal without restarting the healthy process, host restart and data-preserving uninstall. Missing/corrupt private credentials and locally modified managed files are refused without stopping the running service.

@@ -1,5 +1,12 @@
 # Donino releases
 
+## 1.0.0-alpha.13 — consented real-client tunnel monitoring, 2026-10-18
+
+- Add an opt-in unprivileged monitor: serial real Mihomo VPN checks, scoped automatic endpoint renewal, failure withdrawal and bounded-backoff recovery without reinstalling carriers.
+- Fence late results on manual cancellation/publication, source/job/device/period/owner/trust changes and restore; hide automatic exports when the scheduler heartbeat or acceptance is stale. Schema 14 migrates only after backup.
+- Add Persian consent/status controls, bounded receipt retention and native `--with-tunnel-monitor` lifecycle after bridge/verifier provisioning.
+- Exercise real WSS → QUIC, both-carrier loss and QUIC recovery across the six TLS profiles. Initial role setup, public ACME, Iran/WAN/game/UDP acceptance and the remaining v1 protocols are still open.
+
 ## 1.0.0-alpha.12 — independent Smart DNS exit installation, 2026-10-18
 
 - Add `install.sh --role smart-exit` with a dedicated service account, immutable verified releases and private stable gateway credentials; no control-plane database is installed.

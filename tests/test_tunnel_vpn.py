@@ -76,6 +76,7 @@ class TunnelVPNTest(unittest.TestCase):
                 processes,
             ) as lab:
                 os.environ["DONINO_TUNNEL_BRIDGE"] = "1"
+                os.environ["DONINO_TUNNEL_MONITOR"] = "1"
                 https = ThreadingHTTPServer(("127.0.0.1", 0), _HTTPS)
                 context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
                 context.load_cert_chain(
@@ -248,6 +249,37 @@ class TunnelVPNTest(unittest.TestCase):
 
                         relay_profiles = verify_success()
                         self.assertEqual(len(relay_profiles), 6)
+                        from app import tunnel_monitor as monitor
+
+                        instance = "real-carrier-scheduler"
+                        self.assertTrue(monitor.heartbeat(instance))
+                        with database() as db:
+                            check_id = db.execute(
+                                "SELECT check_id FROM tunnel_endpoints LIMIT 1"
+                            ).fetchone()[0]
+                        result = lab.panel.put(
+                            path + "/monitor",
+                            json={"check_id": check_id, "confirm_auto_renew": True},
+                        )
+                        self.assertEqual(result.status_code, 200, result.text)
+
+                        def automatic(expected):
+                            monitor.heartbeat(instance)
+                            with database() as db:
+                                db.execute("UPDATE tunnel_monitors SET next_run=1")
+                            self.assertTrue(monitor.run_due(instance, controller))
+                            status = lab.panel.get(path).json()["monitor"]
+                            self.assertEqual(status["phase"], expected, status)
+                            entries = lab.clash(lab.token(user["id"]))["proxies"]
+                            self.assertEqual(
+                                len(entries), 12 if expected == "healthy" else 6
+                            )
+                            return [
+                                p
+                                for p in entries
+                                if p["port"] in {s["listen_port"] for s in services}
+                            ]
+
                         self.assertEqual(observed()["selected"], "frp-wss")
                         deadline = time.monotonic() + 3
                         while True:
@@ -278,17 +310,17 @@ class TunnelVPNTest(unittest.TestCase):
                         )
 
                         command("stop", "frp-wss", False)
-                        verify_success()
+                        automatic("healthy")
                         self.assertEqual(observed()["selected"], "frp-quic")
                         print(
                             "WSS carrier loss: all six VPN profiles transferred over real QUIC"
                         )
                         command("start", "frp-wss", True)
                         command("prefer", "frp-wss")
-                        relay_profiles = verify_success()
+                        relay_profiles = automatic("healthy")
                         self.assertEqual(observed()["selected"], "frp-wss")
                         print(
-                            "Restarted WSS carrier: fresh transfer acceptance and explicit publication succeeded"
+                            "Restarted WSS carrier: real-client monitor renewed the consented publication"
                         )
 
                         # Exercise the production verifier's TLS rejection too.
@@ -301,12 +333,11 @@ class TunnelVPNTest(unittest.TestCase):
 
                         command("stop", "frp-wss", False)
                         command("stop", "frp-quic", False)
-                        failed = lab.panel.post(path + "/verify", json=request)
-                        self.assertEqual(failed.json()["phase"], "failed", failed.text)
+                        automatic("unhealthy")
                         refused = lab.panel.post(
                             path + "/publication",
                             json={
-                                "check_id": failed.json()["id"],
+                                "check_id": check_id,
                                 "confirm_publish": True,
                             },
                         )
@@ -315,7 +346,13 @@ class TunnelVPNTest(unittest.TestCase):
                             len(lab.clash(lab.token(user["id"]))["proxies"]), 6
                         )
                         print(
-                            "Both real carriers stopped: failed verification withdrew relay exports and refused publication"
+                            "Both real carriers stopped: automatic withdrawal and old-proof publication refusal succeeded"
+                        )
+                        command("start", "frp-quic", True)
+                        automatic("healthy")
+                        self.assertEqual(observed()["selected"], "frp-quic")
+                        print(
+                            "QUIC recovery: real-client monitor restored only the original six consented endpoints"
                         )
                 finally:
                     if worker:

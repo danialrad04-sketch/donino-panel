@@ -19,7 +19,7 @@ import test_tunnel_bindings as fixtures
 from support import strip_smart_schema
 
 
-class EndpointTest(fixtures.BindingFixture):
+class EndpointFixture(fixtures.BindingFixture):
     def setUp(self):
         super().setUp()
         self.available = patch("app.tunnel_probe.available", return_value=True)
@@ -56,6 +56,8 @@ class EndpointTest(fixtures.BindingFixture):
     def subscription(self):
         return self.client.get(f"/sub/{self.token}?format=clash").json()["proxies"]
 
+
+class EndpointTest(EndpointFixture):
     def test_success_publishes_only_a_guarded_additive_endpoint_and_unpublish_is_idempotent(
         self,
     ):

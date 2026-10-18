@@ -1,28 +1,25 @@
 {
   "task_id": "codex-v1-progress",
   "status": "in_progress",
-  "branch": "development/smart-exit-installer",
-  "last_verified_commit": "00c1afae042e6081e21757219b625e1f7d48497f",
+  "branch": "development/tunnel-monitor",
+  "last_verified_commit": null,
   "completed": [
-    "alpha.11 منتشر و checkpoint آن بدون تغییر آرشیو شد",
-    "نصب مستقل Smart DNS exit با کاربر/فایل/نسخهٔ جدا، بدون DB اضافی",
-    "TLS موجود و مسیر ACME، تمدید با rollback، credential پایدار و رد credential مفقود/خراب پیش از توقف سرویس",
-    "اصلاح start/restart تکراری و جلوگیری از restart هنگام رد گواهی خراب",
-    "پذیرش نهایی نقش مستقل در Debian/Ubuntu و سازگاری نصب کنترل‌پنل Debian/مرورگر"
+    "PR ۲۱ ادغام و alpha.12 منتشر شد؛ checkpoint نهایی بدون تغییر در history آرشیو شد.",
+    "schema 14، رضایت محدود پایش، fencing نتیجهٔ دیررس، heartbeat، تمدید/قطع انتشار/backoff و رابط فارسی پیاده شد.",
+    "پذیرش واقعی شش TLS از WSS/QUIC، قطع هر دو و بازگشت QUIC موفق؛ Chromium/موبایل موفق."
   ],
   "remaining": [
-    "هر ۱۲ job متمایز CI را روی head نهایی بررسی کن؛ سپس PR ۲۱ را ادغام و alpha.12 را prerelease/latest=false منتشر کن.",
-    "مستندات و CI نقش مستقل، PR و پیش‌انتشار پس از موفقیت آزمون‌ها",
-    "فاز WireGuard/OpenVPN و دیگر gateهای v1 همچنان باقی‌اند"
+    "اجرای کامل جاری و نصب بومی Debian/Ubuntu را تکمیل و هر ایراد را اصلاح کن.",
+    "بازبینی diff، CI دقیق head، PR و پیش‌انتشار alpha.13 پس از موفقیت checks.",
+    "دیگر gateهای v1 و پذیرش دو VPS واقعی باقی‌اند."
   ],
-  "next_action": "روی head نهایی PR ۲۱ منتظر موفقیت ۱۲ job متمایز CI بمان؛ با تطبیق SHA ادغام و v1.0.0-alpha.12 را prerelease/latest=false منتشر کن. کلاد متوقف است. پس از این برش عملیاتی، اولویت اجرای واقعی WireGuard طبق طرح است؛ آن پروتکل هنوز پشتیبانی‌شده نیست.",
+  "next_action": "نتیجهٔ /tmp/donino-alpha13-full.log و /tmp/donino-alpha13-native-debian.log را بررسی کن؛ سپس Ubuntu و CI. کلاد متوقف است.",
   "tests": [
-    "9 آزمون متمرکز نقش مستقل و rollback جفت گواهی موفق",
-    "نصب مستقل Debian و Ubuntu: install/upgrade/restart، TLS/auth، اسرار خصوصی، رد گواهی/رمز/دامنه نامعتبر، credential خراب/مفقود، تمدید و uninstall موفق",
-    "نصب بومی کنترل‌پنل Debian و Chromium با مسیرهای قبلی موفق",
-    "اجرای کامل نهایی: 236 آزمون، 234 موفق، 2 skip (fault PostgreSQL و Unbound محلی) با Xray/Mihomo/FRP و worker واقعی؛ dedicated CI محیط هر دو را فراهم می‌کند.",
-    "manifest، coordination و diff check موفق؛ CI روی head نهایی PR ۲۱ باید بررسی شود."
+    "17 آزمون متمرکز پایش پیش از افزودهٔ CLI موفق؛ افزودنی‌های CLI اکنون در اجرای کامل بررسی می‌شوند.",
+    "2 آزمون پیش‌نیاز نصب موفق؛ پشتیبانی --without-tunnel-monitor سپس اضافه و در اجرای کامل تکرار می‌شود.",
+    "real tunnel WSS/QUIC loss + recovery موفق؛ Chromium/390px موفق.",
+    "اولین native در preflight مثبت به علت CA خصوصی fixture رد شد؛ CA عمومی در /opt/donino-probe با خواندن سرویس قرار گرفت؛ تکرار در حال اجراست."
   ],
   "blockers": [],
-  "pr_url": "https://github.com/danialrad04-sketch/donino-panel/pull/21"
+  "pr_url": null
 }

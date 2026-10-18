@@ -42,6 +42,7 @@ def require_empty():
             "tunnel_bindings",
             "tunnel_checks",
             "tunnel_endpoints",
+            "tunnel_monitors",
             "smart_exits",
             "smart_sessions",
         ):

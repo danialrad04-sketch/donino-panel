@@ -19,7 +19,7 @@ from .common import InstallError, atomic_write, read_env, run, save_state
 from .manifest import source_inventory, verify_manifest
 from .preflight import domain_name, inspect
 from .tls import install_certificate, validate_certificate
-from . import smart_front
+from . import smart_front, tunnel_monitor as monitor_ops
 
 SOURCE = Path(__file__).resolve().parent.parent
 STATE = Path("/var/lib/donino-installer/state.json")
@@ -400,11 +400,20 @@ WantedBy=timers.target
         return values
 
     def smart_environment(self, values):
+        if self.state.get("tunnel_monitor"):
+            values["DONINO_TUNNEL_MONITOR"] = "1"
+        elif self.args.without_tunnel_monitor:
+            values["DONINO_TUNNEL_MONITOR"] = "0"
         if self.state.get("smart_dns"):
             values.update(
                 DONINO_SMART_DNS="1",
                 DONINO_SMART_DNS_IPS=",".join(self.state["smart_dns"]["addresses"]),
             )
+        if (
+            self.state.get("smart_dns")
+            or self.state.get("tunnel_monitor")
+            or self.args.without_tunnel_monitor
+        ):
             atomic_write(
                 CONFIG / "panel.env",
                 "".join(key + "=" + value + "\n" for key, value in values.items()),
@@ -615,7 +624,11 @@ WantedBy=timers.target
             run(["systemctl", "stop", "donino-dns"])
         if smart_front.UNIT.exists():
             run(["systemctl", "stop", "donino-smart-gateway"])
+        if monitor_ops.UNIT.exists():
+            run(["systemctl", "stop", "donino-tunnel-monitor"])
         self.app_cli("migrate", release=release)
+        if self.args.without_tunnel_monitor:
+            self.app_cli("tunnel-monitor-disable", release=release)
         self.activate(release)
         run(["systemctl", "enable", "--now", "donino-panel"])
         run(["systemctl", "restart", "donino-panel"])
@@ -623,7 +636,42 @@ WantedBy=timers.target
             self.dns_services()
         if self.state.get("smart_dns"):
             self.smart_service()
+        if self.state.get("tunnel_monitor"):
+            self.monitor_service()
+        elif monitor_ops.UNIT.exists():
+            run(["systemctl", "disable", "donino-tunnel-monitor"])
         self.checkpoint("services")
+
+    def monitor_service(self):
+        self.managed_write(
+            monitor_ops.UNIT,
+            (SOURCE / "deploy/donino-tunnel-monitor.service").read_text(),
+        )
+        run(["systemctl", "daemon-reload"])
+        run(["systemctl", "enable", "donino-tunnel-monitor"])
+        run(["systemctl", "restart", "donino-tunnel-monitor"])
+        run(
+            [
+                str(CURRENT / ".venv/bin/python"),
+                "-c",
+                """import os,time
+from ops.common import read_env
+os.environ.update(read_env('/etc/donino/panel.env'))
+from app.db import database
+from app.tunnel_monitor import ready
+for attempt in range(60):
+    with database() as db:
+        ok=ready(db)
+    if ok:
+        break
+    if attempt==59:
+        raise RuntimeError('Tunnel monitor did not become ready')
+    time.sleep(0.5)
+""",
+            ],
+            cwd=CURRENT,
+            capture=True,
+        )
 
     def smart_service(self):
         self.managed_write(
@@ -770,6 +818,11 @@ for attempt in range(20):
             raise InstallError(
                 "No managed installation to repair; resume install first"
             )
+        monitor_ops.options(self.args, self.state)
+        if self.args.with_tunnel_monitor or self.args.without_tunnel_monitor:
+            raise InstallError(
+                "Change tunnel monitor opt-in with install/upgrade before repair"
+            )
         validate_certificate(
             self.state["domain"],
             CONFIG / "tls/panel.crt",
@@ -783,6 +836,8 @@ for attempt in range(20):
             self.dns_services()
         if self.state.get("smart_dns"):
             self.smart_service()
+        if self.state.get("tunnel_monitor"):
+            self.monitor_service()
         self.health()
         self.checkpoint("complete")
 
@@ -803,6 +858,7 @@ for attempt in range(20):
                     "A managed file has local changes; preserve/reconcile it before uninstall"
                 )
         for unit in (
+            "donino-tunnel-monitor.service",
             "donino-smart-gateway.service",
             "donino-dns.service",
             "donino-unbound.service",
@@ -852,6 +908,7 @@ for attempt in range(20):
         )
         settings = dns_options(self.args, self.state)
         smart = smart_front.options(self.args, self.state, settings)
+        monitor = monitor_ops.options(self.args, self.state)
         if smart:
             inventory = self.state.get("managed_files", {})
             for target in (smart_front.FRONT, smart_front.PANEL, smart_front.UNIT):
@@ -908,6 +965,7 @@ for attempt in range(20):
             self.state["dns"] = settings
         if smart:
             self.state["smart_dns"] = smart
+        self.state["tunnel_monitor"] = monitor
         self.checkpoint("preflight")
         self.packages()
         release = self.code()
@@ -991,6 +1049,17 @@ def arguments(argv=None):
     parser.add_argument("--key-file", type=Path)
     parser.add_argument("--ca-file", type=Path)
     parser.add_argument("--acme-staging", action="store_true")
+    monitor_flags = parser.add_mutually_exclusive_group()
+    monitor_flags.add_argument(
+        "--with-tunnel-monitor",
+        action="store_true",
+        help="Enable real-client tunnel renewal after bridge/verifier provisioning",
+    )
+    monitor_flags.add_argument(
+        "--without-tunnel-monitor",
+        action="store_true",
+        help="Disable the optional monitor and future automatic publication",
+    )
     parser.add_argument(
         "--with-dns",
         action="store_true",
@@ -1045,6 +1114,9 @@ def main(argv=None):
                 json.loads(STATE.read_text()) if STATE.exists() else {},
                 report["dns"],
             )
+            report["tunnel_monitor"] = monitor_ops.options(
+                args, json.loads(STATE.read_text()) if STATE.exists() else {}
+            )
             print(json.dumps(report, ensure_ascii=False, indent=2))
             return 2 if report["errors"] else 0
         if args.command == "doctor":
@@ -1057,6 +1129,7 @@ def main(argv=None):
                 "installation_complete": state.get("last_stage") == "complete",
                 "dns": state.get("dns"),
                 "smart_dns": state.get("smart_dns"),
+                "tunnel_monitor": state.get("tunnel_monitor", False),
             }
             try:
                 with urllib.request.urlopen(
