@@ -50,6 +50,7 @@ from .deployments import acknowledge, desired_job
 from .engines import XRAY
 from .node_api import mount_node_api
 from .dns_api import mount_dns_api
+from .doctor_api import mount_doctor_api
 from .node_identity import sign_desired
 from .budgets import allocations, close_budgets, summaries, reserve_total
 from .deps import (
@@ -100,6 +101,7 @@ mount_bootstrap(app)
 mount_network_api(app)
 mount_node_api(app)
 mount_dns_api(app)
+mount_doctor_api(app)
 
 
 @app.middleware("http")
@@ -883,6 +885,16 @@ def add_user(body: UserInput, account=Depends(writer)):
 def update_user(uid: str, body: UserInput, account=Depends(writer)):
     with database() as db:
         previous = one(db, "users", uid)
+        if (
+            body.enabled
+            and db.execute(
+                "SELECT 1 FROM doctor_import_users WHERE user_id=?", (uid,)
+            ).fetchone()
+        ):
+            raise HTTPException(
+                409,
+                "این حساب در مرحلهٔ انتقال doctor-dns است؛ تا تطبیق خدمت و حجم، فعال‌سازی آن پشتیبانی نمی‌شود",
+            )
         if body.quota_mode is not None and body.quota_mode != previous["quota_mode"]:
             raise HTTPException(
                 409,

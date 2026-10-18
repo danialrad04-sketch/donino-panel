@@ -455,6 +455,24 @@ footer {
   color: var(--muted);
   font-size: 12px;
 }
+.dns-policy-head {
+  flex-wrap: wrap;
+}
+.catalog-groups {
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px;
+}
+.catalog-groups label {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 8px 0;
+}
+.catalog-groups input {
+  flex-shrink: 0;
+}
 .table-card {
   padding: 0;
   overflow: hidden;

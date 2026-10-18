@@ -1,5 +1,13 @@
 # Validation record
 
+## doctor-dns catalog and staged migration — 2026-10-18
+
+The local SQLite suite discovered 150 checks and passed with the PostgreSQL-only restore fault and optional real Unbound checks skipped. Seven new cases cover the full 505-domain catalog, unknown-group refusal and owner permissions, read-only/deterministic source inspection, preserved source byte units and private archives, unrecognized hashes/shared-IP conflicts, idempotent staging, pre-action backup failure, transactional rollback on a mid-import identity conflict, selective rollback and refusal after target changes. Normal account activation is refused for staged users.
+
+Chromium acceptance passed for catalog group selection, DNS policy creation and the owner import view, including the catalog form at 390px. A header overflow discovered during this check was corrected with wrapping; existing admin, guest DNS, VPN, MFA and theme flows still pass with no page JavaScript errors or third-party requests. The commit CI repeats Python 3.11/3.12, PostgreSQL, real Xray/Unbound and both native OS fixtures before merge.
+
+The supported format was read from doctor-dns commit a2b2ff843cb1fc8f0a5712a88149f5c379198ff1; integration fixtures contain generated users, timestamps, counters and receipt bytes, not a real customer's production database. Imported accounts/devices remain disabled and source sessions are not copied. No active wallet/password/IP permission, live Smart DNS relay, game/ISP acceptance or automatic service cutover is claimed. See [catalog and staged import](DOCTOR-DNS-IMPORT.fa.md).
+
 ## Authenticated DNS preview — 2026-10-16
 
 Schema 9 adds independent DNS policies, accounts, source-IP leases and query/byte periods. The local full suites discovered 143 checks: SQLite/Python 3.12 passed with the PostgreSQL-only restore fault and optional Unbound checks skipped; PostgreSQL 16/Python 3.11 passed with nine SQLite-only checks skipped and actual Unbound enabled. The added checks cover concurrent quota admission, shared account rates, delayed-period responses, private credential rotation, proof/conflict/expiry of source IPs, policy/cache isolation, explicit allow exceptions, CNAME, A/AAAA, negative TTL, TCP fallback, UDP truncation and atomic TLS-pair replacement without damaging the previous pair.

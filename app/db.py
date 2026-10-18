@@ -16,7 +16,7 @@ try:  # PostgreSQL is optional; SQLite stays the default backend.
 except ImportError:  # pragma: no cover - exercised only without the postgres extra
     psycopg = None
 
-SCHEMA_VERSION = 9
+SCHEMA_VERSION = 10
 MAX_DEVICES_PER_USER = 20
 # Arbitrary constant key for the PostgreSQL writer lock (serializes writers, like BEGIN IMMEDIATE).
 _PG_WRITER_LOCK = 4541776
@@ -450,6 +450,26 @@ def initialize():
                 account_id TEXT PRIMARY KEY REFERENCES dns_accounts(id) ON DELETE CASCADE,
                 window_started INTEGER NOT NULL, requests INTEGER NOT NULL)""")
             set_schema_version(db, 9)
+        if version < 10:
+            db.execute("""CREATE TABLE doctor_imports (
+                id TEXT PRIMARY KEY, source_instance TEXT NOT NULL UNIQUE,
+                fingerprint TEXT NOT NULL, source_revision TEXT NOT NULL,
+                state TEXT NOT NULL CHECK(state IN ('staged','rolled_back')),
+                summary TEXT NOT NULL, payload TEXT NOT NULL,
+                backup_path TEXT NOT NULL, created INTEGER NOT NULL, reverted INTEGER)""")
+            db.execute("""CREATE TABLE doctor_import_users (
+                import_id TEXT NOT NULL REFERENCES doctor_imports(id),
+                external_id INTEGER NOT NULL, user_id TEXT NOT NULL UNIQUE REFERENCES users(id),
+                quota_bytes INTEGER NOT NULL, used_bytes INTEGER NOT NULL,
+                source_status TEXT NOT NULL, period_mode TEXT NOT NULL,
+                reset_at INTEGER, expires INTEGER, guard_hash TEXT NOT NULL,
+                PRIMARY KEY(import_id,external_id))""")
+            db.execute("""CREATE TABLE doctor_import_templates (
+                import_id TEXT NOT NULL REFERENCES doctor_imports(id),
+                external_id INTEGER NOT NULL, name TEXT NOT NULL, is_default INTEGER NOT NULL,
+                selections TEXT NOT NULL, exclusions TEXT NOT NULL, custom_domains TEXT NOT NULL,
+                PRIMARY KEY(import_id,external_id))""")
+            set_schema_version(db, 10)
 
 
 def encrypt_legacy_mfa(db):

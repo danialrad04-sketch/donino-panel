@@ -17,6 +17,7 @@ from .db import audit, database, digest, upsert
 from .deps import admin, owner, writer, one, public_base
 from .dns_policy import DNSPolicyInput
 from .dns_service import DNSService, canonical_address
+from .gaming_catalog import catalog, CatalogPolicyInput, compile_policy
 
 
 class DNSAccountInput(BaseModel):
@@ -62,6 +63,26 @@ def portal_account(db, token):
 def mount_dns_api(app):
     service = DNSService()
     app.state.dns_service = service
+
+    @app.get("/api/dns/catalog")
+    def gaming_catalog(account=Depends(admin)):
+        return catalog()
+
+    @app.post("/api/dns/policies/from-catalog", status_code=201)
+    def catalog_policy(body: CatalogPolicyInput, account=Depends(owner)):
+        try:
+            policy = compile_policy(body)
+        except ValueError as exc:
+            raise HTTPException(422, str(exc)) from exc
+        value = create_policy(policy, account)
+        with database() as db:
+            audit(db, account["username"], "dns.policy.catalog", value["id"])
+        return {
+            **value,
+            "rules": len(policy.rules),
+            "source_revision": catalog()["source"]["commit"],
+            "relay_available": False,
+        }
 
     @app.get("/api/dns/policies")
     def policies(account=Depends(admin)):

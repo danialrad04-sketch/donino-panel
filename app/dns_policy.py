@@ -68,7 +68,7 @@ class DNSRule(BaseModel):
 
 class DNSPolicyInput(BaseModel):
     name: str = Field(min_length=1, max_length=80)
-    rules: list[DNSRule] = Field(default_factory=list, max_length=500)
+    rules: list[DNSRule] = Field(default_factory=list, max_length=2000)
 
     @model_validator(mode="after")
     def unique_rules(self):
