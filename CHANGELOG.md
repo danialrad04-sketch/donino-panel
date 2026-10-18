@@ -1,5 +1,10 @@
 # Donino releases
 
+## Unreleased — glass dashboard redesign, 2026-10-19
+
+- Replace the admin and customer-portal visual system with a restrained graphite and cobalt palette, translucent glass surfaces, a soft ambient backdrop and 16–18px radii in both dark and light themes. No neon accents.
+- Apply the new surfaces to every panel section: sidebar, sticky top bar, overview, cards and stats, tables, forms, modals, toasts, login/bootstrap, mobile bottom navigation and the subscription portal. Behaviour and markup are unchanged.
+
 ## 1.0.0-alpha.13 — consented real-client tunnel monitoring, 2026-10-18
 
 - Add an opt-in unprivileged monitor: serial real Mihomo VPN checks, scoped automatic endpoint renewal, failure withdrawal and bounded-backoff recovery without reinstalling carriers.
