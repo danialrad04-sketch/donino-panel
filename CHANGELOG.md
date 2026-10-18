@@ -1,6 +1,13 @@
 # Donino releases
 
-## Unreleased — Xray WS and gRPC transports
+## 1.0.0-alpha.8 — Claude handoffs and local tunnel bridge, 2026-10-18
+
+- Add root Claude/shared instructions, assigned task and persistent resumable checkpoints with a validating atomic-write CLI. Completed Claude work waits in a review PR; no live cross-chat messaging or limit reset is claimed.
+- Add an opt-in owner-only local Unix-socket Donino Tunnel bridge for pinned HTTPS pairing, connection checks, private two-node previews and durable installation jobs. Initially exposes TCP services over FRP WSS/QUIC, with whitelist responses and redacted validation errors.
+- Add Persian tunnel setup/status UI, explicit whole-set replacement review, plan invalidation after edits and form-preserving background refresh. Initial role installation and automatic subscription endpoint binding remain separate work.
+- Pin a real Donino Tunnel worker/renderer contract in CI; record Hashem architecture research without importing its implementation. No Iran/VPS/carrier-transfer acceptance is claimed by the contract fixture.
+
+### Xray WS and gRPC transports (reviewed Claude PR #13)
 
 - Add VLESS over WebSocket+TLS, VLESS over gRPC+TLS, VMess over gRPC+TLS and Trojan over WebSocket+TLS. The existing VLESS REALITY/Vision, VMess WS+TLS and Trojan TCP+TLS are unchanged. Transport and gRPC service name are stored in the existing inbound settings; there is no schema or migration change.
 - Subscription URIs, VMess base64 JSON and Mihomo proxies are emitted for each new transport. Vision flow is applied only to REALITY/TCP.

@@ -18,11 +18,30 @@ jobs:
       - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends unbound
       - run: sudo install -d -m 700 -o "$(id -u)" -g "$(id -g)" /var/lib/unbound/donino-tests
       - run: python scripts/release_manifest.py --check
+      - run: python scripts/coordination.py check
       - run: python scripts/fetch_xray.py /tmp/donino-xray
       - run: DONINO_TEST_XRAY=/tmp/donino-xray/xray DONINO_TEST_UNBOUND=/usr/sbin/unbound DONINO_TEST_UNBOUND_ROOT=/var/lib/unbound/donino-tests python -m unittest discover -s tests -v
       - run: node --check app/static/app.js
       - run: node --check app/static/portal.js
       - run: node --check app/static/dns.js
+      - run: node --check app/static/tunnels.js
+  tunnel-contract:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt aiohttp==3.14.4 PyYAML==6.0.3
+      - name: Fetch the reviewed Donino Tunnel contract source
+        run: |
+          git init /tmp/donino-tunnel-source
+          git -C /tmp/donino-tunnel-source remote add origin https://github.com/danialrad04-sketch/donino-tunnel.git
+          git -C /tmp/donino-tunnel-source fetch --depth 1 origin 4c19214598d32bd2868f9f46030d8a5dbd494d97
+          git -C /tmp/donino-tunnel-source checkout --detach FETCH_HEAD
+      - run: python -m unittest discover -s tests -p 'test_tunnel*.py' -v
+        env:
+          DONINO_TEST_TUNNEL_SOURCE: /tmp/donino-tunnel-source
   postgres:
     runs-on: ubuntu-24.04
     services:

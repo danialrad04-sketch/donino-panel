@@ -900,6 +900,15 @@ label.check input {
 .form-grid .full {
   grid-column: 1 / -1;
 }
+#tunnel-map {
+  max-width: 100%;
+  overflow-x: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+#tunnel-content section + section {
+  margin-top: 24px;
+}
 .full {
   min-width: 0;
 }

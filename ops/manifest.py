@@ -24,6 +24,8 @@ def source_inventory(source):
             "README.md",
             "SECURITY.md",
             "CHANGELOG.md",
+            "AGENTS.md",
+            "CLAUDE.md",
             "install.sh",
         }:
             continue
