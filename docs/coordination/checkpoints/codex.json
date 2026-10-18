@@ -2,22 +2,29 @@
   "task_id": "codex-v1-progress",
   "status": "in_progress",
   "branch": "development/smart-dns-routing",
-  "last_verified_commit": null,
+  "last_verified_commit": "388c33bb27ed0413b0519d51445064a0d78ce74f",
   "completed": [
     "PR ۱۹ ادغام و alpha.10 با ۱۰ job موفق منتشر شد",
     "Smart DNS با TLS passthrough، دو جایگزین، مجوز IP، حجم مستقل و schema 13",
-    "رابط نود/مسیریابی/حجم و نصب اختیاری frontend هم‌پورت 443"
+    "رابط نود/مسیریابی/حجم و نصب اختیاری frontend هم‌پورت 443",
+    "رفع حفظ credential در ویرایش UI و حفظ UUIDهای route در فرم متنی",
+    "نصب Debian/Ubuntu و بازیابی دومیزبان با توقف نقش‌ها؛ heartbeat موقت دادهٔ کاربر محسوب نمی‌شود",
+    "پذیرش نهایی شبکه، مرورگر و مجموعهٔ یکپارچه؛ ثبت PR ۲۰"
   ],
   "remaining": [
-    "پذیرش نهایی UI، نصب بومی، مجموعهٔ کامل و CI",
-    "PR و انتشار alpha.11 پس از موفقیت بررسی‌ها",
-    "پذیرش VPS/دامنه/بازی واقعی، ظرفیت، نصب خروجی دوردست و مراحل باقی‌ماندهٔ v1"
+    "بررسی ۱۰ job متمایز CI روی head نهایی PR ۲۰، سپس ادغام و prerelease alpha.11",
+    "آزمون VPS/دامنه/بازی واقعی، ظرفیت/retention و آماده‌سازی خودکار خروجی دوردست",
+    "WireGuard/OpenVPN و دیگر فازهای باقی‌ماندهٔ طرح v1"
   ],
-  "next_action": "آزمون‌های فعال Smart DNS، مرورگر و نصب بومی را کامل کن، سپس PR و انتشار alpha.11. کلاد متوقف بماند.",
+  "next_action": "PR ۲۰ را روی head نهایی بررسی کن. فقط پس از موفقیت jobهای CI و تطبیق SHA، merge و v1.0.0-alpha.11 prerelease (latest=false) منتشر کن. اگر قطع شد، از همین PR/checkpoint ادامه بده. کلاد متوقف بماند.",
   "tests": [
-    "۱۵ آزمون API/DB/شبکهٔ واقعی Smart DNS موفق؛ آزمون‌های تازهٔ native و ECH در حال پذیرش",
-    "۹ آزمون نصب بومی/rollback/preflight موفق"
+    "مجموعهٔ یکپارچهٔ محلی با Xray/Mihomo/FRP و worker واقعی: 227 آزمون، 225 موفق، 2 skip (fault PostgreSQL و Unbound محلی؛ CI محیط هر دو را دارد)",
+    "17 آزمون Smart DNS شامل UDP، دو خروجی TLS، HTTPS مقصد، تغییر سیاست، failover، quota، ابطال، ECH و مهاجرت/restore موفق",
+    "10 آزمون نصب/پیش‌پرواز/rollback و heartbeat مقصد خالی موفق",
+    "Debian 12 و Ubuntu 24.04: نصب، نصب مجدد، restart، TLS/mTLS، backup رمزگذاری‌شده، restore دومیزبان و uninstall با حفظ داده موفق",
+    "Chromium: نود، probe نمایشی، فعال‌سازی با حفظ credential، route متنی، کاتالوگ، quota، فرم موبایل 390px و مسیرهای قبلی؛ بدون JS error و third-party request",
+    "manifest، coordination check، diff check، syntax و lint فایل‌های جدید موفق؛ نتیجهٔ CI روی head نهایی باید بررسی شود"
   ],
   "blockers": [],
-  "pr_url": null
+  "pr_url": "https://github.com/danialrad04-sketch/donino-panel/pull/20"
 }
