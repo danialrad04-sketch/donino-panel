@@ -13,6 +13,24 @@ import time
 from urllib.parse import urlencode, quote
 
 
+# Transports per protocol. Old rows that predate the transport key keep the
+# transport they had before: VLESS REALITY/TCP, VMess WS, Trojan TCP.
+TRANSPORTS = {
+    "vless": ("tcp", "ws", "grpc"),
+    "vmess": ("ws", "grpc"),
+    "trojan": ("tcp", "ws"),
+}
+DEFAULT_TRANSPORT = {"vless": "tcp", "vmess": "ws", "trojan": "tcp"}
+
+
+def transport_of(protocol, settings):
+    return settings.get("transport") or DEFAULT_TRANSPORT[protocol]
+
+
+def is_reality(protocol, transport):
+    return protocol == "vless" and transport == "tcp"
+
+
 def eligible(user, now=None):
     now = time.time() if now is None else now
     return bool(
@@ -67,6 +85,7 @@ def compile_config(inbounds, clients):
             continue
         s = json.loads(inbound["settings"])
         protocol = inbound["protocol"]
+        transport = transport_of(protocol, s)
         clients = [
             {
                 "email": c["id"],
@@ -75,7 +94,7 @@ def compile_config(inbounds, clients):
             }
             for c in live
         ]
-        if protocol == "vless":
+        if is_reality(protocol, transport):
             for client in clients:
                 client["flow"] = "xtls-rprx-vision"
             stream = {
@@ -90,17 +109,18 @@ def compile_config(inbounds, clients):
                 },
             }
         else:
-            stream = {
-                "network": "ws" if protocol == "vmess" else "tcp",
-                "security": "tls",
-                "tlsSettings": {
-                    "certificates": [
-                        {"certificateFile": s["cert_file"], "keyFile": s["key_file"]}
-                    ]
-                },
+            # Vision flow is REALITY/TCP only; WS and gRPC carry plain VLESS.
+            tls = {
+                "certificates": [
+                    {"certificateFile": s["cert_file"], "keyFile": s["key_file"]}
+                ]
             }
-            if protocol == "vmess":
+            stream = {"network": transport, "security": "tls", "tlsSettings": tls}
+            if transport == "ws":
                 stream["wsSettings"] = {"path": s["path"]}
+            elif transport == "grpc":
+                tls["alpn"] = ["h2"]
+                stream["grpcSettings"] = {"serviceName": s["service_name"]}
         settings = {"clients": clients}
         if protocol == "vless":
             settings["decryption"] = "none"
@@ -121,6 +141,21 @@ def revision(config):
     return hashlib.sha256(json.dumps(config, sort_keys=True).encode()).hexdigest()
 
 
+def _transport_options(transport, s):
+    """Client-side stream settings for TLS transports (URI query, Mihomo opts)."""
+    if transport == "ws":
+        return (
+            {"type": "ws", "host": s["sni"], "path": s["path"]},
+            {"ws-opts": {"path": s["path"], "headers": {"Host": s["sni"]}}},
+        )
+    if transport == "grpc":
+        return (
+            {"type": "grpc", "serviceName": s["service_name"], "mode": "gun"},
+            {"grpc-opts": {"grpc-service-name": s["service_name"]}},
+        )
+    return {"type": "tcp"}, {}
+
+
 def profiles(clients, inbounds):
     """clients: dicts with id, secret, device_name, eligible (only eligible are emitted)."""
     links, clash = [], []
@@ -132,6 +167,7 @@ def profiles(clients, inbounds):
         address = f"[{host}]" if ":" in host else host
         port = inbound["port"]
         protocol = inbound["protocol"]
+        transport = transport_of(protocol, s)
         for client in clients:
             if not client["eligible"]:
                 continue
@@ -154,7 +190,7 @@ def profiles(clients, inbounds):
                 "servername": s["sni"],
                 "udp": True,
             }
-            if protocol == "vless":
+            if is_reality(protocol, transport):
                 query = {
                     "encryption": "none",
                     "security": "reality",
@@ -176,10 +212,7 @@ def profiles(clients, inbounds):
                         },
                     }
                 )
-            elif protocol == "trojan":
-                query = {"security": "tls", "sni": s["sni"], "type": "tcp"}
-                proxy["password"] = secret
-            else:
+            elif protocol == "vmess":
                 vmess = {
                     "v": "2",
                     "ps": label,
@@ -188,27 +221,44 @@ def profiles(clients, inbounds):
                     "id": secret,
                     "aid": "0",
                     "scy": "auto",
-                    "net": "ws",
-                    "type": "none",
+                    "net": transport,
+                    "type": "gun" if transport == "grpc" else "none",
                     "host": s["sni"],
-                    "path": s["path"],
+                    "path": s["service_name"] if transport == "grpc" else s["path"],
                     "tls": "tls",
                     "sni": s["sni"],
                 }
                 links.append(
                     "vmess://" + base64.b64encode(json.dumps(vmess).encode()).decode()
                 )
+                _, options = _transport_options(transport, s)
                 proxy.update(
                     {
                         "uuid": secret,
                         "alterId": 0,
                         "cipher": "auto",
-                        "network": "ws",
-                        "ws-opts": {"path": s["path"], "headers": {"Host": s["sni"]}},
+                        "network": transport,
+                        **options,
                     }
                 )
                 clash.append(proxy)
                 continue
+            elif protocol == "vless":
+                # VLESS over TLS with WS or gRPC; no Vision flow.
+                extra, options = _transport_options(transport, s)
+                query = {
+                    "encryption": "none",
+                    "security": "tls",
+                    "sni": s["sni"],
+                    **extra,
+                }
+                proxy.update({"uuid": secret, "network": transport, **options})
+            else:
+                extra, options = _transport_options(transport, s)
+                query = {"security": "tls", "sni": s["sni"], **extra}
+                proxy["password"] = secret
+                if transport != "tcp":
+                    proxy.update({"network": transport, **options})
             links.append(
                 f"{protocol}://{secret}@{address}:{port}?{urlencode(query)}#{quote(label)}"
             )

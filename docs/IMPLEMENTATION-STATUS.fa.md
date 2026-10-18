@@ -12,7 +12,7 @@
 | ۵ — گیمینگ | کاتالوگ ثابت ۴۲ سرویس/۴۸ گروه/۵۰۵ دامنه، ساخت سیاست از گروه‌ها و انتقال مرحله‌ای doctor-dns با preview، backup، آرشیو خصوصی و rollback پیاده‌اند. حساب/دستگاه وارداتی غیرفعال است؛ حجم مبدأ حفظ می‌شود و به سهمیهٔ DNS/VPN تبدیل نمی‌شود. relay/exit زنده، فعال‌سازی انتقال، shaping و آزمون واقعی بازی/ISP باقی‌اند؛ فاز ۵ کامل نیست. |
 | ۶ — WireGuard/AWG | ساخت peer/profile، اعمال quota/expiry و آزمون واقعی در انتظار اجرا. |
 | ۷ — OpenVPN | CA/گواهی دستگاه، حسابداری نشست و ابطال اتصال در انتظار اجرا. |
-| ۸ — گسترش Xray | فعلاً VLESS TCP REALITY Vision، VMess WS TLS و Trojan TCP TLS آزموده‌اند؛ SS، transportهای دیگر و HTTP/SOCKS/Mixed نیازمند اجرا و پذیرش‌اند. |
+| ۸ — گسترش Xray | آزموده‌شده با Xray واقعی: VLESS TCP REALITY Vision، VMess WS TLS، Trojan TCP TLS و در شاخهٔ claude/xray-transports-v1: VLESS WS TLS، VLESS gRPC TLS، VMess gRPC TLS، Trojan WS TLS. تغییر انتقال، پورت یا مسیر/نام سرویس هستهٔ نود را دوباره راه می‌اندازد (restart). ابطال نشست با restart انجام می‌شود و برای مسیرهای جدید آزموده شده است. افزودن زندهٔ کلاینت برای مسیرهای جدید جداگانه آزموده نشده است. SS، HTTPUpgrade/XHTTP و HTTP/SOCKS/Mixed هنوز نیازمند اجرا و پذیرش‌اند. |
 | ۹ — sing-box و موتورهای دیگر | Hysteria2/TUIC/AnyTLS و موارد مشروط مطابق ماتریس هنوز اجرا نشده‌اند. |
 | ۱۰ — مسیر و tunnel | chain، failover، balancing و یکپارچگی donino-tunnel در انتظار اجرا. |
 | ۱۱ — سازمانی | IKEv2، OpenConnect و SoftEther طبق شرط‌های طرح در انتظار اجرا. |
