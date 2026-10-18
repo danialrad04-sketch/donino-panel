@@ -195,6 +195,7 @@ def exercise_tunnel_ui(page):
         ).wait_for()
         assert requests[-1] == ("publication", None)
         page.get_by_role("button", name="آزمون و انتشار", exact=True).click()
+        page.locator("#tunnel-acceptance").wait_for(state="visible")
         page.locator("#tunnel-verify-form [name=device_id] option").first.wait_for(
             state="attached"
         )

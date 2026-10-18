@@ -1,4 +1,5 @@
 import copy
+import os
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -86,6 +87,12 @@ class EndpointTest(fixtures.BindingFixture):
         self.assertIn("@192.0.2.10:1443?", raw)
         initialize()
         self.assertEqual(len(self.subscription()), 2)
+        with patch.dict(os.environ, {"DONINO_TUNNEL_BRIDGE": "0"}):
+            self.assertEqual(len(self.subscription()), 1)
+            metadata = self.client.get(
+                f"/api/tunnels/bindings/{self.bound['id']}"
+            ).json()
+            self.assertFalse(metadata["endpoint_published"])
         for _ in range(2):
             result = self.client.delete(
                 f"/api/tunnels/bindings/{self.bound['id']}/publication",

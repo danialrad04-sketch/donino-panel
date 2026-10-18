@@ -12,7 +12,7 @@ from . import tunnel_bindings as bindings, tunnel_probe
 from .core import profiles, is_reality, transport_of
 from .db import audit, database
 from .deps import one
-from .tunnel_bridge import Input, State
+from .tunnel_bridge import Input, State, enabled
 
 FRESH_SECONDS = 600
 LEASE_SECONDS = 86400
@@ -266,7 +266,7 @@ def details(db, row):
                 (row["id"], int(time.time())),
             )
         ]
-        if current
+        if current and enabled()
         else []
     )
     return {
@@ -326,6 +326,8 @@ def unpublish(binding_id, account):
 
 
 def subscription_rows(db, inbounds):
+    if not enabled():
+        return list(inbounds)
     candidates = list(
         db.execute(
             "SELECT e.inbound_id,e.binding_id FROM tunnel_endpoints e JOIN tunnel_checks c ON c.id=e.check_id "
