@@ -21,9 +21,9 @@ python scripts/coordination.py check
 
 ```json
 {
-  "task_id": "xray-transports-v1",
+  "task_id": "xray-acceptance-v1",
   "status": "in_progress",
-  "branch": "claude/xray-transports-v1",
+  "branch": "claude/xray-acceptance-v1",
   "last_verified_commit": null,
   "completed": ["اعتبارسنجی transportها تکمیل شد"],
   "remaining": ["آزمون انتقال واقعی چهار مسیر"],
@@ -38,6 +38,6 @@ python scripts/coordination.py check
 
 ## جریان موازی و تحویل
 
-کلاد: چهار transport Xray طبق [مأموریت](tasks/xray-transports-v1.fa.md). Codex: هماهنگی، بازبینی، DNS/relay و اتصال Donino Tunnel. فایل‌های مشترک از جمله `app/main.py` و `app/static/app.js` فقط با diff محدود تغییر می‌کنند؛ کل فایل جایگزین نمی‌شود. اگر برخورد ایجاد شد، تغییر task را جدا نگه دار و وابستگی را در PR ثبت کن.
+چهار transport در PR ۱۳ تحویل و ادغام شدند. کلاد اکنون پذیرش افزودهٔ همان مسیرها را طبق [مأموریت فعال](tasks/xray-acceptance-v1.fa.md) انجام می‌دهد. [بازبینی مأموریت قبلی](reviews/xray-transports-v1.fa.md) ثبت شده است. Codex: هماهنگی، بازبینی، DNS/relay و اتصال Donino Tunnel. فایل‌های مشترک از جمله `app/main.py` و `app/static/app.js` فقط با diff محدود تغییر می‌کنند؛ کل فایل جایگزین نمی‌شود. اگر برخورد ایجاد شد، تغییر task را جدا نگه دار و وابستگی را در PR ثبت کن.
 
 محیط فعلی آزمایشی است؛ VPS/دامنهٔ کاربر فراهم نشده است. لیمیت سرویس Claude از این مخزن قابل دورزدن یا بازنشانی نیست. ادامه با پیام کاربر، از آخرین commit/checkpoint بازیابی می‌شود؛ تضمین بازیابی کار ذخیره‌نشده ممکن نیست.

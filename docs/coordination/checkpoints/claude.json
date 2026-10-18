@@ -1,11 +1,13 @@
 {
-  "task_id": "xray-transports-v1",
+  "task_id": "xray-acceptance-v1",
   "status": "assigned",
-  "branch": "claude/xray-transports-v1",
+  "branch": "claude/xray-acceptance-v1",
   "last_verified_commit": null,
   "completed": [],
-  "remaining": ["پیاده‌سازی و پذیرش چهار transport طبق task"],
-  "next_action": "آخرین main و PRهای موجود را بررسی کن؛ شاخهٔ مأموریت را بساز یا ادامه بده و آزمون Xray موجود را بخوان.",
+  "remaining": [
+    "پذیرش live-add، قطع انقضا و کنترل منفی TLS برای هر چهار transport جدید"
+  ],
+  "next_action": "آخرین main شامل PR ۱۳ و راهنمای ریشه را بخوان؛ شاخهٔ claude/xray-acceptance-v1 را از main تازه بساز و آزمون واقعی transportها را تکمیل کن.",
   "tests": [],
   "blockers": [],
   "pr_url": null

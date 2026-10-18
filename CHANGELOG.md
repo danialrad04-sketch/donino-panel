@@ -7,6 +7,14 @@
 - Add Persian tunnel setup/status UI, explicit whole-set replacement review, plan invalidation after edits and form-preserving background refresh. Initial role installation and automatic subscription endpoint binding remain separate work.
 - Pin a real Donino Tunnel worker/renderer contract in CI; record Hashem architecture research without importing its implementation. No Iran/VPS/carrier-transfer acceptance is claimed by the contract fixture.
 
+### Xray WS and gRPC transports (reviewed Claude PR #13)
+
+- Add VLESS over WebSocket+TLS, VLESS over gRPC+TLS, VMess over gRPC+TLS and Trojan over WebSocket+TLS. The existing VLESS REALITY/Vision, VMess WS+TLS and Trojan TCP+TLS are unchanged. Transport and gRPC service name are stored in the existing inbound settings; there is no schema or migration change.
+- Subscription URIs, VMess base64 JSON and Mihomo proxies are emitted for each new transport. Vision flow is applied only to REALITY/TCP.
+- The inbound form selects the transport per protocol and shows only the fields it needs.
+- Real pinned-Xray acceptance covers encrypted transfers for two devices, per-device accounting, device and user cut-off, quota exhaustion, period reset, and rejection of a client that does not trust the test CA.
+- Not claimed: real Mihomo, v2rayN or sing-box client import, live client additions on the new transports, and expiry-based cut-off.
+
 ## 1.0.0-alpha.7 — doctor-dns catalog and staged import, 2026-10-18
 
 - Bundle the pinned MIT doctor-dns catalog with attribution: 42 services, 48 groups and 505 domains. Owners can build independent DNS rewrite policies from selected groups and explicit relay addresses; no relay is installed or claimed by this action.

@@ -1,5 +1,7 @@
 # کار مستقل برای همکاری Claude
 
+**این مأموریت در PR ۱۳ ادغام شد.** در جلسهٔ تازه ابتدا [CLAUDE.md](../CLAUDE.md) و [انتساب فعال](coordination/assignments.json) را بخوان؛ مأموریت بعدی پذیرش live-add و انقضا در شاخهٔ تازه است. متن زیر قرارداد مرحلهٔ تحویل‌شده را برای رجوع نگه می‌دارد.
+
 این متن را می‌توان مستقیم به Claude داد. هدف، پیش‌برد موازی فاز ۸ است؛ مسیر DNS، انتقال doctor-dns و relay در شاخهٔ کاری Codex ادامه دارد.
 
 > مخزن `danialrad04-sketch/donino-panel` را از آخرین `main` بگیر؛ ابتدا `docs/IMPLEMENTATION-STATUS.fa.md`، `docs/MASTER-PLAN.fa.md`، `docs/PROTOCOL-MATRIX.fa.md` و آزمون Xray موجود را بخوان. شاخهٔ مستقل `claude/xray-transports-v1` بساز و transportهای Xray را با حفظ سازگاری فعلی تکمیل کن.

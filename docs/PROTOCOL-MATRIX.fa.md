@@ -14,9 +14,9 @@
 
 | شناسه | پروتکل/نقش | موتور یا مسیر هدف | وضعیت و فاز | حسابداری و قطع دسترسی | خروجی هدف |
 |---|---|---|---|---|---|
-| P-01 | VLESS، server | Xray | موجود: REALITY/TCP/Vision؛ توسعه ۸ | credential؛ فعلاً restart نود برای ابطال نشست | URI، base64، Mihomo؛ JSON در ۱۳ |
-| P-02 | VMess، server | Xray | موجود: WS/TLS؛ توسعه ۸ | credential؛ فعلاً restart | URI، base64، Mihomo؛ JSON در ۱۳ |
-| P-03 | Trojan، server | Xray | موجود: TCP/TLS؛ توسعه ۸ | credential؛ فعلاً restart | URI، base64، Mihomo؛ JSON در ۱۳ |
+| P-01 | VLESS، server | Xray | موجود: REALITY/TCP/Vision؛ WS و gRPC با TLS در فاز ۸ آزموده شد | credential؛ فعلاً restart نود برای ابطال نشست | URI، base64، Mihomo؛ JSON در ۱۳ |
+| P-02 | VMess، server | Xray | موجود: WS/TLS؛ gRPC با TLS در فاز ۸ آزموده شد | credential؛ فعلاً restart | URI، base64، Mihomo؛ JSON در ۱۳ |
+| P-03 | Trojan، server | Xray | موجود: TCP/TLS؛ WS با TLS در فاز ۸ آزموده شد | credential؛ فعلاً restart | URI، base64، Mihomo؛ JSON در ۱۳ |
 | P-04 | Shadowsocks / 2022، server | Xray یا sing-box با نسخه منتخب | هدف ۸ | کلید کاربر با ترکیب رمز معتبر؛ قطع نشست باید آزموده شود | URI و JSON کلاینت سازگار |
 | P-05 | Hysteria2، server | sing-box یا موتور مستقل | هدف ۹ | شناسه احراز هویت؛ مصرف و خاتمه نشست شرط پذیرش | URI، sing-box، Mihomo سازگار |
 | P-06 | TUIC v5، server | sing-box یا موتور مستقل | هدف ۹ | هویت کاربر؛ مصرف/انقضا/نشست QUIC | URI و JSON/YAML سازگار |

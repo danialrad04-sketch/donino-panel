@@ -41,7 +41,7 @@ from .db import (
     IntegrityErrors,
     MAX_DEVICES_PER_USER,
 )
-from .core import eligible, status, profiles
+from .core import DEFAULT_TRANSPORT, TRANSPORTS, eligible, status, profiles, is_reality
 from .secrets import seal
 from .accounting import apply_sample, next_period
 from .bootstrap import mount_bootstrap
@@ -207,6 +207,7 @@ class InboundInput(BaseModel):
     node_id: str
     name: str = Field(min_length=1, max_length=80)
     protocol: str = Field(pattern=r"^(vless|vmess|trojan)$")
+    transport: str = Field(default="", pattern=r"^(|tcp|ws|grpc)$")
     port: int = Field(ge=1, le=65535)
     sni: str = Field(min_length=1, max_length=253, pattern=r"^[A-Za-z0-9.-]+$")
     target: str = Field(
@@ -215,6 +216,9 @@ class InboundInput(BaseModel):
         pattern=r"^[A-Za-z0-9.-]+:[0-9]{1,5}$",
     )
     path: str = Field(default="/donino", max_length=200, pattern=r"^/[^\s?#]*$")
+    service_name: str = Field(
+        default="donino", min_length=1, max_length=64, pattern=r"^[A-Za-z0-9_.-]+$"
+    )
     cert_file: str = Field(default="", max_length=500)
     key_file: str = Field(default="", max_length=500)
     enabled: bool = True
@@ -223,7 +227,11 @@ class InboundInput(BaseModel):
     def valid_settings(self):
         if self.port == 10085:
             raise ValueError("10085 is reserved for local statistics")
-        if self.protocol != "vless" and (
+        self.transport = self.transport or DEFAULT_TRANSPORT[self.protocol]
+        if self.transport not in TRANSPORTS[self.protocol]:
+            allowed = ", ".join(TRANSPORTS[self.protocol])
+            raise ValueError(f"{self.protocol} supports only: {allowed}")
+        if not is_reality(self.protocol, self.transport) and (
             not self.cert_file.startswith("/") or not self.key_file.startswith("/")
         ):
             raise ValueError("TLS needs absolute certificate and key paths on the node")
@@ -1155,13 +1163,13 @@ def inbound_settings(body, previous=None):
     settings = body.model_dump(
         exclude={"node_id", "name", "protocol", "port", "enabled"}
     )
-    if body.protocol == "vless":
+    if is_reality(body.protocol, body.transport):
         old = (
             json.loads(previous["settings"])
             if previous and previous["protocol"] == "vless"
-            else None
+            else {}
         )
-        if old:
+        if old.get("private_key"):
             settings.update(
                 {key: old[key] for key in ("private_key", "public_key", "short_id")}
             )

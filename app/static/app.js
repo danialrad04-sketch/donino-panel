@@ -241,7 +241,7 @@ function renderInbounds() {
       "مسیرهای امن اتصال برای تمام کاربران فعال.",
       owner() ? addButton("inbound", "اتصال جدید") : "",
     ) +
-    `<div class="notice">VLESS با REALITY، VMess با WebSocket و TLS، و Trojan با TLS. گواهی‌های TLS باید روی سرور نود قرار داشته باشند.</div><section class="card table-card">${data.inbounds.length ? `<div class="table-scroll"><table><thead><tr><th>نام اتصال</th><th>پروتکل</th><th>نود</th><th>پورت</th><th>دامنه</th>${owner() ? "<th>عملیات</th>" : ""}</tr></thead><tbody>${data.inbounds.map((i) => `<tr><td>${esc(i.name)}</td><td><span class="mono">${esc(i.protocol.toUpperCase())}</span> ${badge(i.enabled ? "active" : "disabled", i.enabled ? "فعال" : "خاموش")}</td><td>${esc(i.node_name)}</td><td class="mono">${i.port}</td><td><span class="mono">${esc(i.settings.sni)}</span></td>${owner() ? `<td><button data-action="edit-inbound" data-id="${i.id}">ویرایش</button> <button class="danger" data-action="delete-inbound" data-id="${i.id}">حذف</button></td>` : ""}</tr>`).join("")}</tbody></table></div>` : empty("یک مسیر تازه بساز", "ابتدا نود را اضافه کن، سپس اولین اتصال را بساز.", "inbounds")}</section>`
+    `<div class="notice">VLESS با REALITY/TCP یا WebSocket و gRPC با TLS، VMess با WebSocket یا gRPC با TLS، و Trojan با TCP یا WebSocket با TLS. گواهی‌های TLS باید روی سرور نود قرار داشته باشند.</div><section class="card table-card">${data.inbounds.length ? `<div class="table-scroll"><table><thead><tr><th>نام اتصال</th><th>پروتکل</th><th>نود</th><th>پورت</th><th>دامنه</th>${owner() ? "<th>عملیات</th>" : ""}</tr></thead><tbody>${data.inbounds.map((i) => `<tr><td>${esc(i.name)}</td><td><span class="mono">${esc(i.protocol.toUpperCase())}</span> <small class="muted">${esc(transportName(i.protocol, transportOf(i)))}</small> ${badge(i.enabled ? "active" : "disabled", i.enabled ? "فعال" : "خاموش")}</td><td>${esc(i.node_name)}</td><td class="mono">${i.port}</td><td><span class="mono">${esc(i.settings.sni)}</span></td>${owner() ? `<td><button data-action="edit-inbound" data-id="${i.id}">ویرایش</button> <button class="danger" data-action="delete-inbound" data-id="${i.id}">حذف</button></td>` : ""}</tr>`).join("")}</tbody></table></div>` : empty("یک مسیر تازه بساز", "ابتدا نود را اضافه کن، سپس اولین اتصال را بساز.", "inbounds")}</section>`
   );
 }
 function renderSettings() {
@@ -466,35 +466,62 @@ function showNodeToken(token) {
     `<p class="note">این کلید فقط همین یک بار نمایش داده می‌شود. آن را به‌عنوان متغیر <span class="mono">DONINO_NODE_TOKEN</span> در فایل تنظیمات عامل نود ذخیره کن. راهنمای نصب در مخزن پروژه قرار دارد.</p><label class="full">کلید محرمانه<textarea id="secret-output" readonly dir="ltr">${esc(token)}</textarea></label><div class="form-actions"><button class="primary" data-action="copy-secret">کپی کلید</button></div>`,
   );
 }
+const PROTOCOL_LABELS = { vless: "VLESS", vmess: "VMess", trojan: "Trojan" };
+const DEFAULT_TRANSPORT = { vless: "tcp", vmess: "ws", trojan: "tcp" };
+const TRANSPORT_OPTIONS = {
+  vless: ["tcp", "ws", "grpc"],
+  vmess: ["ws", "grpc"],
+  trojan: ["tcp", "ws"],
+};
+function transportOf(inbound) {
+  return inbound?.settings?.transport || DEFAULT_TRANSPORT[inbound?.protocol] || "tcp";
+}
+function transportName(protocol, transport) {
+  if (protocol === "vless" && transport === "tcp") return "TCP + REALITY (Vision)";
+  if (transport === "tcp") return "TCP + TLS";
+  if (transport === "ws") return "WebSocket + TLS";
+  return "gRPC + TLS";
+}
 function editInbound(inbound) {
   if (!data.nodes.length) return toast("ابتدا یک نود اضافه کن.", true);
   const settings = inbound?.settings || {};
+  const protocol0 = inbound?.protocol || "vless";
+  const transport0 = transportOf(inbound);
+  const protocolOptions = Object.keys(TRANSPORT_OPTIONS)
+    .map(
+      (value) =>
+        `<option value="${value}" ${protocol0 === value ? "selected" : ""}>${PROTOCOL_LABELS[value]}</option>`,
+    )
+    .join("");
   form(
     inbound ? "ویرایش اتصال" : "اتصال جدید",
-    `<label>نود<select name="node_id">${data.nodes.map((n) => `<option value="${n.id}" ${inbound?.node_id === n.id ? "selected" : ""}>${esc(n.name)}</option>`).join("")}</select></label><label>پروتکل<select name="protocol" id="protocol">${[
-      ["vless", "VLESS + REALITY"],
-      ["vmess", "VMess + WS/TLS"],
-      ["trojan", "Trojan + TLS"],
-    ]
-      .map(
-        ([value, label]) =>
-          `<option value="${value}" ${inbound?.protocol === value ? "selected" : ""}>${label}</option>`,
-      )
-      .join("")}</select></label>` +
+    `<label>نود<select name="node_id">${data.nodes.map((n) => `<option value="${n.id}" ${inbound?.node_id === n.id ? "selected" : ""}>${esc(n.name)}</option>`).join("")}</select></label>` +
+      `<label>پروتکل<select name="protocol" id="protocol">${protocolOptions}</select></label>` +
+      `<label>انتقال<select name="transport" id="transport"></select></label>` +
       input("نام اتصال", "name", { value: inbound?.name || "اتصال اصلی" }) +
       input("پورت", "port", {
         type: "number",
         value: inbound?.port || 443,
         extra: 'min="1" max="65535" dir="ltr"',
+        hint: "پورت باید روی سرور نود باز باشد.",
       }) +
       input("دامنهٔ SNI", "sni", {
         value: settings.sni || "www.microsoft.com",
         full: true,
         extra: 'dir="ltr"',
+        hint: "این دامنه باید با نام روی گواهی TLS یکی باشد؛ کلاینت با همین نام به نود وصل می‌شود.",
       }) +
-      `<div id="reality-fields" class="full">${input("مقصد REALITY", "target", { value: settings.target || "www.microsoft.com:443", extra: 'dir="ltr"' })}</div><div id="tls-fields" class="full"><div class="form-grid">${input("مسیر گواهی روی نود", "cert_file", { value: settings.cert_file || "", required: false, extra: 'dir="ltr"', hint: "مثال: /etc/donino/tls/fullchain.pem" })}${input("مسیر کلید روی نود", "key_file", { value: settings.key_file || "", required: false, extra: 'dir="ltr"', hint: "مثال: /etc/donino/tls/privkey.pem" })}${input("مسیر WebSocket", "path", { value: settings.path || "/donino", extra: 'dir="ltr"', required: false, full: true })}</div></div><label class="check full"><input type="checkbox" name="enabled" ${!inbound || inbound.enabled ? "checked" : ""}>اتصال فعال باشد</label>` +
+      `<div id="reality-fields" class="full">${input("مقصد REALITY", "target", { value: settings.target || "www.microsoft.com:443", extra: 'dir="ltr"' })}</div>` +
+      `<div id="tls-fields" class="full"><div class="form-grid">` +
+      input("مسیر گواهی روی نود", "cert_file", { value: settings.cert_file || "", required: false, extra: 'dir="ltr"', hint: "مثال: /etc/donino/tls/fullchain.pem" }) +
+      input("مسیر کلید روی نود", "key_file", { value: settings.key_file || "", required: false, extra: 'dir="ltr"', hint: "مثال: /etc/donino/tls/privkey.pem" }) +
+      `<div id="path-field" class="full">${input("مسیر WebSocket", "path", { value: settings.path || "/donino", extra: 'dir="ltr"', required: false })}</div>` +
+      `<div id="service-field" class="full">${input("نام سرویس gRPC", "service_name", { value: settings.service_name || "donino", extra: 'dir="ltr"', required: false, hint: "باید با نام سرویس در کلاینت یکی باشد؛ فقط حروف لاتین، عدد، نقطه، خط تیره و زیرخط." })}</div>` +
+      `<p class="note full">گواهی و کلید TLS فقط روی سرور نود خوانده می‌شوند و مسیرهایشان باید مطلق باشند. این گواهی باید برای دامنهٔ SNI معتبر باشد، وگرنه کلاینت اتصال را رد می‌کند.</p>` +
+      `</div></div>` +
+      `<label class="check full"><input type="checkbox" name="enabled" ${!inbound || inbound.enabled ? "checked" : ""}>اتصال فعال باشد</label>` +
       (inbound
-        ? '<p class="note full">تغییر پورت یا تنظیمات انتقال باعث راه‌اندازی مجدد هستهٔ نود می‌شود. کلید REALITY هنگام ویرایش همین پروتکل حفظ می‌شود.</p>'
+        ? '<p class="note full">تغییر پورت یا انتقال باعث راه‌اندازی مجدد هستهٔ نود می‌شود. کلید REALITY هنگام ویرایش همین مسیر حفظ می‌شود.</p>'
         : ""),
     async (f) => {
       await api("/inbounds" + (inbound ? "/" + inbound.id : ""), {
@@ -505,23 +532,39 @@ function editInbound(inbound) {
           enabled: f.enabled === "on",
           target: f.target || "www.microsoft.com:443",
           path: f.path || "/donino",
+          service_name: f.service_name || "donino",
         }),
       });
       await saved();
     },
   );
-  const updateFields = () => {
+  const renderTransports = (protocol, selected) => {
+    $("#transport").innerHTML = TRANSPORT_OPTIONS[protocol]
+      .map(
+        (value) =>
+          `<option value="${value}" ${value === selected ? "selected" : ""}>${transportName(protocol, value)}</option>`,
+      )
+      .join("");
+  };
+  const updateFields = (protocolChanged) => {
     const protocol = $("#protocol").value;
-    $("#reality-fields").hidden = protocol !== "vless";
-    $("#tls-fields").hidden = protocol === "vless";
+    if (protocolChanged) renderTransports(protocol, DEFAULT_TRANSPORT[protocol]);
+    const transport = $("#transport").value;
+    const reality = protocol === "vless" && transport === "tcp";
+    $("#reality-fields").hidden = !reality;
+    $("#tls-fields").hidden = reality;
+    $("#path-field").hidden = transport !== "ws";
+    $("#service-field").hidden = transport !== "grpc";
     document
       .querySelectorAll(
         "#tls-fields [name=cert_file],#tls-fields [name=key_file]",
       )
-      .forEach((e) => (e.required = protocol !== "vless"));
+      .forEach((e) => (e.required = !reality));
   };
-  $("#protocol").addEventListener("change", updateFields);
-  updateFields();
+  renderTransports(protocol0, transport0);
+  updateFields(false);
+  $("#protocol").addEventListener("change", () => updateFields(true));
+  $("#transport").addEventListener("change", () => updateFields(false));
 }
 async function copyText(text) {
   try {

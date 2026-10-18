@@ -178,6 +178,20 @@ def main():
                 page.locator("#close-modal").click()
                 page.locator("a[data-page=inbounds]").click()
                 page.get_by_role("button", name="اتصال جدید").click()
+                page.locator("#protocol").select_option("vless")
+                assert page.locator("#transport option").count() == 3
+                page.locator("#transport").select_option("grpc")
+                assert page.locator("#service-field").is_visible()
+                assert not page.locator("#path-field").is_visible()
+                assert not page.locator("#reality-fields").is_visible()
+                page.locator("#protocol").select_option("vmess")
+                assert page.locator("#transport option").count() == 2
+                page.locator("#transport").select_option("ws")
+                assert page.locator("#path-field").is_visible()
+                page.locator("#protocol").select_option("trojan")
+                assert page.locator("#transport option").count() == 2
+                page.locator("#protocol").select_option("vless")
+                assert page.locator("#reality-fields").is_visible()
                 page.locator("#edit-form button[type=submit]").click()
                 page.locator("#modal").wait_for(state="hidden")
                 page.get_by_role("button", name="ویرایش", exact=True).click()
