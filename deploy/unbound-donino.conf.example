@@ -1,0 +1,35 @@
+# Dedicated Unbound instance: validate with unbound-checkconf before starting.
+# Debian/Ubuntu package dns-root-data provides /usr/share/dns/root.key.
+server:
+    username: "unbound"
+    directory: "/etc/unbound"
+    chroot: ""
+    pidfile: ""
+    do-daemonize: no
+    use-syslog: no
+    logfile: ""
+    interface: 127.0.0.1
+    port: 5335
+    access-control: 127.0.0.0/8 allow
+    access-control: 0.0.0.0/0 refuse
+    access-control: ::0/0 refuse
+    do-ip6: yes
+    do-udp: yes
+    do-tcp: yes
+    verbosity: 0
+    log-queries: no
+    log-replies: no
+    hide-identity: yes
+    hide-version: yes
+    qname-minimisation: yes
+    harden-dnssec-stripped: yes
+    val-permissive-mode: no
+    trust-anchor-file: /usr/share/dns/root.key
+    cache-min-ttl: 0
+    cache-max-ttl: 86400
+    serve-expired: no
+    edns-buffer-size: 1232
+    msg-cache-size: 16m
+    rrset-cache-size: 32m
+    local-zone: "donino.health." static
+    local-data: "donino.health. 60 IN A 127.0.0.1"

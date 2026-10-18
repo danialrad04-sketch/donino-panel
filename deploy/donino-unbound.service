@@ -1,0 +1,24 @@
+[Unit]
+Description=Donino dedicated validating Unbound resolver
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=unbound
+Group=unbound
+ExecStart=/usr/sbin/unbound -d -c /etc/unbound/donino.conf
+Restart=on-failure
+RestartSec=5
+MemoryMax=128M
+TasksMax=32
+LimitNOFILE=512
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+CapabilityBoundingSet=
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

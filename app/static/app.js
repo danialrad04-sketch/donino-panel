@@ -16,6 +16,7 @@ const ICONS = {
   nodes:
     '<rect x="3" y="4" width="18" height="6" rx="2"/><rect x="3" y="14" width="18" height="6" rx="2"/><path d="M7 7h.01M7 17h.01"/>',
   inbounds: '<path d="M4 8h13l-3-3M20 16H7l3 3"/>',
+  dns: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c5 5 5 13 0 18M12 3c-5 5-5 13 0 18"/>',
   events:
     '<path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6h.01M4 12h.01M4 18h.01"/>',
   settings:
@@ -57,6 +58,7 @@ const titles = {
   users: "کاربران",
   nodes: "نودهای شبکه",
   inbounds: "اتصال‌ها",
+  dns: "DNS اختصاصی",
   audit: "رویدادها",
   settings: "تنظیمات",
 };
@@ -244,7 +246,7 @@ function renderInbounds() {
 function renderSettings() {
   return (
     heading("تنظیمات و نگهداری", "همه‌چیز برای مدیریت یک شبکهٔ مستقل.") +
-    `<div class="settings-grid"><article class="card"><h2>پشتیبان‌گیری</h2><p>نسخهٔ پایگاه داده و حساب‌ها را دریافت کن. این فایل محرمانه است. برای بازیابی ورود دومرحله‌ای، کلید مستقل سرور نیز لازم است؛ پشتیبان کامل رمزگذاری‌شده در راهنمای نگهداری توضیح داده شده است.</p>${owner() ? `<a class="primary" href="/api/backup" download>${icon("download")}دریافت نسخهٔ پایگاه داده</a>` : "<p>دریافت پشتیبان فقط برای مالک شبکه فعال است.</p>"}</article><article class="card"><h2>ظاهر پنل</h2><p>پوستهٔ روشن یا تیره را انتخاب کن. انتخاب روی همین دستگاه ذخیره می‌شود.</p><button class="secondary" data-action="theme">${icon("theme")}تغییر حالت نمایش</button></article><article class="card"><h2>حساب مدیریت</h2><p>نام کاربری: ${esc(account.username)}<br>سطح دسترسی: ${roles[account.role]}<br>رمز، ورود دومرحله‌ای، نشست‌ها و توکن‌ها را از بخش امنیت حساب مدیریت کن. مالک می‌تواند مدیرهای دیگر را نیز همین‌جا مدیریت کند.</p></article><article class="card"><h2>Donino Panel <span class="mono">1.0.0-alpha.5</span></h2><p>نسخهٔ اولیهٔ مستقل، با رابط فارسی و مدیریت چند نود. امکانات در حال توسعه‌اند. راه‌اندازی واقعی به سرور نود، Xray و دامنهٔ مناسب نیاز دارد.</p><a class="subtle-link" href="https://github.com/danialrad04-sketch/donino-panel" target="_blank" rel="noopener">مستندات و کد منبع</a></article></div><section id="account-security" class="settings-grid"></section>`
+    `<div class="settings-grid"><article class="card"><h2>پشتیبان‌گیری</h2><p>نسخهٔ پایگاه داده و حساب‌ها را دریافت کن. این فایل محرمانه است. برای بازیابی ورود دومرحله‌ای، کلید مستقل سرور نیز لازم است؛ پشتیبان کامل رمزگذاری‌شده در راهنمای نگهداری توضیح داده شده است.</p>${owner() ? `<a class="primary" href="/api/backup" download>${icon("download")}دریافت نسخهٔ پایگاه داده</a>` : "<p>دریافت پشتیبان فقط برای مالک شبکه فعال است.</p>"}</article><article class="card"><h2>ظاهر پنل</h2><p>پوستهٔ روشن یا تیره را انتخاب کن. انتخاب روی همین دستگاه ذخیره می‌شود.</p><button class="secondary" data-action="theme">${icon("theme")}تغییر حالت نمایش</button></article><article class="card"><h2>حساب مدیریت</h2><p>نام کاربری: ${esc(account.username)}<br>سطح دسترسی: ${roles[account.role]}<br>رمز، ورود دومرحله‌ای، نشست‌ها و توکن‌ها را از بخش امنیت حساب مدیریت کن. مالک می‌تواند مدیرهای دیگر را نیز همین‌جا مدیریت کند.</p></article><article class="card"><h2>Donino Panel <span class="mono">1.0.0-alpha.6</span></h2><p>نسخهٔ اولیهٔ مستقل، با رابط فارسی و مدیریت چند نود. امکانات در حال توسعه‌اند. راه‌اندازی واقعی به سرور نود، Xray و دامنهٔ مناسب نیاز دارد.</p><a class="subtle-link" href="https://github.com/danialrad04-sketch/donino-panel" target="_blank" rel="noopener">مستندات و کد منبع</a></article></div><section id="account-security" class="settings-grid"></section>`
   );
 }
 function render() {
@@ -261,6 +263,7 @@ function render() {
     users: renderUsers,
     nodes: renderNodes,
     inbounds: renderInbounds,
+    dns: renderDNS,
     settings: renderSettings,
   };
   if (page === "audit") {
@@ -282,6 +285,7 @@ function render() {
   } else {
     $("#main").innerHTML = (views[page] || renderOverview)();
     if (page === "settings") loadSecurity();
+    if (page === "dns") loadDNS();
     if (page === "users") loadUsersPage();
     if (page === "nodes" && owner()) {
       $("#main").insertAdjacentHTML(
@@ -596,6 +600,7 @@ async function loadSecurity() {
   }
 }
 async function handleAction(action, id, element) {
+  if (action.startsWith("dns-")) return handleDNSAction(action, id);
   if (action === "user-budgets") {
     const values = await api(`/users/${id}/budget-reservations`);
     return modal(
