@@ -22,6 +22,7 @@ import json
 import os
 import platform
 import re
+import shlex
 import socket
 import subprocess
 import tempfile
@@ -124,9 +125,18 @@ class _Mihomo:
                 "Mihomo rejected the config:\n" + checked.stdout + checked.stderr
             )
         log = directory / "mihomo.log"
+        ready_file = directory / "running"
         with open(log, "w") as handle:
             proc = subprocess.Popen(
-                [self.binary, "-d", str(directory), "-f", str(path)],
+                [
+                    self.binary,
+                    "-d",
+                    str(directory),
+                    "-f",
+                    str(path),
+                    "-post-up",
+                    shlex.join(["/usr/bin/touch", str(ready_file)]),
+                ],
                 stdout=handle,
                 stderr=subprocess.STDOUT,
                 env=env,
@@ -137,8 +147,12 @@ class _Mihomo:
             for _ in range(100):
                 if proc.poll() is not None:
                     break
-                startup = log.read_text(errors="replace")
-                if "Start initial compatible provider Donino" not in startup:
+                # The pinned engine opens SOCKS and logs provider startup while
+                # tunnel.Status is still Inner. It can acknowledge SOCKS then
+                # silently drop application data until OnRunning, after GC.
+                # Its fixed post-up hook runs only after that transition; no
+                # untrusted input is interpolated into this fixture command.
+                if not ready_file.exists():
                     time.sleep(0.05)
                     continue
                 try:
@@ -149,7 +163,7 @@ class _Mihomo:
                     time.sleep(0.05)
             if not ready:
                 raise AssertionError(
-                    "Mihomo did not finish local startup: "
+                    "Mihomo did not reach its post-up running state: "
                     + log.read_text(errors="replace")[-1200:]
                 )
             body = b""
