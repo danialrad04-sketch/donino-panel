@@ -1,5 +1,11 @@
 # Donino releases
 
+## 1.0.0-alpha.10 — real tunnel VPN verification and leased endpoints, 2026-10-18
+
+- Add owner-only real Mihomo acceptance against an operator-configured HTTPS target, with TLS verification at both layers, a known bounded response digest, private temporary credentials and no direct fallback or HTTP redirects.
+- Bind durable verification receipts to the installed plan/job, origin revision and active device. Publish only tested inbounds as additional subscription endpoints, with explicit confirmation and a 24-hour lease. Retesting, replacement and restoration withdraw previous affected publications; changed origins and expired leases are filtered from future exports.
+- Add schema-12 pre-upgrade backup, Persian verification/publication UI and real loopback FRP WSS/QUIC + Xray/Mihomo acceptance for all six TLS profiles, abrupt carrier loss, failover, restart and failure withdrawal. No real VPS/ISP/public-ACME or continuous health guarantee is inferred.
+
 ## 1.0.0-alpha.9 — verified Mihomo and durable tunnel plans, 2026-10-18
 
 - Fix Trojan Mihomo SNI export (`sni`), including the existing TCP profile. All six TLS profiles now pass real-client transfer, CA/hostname rejection, device accounting and revocation without expected failures.

@@ -33,6 +33,7 @@ def exercise_tunnel_ui(page):
         ],
         "jobs": [],
         "bindings": [],
+        "probe_available": True,
     }
     requests = []
     inbound = page.evaluate(
@@ -58,6 +59,8 @@ def exercise_tunnel_ui(page):
                 "source_matches": True,
                 "can_start": True,
                 "job_id": None,
+                "services": body["services"],
+                "checks": [],
                 "summary": {
                     "iran": body["iran"],
                     "foreign": "198.51.100.20",
@@ -101,6 +104,18 @@ def exercise_tunnel_ui(page):
             job = {"id": "c" * 32, "status": "running", "stage": "queued"}
             state["jobs"] = [job]
             return route.fulfill(status=202, json=job)
+        if endpoint == "verify":
+            check = {
+                "id": "f" * 32,
+                "phase": "succeeded",
+                "expires": time.time() + 600,
+                "inbound_ids": body["inbound_ids"],
+            }
+            state["bindings"][0]["checks"] = [check]
+            return route.fulfill(status=201, json=check)
+        if endpoint == "publication":
+            state["bindings"][0]["endpoint_published"] = route.request.method == "POST"
+            return route.fulfill(json=state["bindings"][0])
         return route.fulfill(status=500, json={"detail": "Unexpected fixture route"})
 
     page.route("**/api/tunnels/**", worker)
@@ -152,6 +167,33 @@ def exercise_tunnel_ui(page):
         assert page.evaluate("document.documentElement.scrollWidth <= innerWidth"), (
             "Bound tunnel mobile overflow"
         )
+        state["bindings"][0]["phase"] = "succeeded"
+        page.locator("#tunnel-reload").click()
+        page.get_by_role("button", name="آزمون و انتشار", exact=True).click()
+        verify_form = page.locator("#tunnel-verify-form")
+        verify_form.locator("[name=device_id] option").first.wait_for(state="attached")
+        verify_form.get_by_role("button", name="آزمون انتقال VPN", exact=True).click()
+        page.locator("#tunnel-publish").wait_for(state="visible")
+        assert page.locator("#tunnel-publish").is_disabled()
+        assert requests[-1][0] == "verify"
+        assert requests[-1][1]["inbound_ids"] == [inbound["id"]]
+        assert set(requests[-1][1]) == {"device_id", "inbound_ids"}
+        page.locator("#tunnel-publish-confirm").check()
+        page.locator("#tunnel-publish").click()
+        page.get_by_role("button", name="لغو انتشار", exact=True).wait_for()
+        assert requests[-1] == (
+            "publication",
+            {"check_id": "f" * 32, "confirm_publish": True},
+        )
+        assert page.evaluate("document.documentElement.scrollWidth <= innerWidth"), (
+            "Publication mobile overflow"
+        )
+        page.get_by_role("button", name="لغو انتشار", exact=True).click()
+        page.get_by_text(
+            "آدرس تانل از اشتراک‌های بعدی حذف شد؛ نصب تانل و اعتبارنامه‌ها باقی هستند.",
+            exact=True,
+        ).wait_for()
+        assert requests[-1] == ("publication", None)
 
     finally:
         page.unroute("**/api/tunnels/**", worker)

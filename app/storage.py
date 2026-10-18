@@ -40,6 +40,8 @@ def require_empty():
             "inbounds",
             "audit",
             "tunnel_bindings",
+            "tunnel_checks",
+            "tunnel_endpoints",
         ):
             if (
                 table_exists(db, table)

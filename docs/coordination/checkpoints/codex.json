@@ -1,27 +1,30 @@
 {
   "task_id": "codex-v1-progress",
   "status": "in_progress",
-  "branch": "development/tunnel-bindings",
-  "last_verified_commit": "a597888ed92ae31906c15618460e8627fa1b1df8",
+  "branch": "development/tunnel-verification",
+  "last_verified_commit": "cb0a44cd6db74969128b2fa39f00c9cd25770ece",
   "completed": [
     "بررسی PR ۱۷ و اصلاح SNI خروجی Trojan برای Mihomo",
     "هر ۹ آزمون Mihomo با شش مسیر واقعی و بدون expected failure موفق شد",
     "binding پایدار node/inbound در schema 11، guard و بازیابی پاسخ گم‌شده",
     "پذیرش مرورگر دسکتاپ/موبایل و قرارداد worker واقعی با نقشهٔ متصل",
-    "رفع علت قطع زودهنگام fixture Mihomo: انتظار برای Running پس از post-up، بدون retry انتقال یا تضعیف TLS"
+    "رفع علت قطع زودهنگام fixture Mihomo: انتظار برای Running پس از post-up، بدون retry انتقال یا تضعیف TLS",
+    "PR ۱۸ ادغام و alpha.9 منتشر شد؛ هر ۹ CI در push و PR موفق بود",
+    "آزمون واقعی VPN و انتشار اضافهٔ آدرس با lease ۲۴ ساعته، schema 12 و محافظت restore/replacement",
+    "شش profile واقعی روی FRP WSS/QUIC، قطع حامل‌ها و restart محلی؛ رابط تأیید انتشار و موبایل"
   ],
   "remaining": [
-    "پذیرش واقعی انتقال VPN روی دو node و سپس انتشار محافظت‌شدهٔ endpoint",
-    "نصب اولیهٔ نقش‌ها/عامل دوردست و مراحل بعدی طبق master plan"
+    "CI و انتشار بستهٔ alpha.10 از همین شاخه",
+    "آزمون روی دو VPS واقعی، مانیتور/تمدید امن lease و نصب اولیهٔ نقش‌ها",
+    "WireGuard/OpenVPN و دیگر مراحل باقی‌ماندهٔ master plan"
   ],
-  "next_action": "CI و PR این بسته را تکمیل کن؛ سپس پذیرش برنامه روی دو node آزمایشی و انتشار endpoint را با guard پیاده کن. کلاد متوقف بماند.",
+  "next_action": "مجموعهٔ نهایی و CI را بررسی کن، PR همین بسته را ادغام و prerelease alpha.10 را منتشر کن؛ سپس مراحل master plan. کلاد متوقف بماند.",
   "tests": [
-    "مجموعهٔ محلی یکپارچه با Xray و Mihomo و worker واقعی: 189 آزمون، 187 موفق، 2 skip محیطی (Unbound و fault PostgreSQL)",
-    "Mihomo واقعی پس از اصلاح race آماده‌شدن با post-up: هر 9 آزمون موفق؛ CI نهایی این شاخه باید بررسی شود",
-    "binding هدف: 11 OK شامل restore-history، schema10 migration، concurrency و timeout",
-    "مرورگر با مسیر متصل/دستی و موبایل: موفق",
-    "قرارداد پین‌شدهٔ worker روی Unix socket: موفق"
+    "نسخهٔ پیش از آخرین guard: 205 آزمون، 203 موفق و 2 skip محیطی",
+    "کلاینت محافظت‌شده: پذیرش واقعی carrier محلی موفق؛ probe transport و parent-death: 6 موفق",
+    "رابط آزمون/انتشار/لغو انتشار در Chromium و موبایل: موفق",
+    "مجموعهٔ نهایی و CI این شاخه هنوز باید تکمیل شوند"
   ],
   "blockers": [],
-  "pr_url": "https://github.com/danialrad04-sketch/donino-panel/pull/18"
+  "pr_url": null
 }

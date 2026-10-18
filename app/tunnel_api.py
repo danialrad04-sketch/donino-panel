@@ -9,6 +9,7 @@ from pydantic import ValidationError
 from .db import audit, database
 from .deps import owner
 from . import tunnel_bindings as bindings
+from . import tunnel_endpoints as endpoints, tunnel_probe
 from .tunnel_bridge import (
     BridgeError,
     Connection,
@@ -91,6 +92,7 @@ def mount_tunnel_api(app):
             "enabled": True,
             "supported_transports": list(SUPPORTED),
             "bindings": bindings.list_bindings(result),
+            "probe_available": tunnel_probe.available(),
         }
 
     @router.get("/api/tunnels/bindings")
@@ -117,6 +119,22 @@ def mount_tunnel_api(app):
         record(account, "pair", result["id"])
         return result
 
+    @router.post("/api/tunnels/bindings/{binding_id}/verify", status_code=201)
+    def verify_binding(
+        binding_id: str, body: endpoints.VerifyInput, account=Depends(owner)
+    ):
+        return endpoints.verify(binding_id, body, account, call)
+
+    @router.post("/api/tunnels/bindings/{binding_id}/publication")
+    def publish_binding(
+        binding_id: str, body: endpoints.PublishInput, account=Depends(owner)
+    ):
+        return endpoints.publish(binding_id, body, account, call)
+
+    @router.delete("/api/tunnels/bindings/{binding_id}/publication")
+    def unpublish_binding(binding_id: str, account=Depends(owner)):
+        return endpoints.unpublish(binding_id, account)
+
     @router.post("/api/tunnels/connection")
     def connection(body: ConnectionInput, account=Depends(owner)):
         return public(Connection, call("POST", "/connection", body.model_dump()))
@@ -136,6 +154,7 @@ def mount_tunnel_api(app):
                 raise HTTPException(
                     409, "نقشهٔ متصل به ورودی پنل باید از مسیر binding شروع شود"
                 )
+            endpoints.invalidate_all(db)
         result = public(Job, call("POST", "/start", body.model_dump()))
         record(account, "start", result["id"])
         return result

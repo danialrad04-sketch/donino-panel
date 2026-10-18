@@ -64,6 +64,31 @@ jobs:
       - run: pip install -r requirements.txt -r requirements-postgres.txt
       - run: python scripts/fetch_xray.py /tmp/donino-xray
       - run: DONINO_TEST_XRAY=/tmp/donino-xray/xray DONINO_TEST_UNBOUND=/usr/sbin/unbound DONINO_TEST_UNBOUND_ROOT=/var/lib/unbound/donino-tests DONINO_TEST_DATABASE_URL=postgresql://postgres:postgres@localhost:5432/donino_test python -m unittest discover -s tests -v
+  tunnel-vpn:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt aiohttp==3.14.4 PyYAML==6.0.3
+      - name: Fetch reviewed tunnel source and verified real engines
+        run: |
+          git init /tmp/donino-tunnel-source
+          git -C /tmp/donino-tunnel-source remote add origin https://github.com/danialrad04-sketch/donino-tunnel.git
+          git -C /tmp/donino-tunnel-source fetch --depth 1 origin 4c19214598d32bd2868f9f46030d8a5dbd494d97
+          git -C /tmp/donino-tunnel-source checkout --detach FETCH_HEAD
+          PYTHONPATH=/tmp/donino-tunnel-source python -c "from donino_link.artifacts import install_engines; install_engines(['frp'], '/tmp/donino-frp')"
+          python scripts/fetch_xray.py /tmp/donino-xray
+          python scripts/fetch_mihomo.py /tmp/donino-mihomo
+      - name: Real six-profile VPN transfer, carrier loss, restart and publication guards
+        run: python -m unittest discover -s tests -p test_tunnel_vpn.py -v
+        env:
+          DONINO_TEST_TUNNEL_SOURCE: /tmp/donino-tunnel-source
+          DONINO_TEST_FRP_DIR: /tmp/donino-frp
+          DONINO_TEST_XRAY: /tmp/donino-xray/xray
+          DONINO_TEST_MIHOMO: /tmp/donino-mihomo/mihomo
   browser:
     runs-on: ubuntu-24.04
     steps:

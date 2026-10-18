@@ -274,6 +274,10 @@ def restore(source, replace=False):
             "SELECT 1 FROM sqlite_master WHERE type='table' AND name='api_tokens'"
         ).fetchone():
             db.execute("DELETE FROM api_tokens")
+        if version >= 12:
+            from .tunnel_endpoints import invalidate_all
+
+            invalidate_all(db)
     os.replace(staging, target)
     return {
         "restored_from": str(source),
@@ -338,6 +342,10 @@ def _restore_postgres(source, manifest, replace):
         db.execute("DELETE FROM sessions")
         if table_exists(db, "api_tokens"):
             db.execute("DELETE FROM api_tokens")
+        if table_exists(db, "tunnel_checks"):
+            from .tunnel_endpoints import invalidate_all
+
+            invalidate_all(db)
     return {
         "restored_from": str(source),
         "schema_version": version,
