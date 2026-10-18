@@ -10,7 +10,6 @@ import gzip
 import hashlib
 import io
 import platform
-import shutil
 import urllib.request
 from pathlib import Path
 
@@ -31,7 +30,9 @@ def _download(url):
         while chunk := response.read(CHUNK):
             data.extend(chunk)
             if len(data) > MAX_DOWNLOAD:
-                raise SystemExit("Download exceeds the size limit; refusing to continue.")
+                raise SystemExit(
+                    "Download exceeds the size limit; refusing to continue."
+                )
             digest.update(chunk)
     return bytes(data), digest.hexdigest()
 
@@ -45,7 +46,9 @@ def main():
             "This verified download is Linux amd64 only; build or fetch the Mihomo asset for your platform manually."
         )
     if args.destination.exists() and any(args.destination.iterdir()):
-        parser.error("Use an empty destination; existing installations are not overwritten.")
+        parser.error(
+            "Use an empty destination; existing installations are not overwritten."
+        )
 
     print("Downloading Mihomo", VERSION)
     data, digest = _download(URL)
@@ -59,7 +62,9 @@ def main():
         while chunk := source.read(CHUNK):
             written += len(chunk)
             if written > MAX_BINARY:
-                raise SystemExit("Decompressed binary exceeds the size limit; refusing to continue.")
+                raise SystemExit(
+                    "Decompressed binary exceeds the size limit; refusing to continue."
+                )
             out.write(chunk)
     target.chmod(0o755)
     print("Verified Mihomo installed at", target.resolve())

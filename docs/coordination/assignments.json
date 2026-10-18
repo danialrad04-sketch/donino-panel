@@ -7,6 +7,16 @@
       "document": "docs/coordination/tasks/mihomo-tls-acceptance-v1.fa.md",
       "checkpoint": "docs/coordination/checkpoints/claude.json",
       "base_commit": "f00ced87f775dd3233a7d1cbec58a43ac3750769",
+      "coordinator": "codex",
+      "suspended": true,
+      "suspension_reason": "به دستور کاربر، کلاد فعلاً متوقف است و Codex کار باقی‌مانده را تکمیل می‌کند؛ مأموریت تازه فقط با دستور بعدی کاربر."
+    },
+    "codex": {
+      "task_id": "codex-v1-progress",
+      "branch": "development/mihomo-complete",
+      "document": "docs/coordination/tasks/codex-v1-progress.fa.md",
+      "checkpoint": "docs/coordination/checkpoints/codex.json",
+      "base_commit": "20bd9465d55a65badfed3ea8e00c9cd8e4c15330",
       "coordinator": "codex"
     }
   }

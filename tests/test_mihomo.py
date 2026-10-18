@@ -56,10 +56,8 @@ SIX_PROFILES = [
     ("trojan", "tcp"),
     ("trojan", "ws"),
 ]
-WORKING = [p for p in SIX_PROFILES if p[0] != "trojan"]
 TROJAN = [p for p in SIX_PROFILES if p[0] == "trojan"]
-# Mihomo ignores `servername` for trojan; the export only sets `servername`.
-# Reproduced in tests below. Fix belongs to the product export (Codex coordinates).
+# Regression signature when the historical Trojan SNI export is reintroduced.
 DEFECT_SIGNATURE = "cannot validate certificate for 127.0.0.1"
 UNKNOWN_AUTHORITY = "x509: certificate signed by unknown authority"
 WRONG_HOSTNAME = "not wrong.example"
@@ -96,7 +94,7 @@ class _Mihomo:
         if trust is not None:
             env["SSL_CERT_FILE"] = str(trust)
         if server_name is not None:
-            entry["servername"] = server_name  # negative control only
+            entry["sni" if entry["type"] == "trojan" else "servername"] = server_name
         config = {
             "socks-port": socks,
             "bind-address": "127.0.0.1",
@@ -107,7 +105,9 @@ class _Mihomo:
             "geo-auto-update": False,
             "geodata-mode": False,
             "proxies": [entry],
-            "proxy-groups": [{"name": "Donino", "type": "select", "proxies": [entry["name"]]}],
+            "proxy-groups": [
+                {"name": "Donino", "type": "select", "proxies": [entry["name"]]}
+            ],
             "rules": ["MATCH,Donino"],
         }
         path = directory / "config.yaml"
@@ -120,7 +120,9 @@ class _Mihomo:
             env=env,
         )
         if checked.returncode != 0:
-            raise AssertionError("Mihomo rejected the config:\n" + checked.stdout + checked.stderr)
+            raise AssertionError(
+                "Mihomo rejected the config:\n" + checked.stdout + checked.stderr
+            )
         log = directory / "mihomo.log"
         with open(log, "w") as handle:
             proc = subprocess.Popen(
@@ -173,7 +175,9 @@ class _Fixture:
 
     def token(self, uid):
         with database() as db:
-            return db.execute("SELECT token FROM users WHERE id=?", (uid,)).fetchone()[0]
+            return db.execute("SELECT token FROM users WHERE id=?", (uid,)).fetchone()[
+                0
+            ]
 
     def devices(self, uid):
         return self.panel.get(f"/api/users/{uid}/devices").json()
@@ -192,7 +196,9 @@ class _Fixture:
         for proxy in clash["proxies"]:
             if _label(protocol, transport, device) in proxy["name"]:
                 return proxy
-        raise AssertionError(f"no Mihomo profile for {protocol}/{transport} on {device}")
+        raise AssertionError(
+            f"no Mihomo profile for {protocol}/{transport} on {device}"
+        )
 
 
 @contextlib.contextmanager
@@ -218,11 +224,17 @@ def _fixture(xray, mihomo_bin, folder, processes):
                     ("admin", hash_password("test-password-long"), "owner"),
                 )
             panel.headers["X-Donino"] = "1"
-            if panel.post(
-                "/api/login", json={"username": "admin", "password": "test-password-long"}
-            ).status_code != 200:
+            if (
+                panel.post(
+                    "/api/login",
+                    json={"username": "admin", "password": "test-password-long"},
+                ).status_code
+                != 200
+            ):
                 raise AssertionError("owner login failed")
-            node = panel.post("/api/nodes", json={"name": "edge", "host": "127.0.0.1"}).json()
+            node = panel.post(
+                "/api/nodes", json={"name": "edge", "host": "127.0.0.1"}
+            ).json()
             os.environ["DONINO_NODE_TOKEN"] = node["token"]
             for protocol, transport in SIX_PROFILES:
                 response = panel.post(
@@ -281,18 +293,27 @@ class MihomoFetcherTest(unittest.TestCase):
         self.assertEqual(fetch.VERSION, "v1.19.32")
         self.assertEqual(fetch.ASSET, "mihomo-linux-amd64-compatible-v1.19.32.gz")
         self.assertEqual(
-            fetch.SHA256, "ba3ce607747a07f948fc35780e108a4a7c7f552a38b9bd4d115f313ebcb89c20"
+            fetch.SHA256,
+            "ba3ce607747a07f948fc35780e108a4a7c7f552a38b9bd4d115f313ebcb89c20",
         )
-        self.assertTrue(fetch.URL.startswith("https://github.com/MetaCubeX/mihomo/releases/download/"))
+        self.assertTrue(
+            fetch.URL.startswith(
+                "https://github.com/MetaCubeX/mihomo/releases/download/"
+            )
+        )
 
     def test_digest_mismatch_refuses_to_extract(self):
         fetch = _load_fetcher()
         with tempfile.TemporaryDirectory() as folder:
             destination = Path(folder) / "out"
-            with mock.patch.object(fetch, "_download", return_value=(b"not gzip", "0" * 64)), \
-                 mock.patch.object(platform, "system", return_value="Linux"), \
-                 mock.patch.object(platform, "machine", return_value="x86_64"), \
-                 mock.patch.object(sys, "argv", ["fetch_mihomo.py", str(destination)]):
+            with (
+                mock.patch.object(
+                    fetch, "_download", return_value=(b"not gzip", "0" * 64)
+                ),
+                mock.patch.object(platform, "system", return_value="Linux"),
+                mock.patch.object(platform, "machine", return_value="x86_64"),
+                mock.patch.object(sys, "argv", ["fetch_mihomo.py", str(destination)]),
+            ):
                 with self.assertRaises(SystemExit) as raised:
                     fetch.main()
             self.assertIn("SHA-256 mismatch", str(raised.exception))
@@ -319,21 +340,29 @@ class MihomoAcceptanceTest(unittest.TestCase):
         self._tmp.cleanup()
 
     def test_binary_is_the_pinned_version(self):
-        output = subprocess.run([self.mihomo, "-v"], capture_output=True, text=True, timeout=30).stdout
+        output = subprocess.run(
+            [self.mihomo, "-v"], capture_output=True, text=True, timeout=30
+        ).stdout
         self.assertIn("Mihomo Meta v1.19.32", output)
 
-    def test_four_working_profiles_transfer_through_real_mihomo(self):
+    def test_all_six_profiles_transfer_through_real_mihomo(self):
         with _fixture(self.xray, self.mihomo, self.folder, self.processes) as lab:
             user = lab.new_user("mihomo-user")
             lab.agent.tick()
             clash = lab.clash(lab.token(user["id"]))
             default = lab.default_device(user["id"])
             self.assertEqual(len(clash["proxies"]), 6)
-            for protocol, transport in WORKING:
+            for protocol, transport in SIX_PROFILES:
                 proxy = lab.proxy(clash, protocol, transport, default)
                 body, log = lab.mihomo.run(proxy)
-                self.assertIn(MARKER, body, f"{protocol}/{transport} did not transfer. Log:\n{log[-800:]}")
-                print(f"  Mihomo {protocol}/{transport}: transfer passed ({len(body)} bytes)")
+                self.assertIn(
+                    MARKER,
+                    body,
+                    f"{protocol}/{transport} did not transfer. Log:\n{log[-800:]}",
+                )
+                print(
+                    f"  Mihomo {protocol}/{transport}: transfer passed ({len(body)} bytes)"
+                )
 
     def test_wrong_ca_is_refused_with_a_certificate_error_for_all_six(self):
         with _fixture(self.xray, self.mihomo, self.folder, self.processes) as lab:
@@ -344,42 +373,46 @@ class MihomoAcceptanceTest(unittest.TestCase):
             other_ca, _, _ = _write_test_pki(self.folder / "other-pki")
             for protocol, transport in SIX_PROFILES:
                 proxy = lab.proxy(clash, protocol, transport, default)
-                if protocol == "trojan":
-                    # Lab-only isolation: the export defect masks the chain check, so the trojan
-                    # CA control adds sni = servername. The unpatched export is tested elsewhere.
-                    proxy = dict(proxy, sni=proxy["servername"])
-                    body, log = lab.mihomo.run(proxy)
-                    self.assertIn(MARKER, body, f"{protocol}/{transport} valid CA with sni failed")
                 body, log = lab.mihomo.run(proxy, ca=other_ca)
-                self.assertNotIn(MARKER, body, f"{protocol}/{transport} accepted an untrusted CA")
+                self.assertNotIn(
+                    MARKER, body, f"{protocol}/{transport} accepted an untrusted CA"
+                )
                 self.assertIn(
                     UNKNOWN_AUTHORITY,
                     log,
                     f"{protocol}/{transport}: refusal was not an untrusted-CA error. Log:\n{log[-800:]}",
                 )
-                print(f"  Mihomo {protocol}/{transport}: untrusted CA refused (unknown authority)")
+                print(
+                    f"  Mihomo {protocol}/{transport}: untrusted CA refused (unknown authority)"
+                )
 
-    def test_wrong_hostname_is_refused_for_the_four_working_profiles(self):
+    def test_wrong_hostname_is_refused_for_all_six_profiles(self):
         with _fixture(self.xray, self.mihomo, self.folder, self.processes) as lab:
             user = lab.new_user("mihomo-host")
             lab.agent.tick()
             clash = lab.clash(lab.token(user["id"]))
             default = lab.default_device(user["id"])
-            for protocol, transport in WORKING:
+            for protocol, transport in SIX_PROFILES:
                 proxy = lab.proxy(clash, protocol, transport, default)
                 body, _ = lab.mihomo.run(proxy)
-                self.assertIn(MARKER, body, f"{protocol}/{transport} valid profile failed")
+                self.assertIn(
+                    MARKER, body, f"{protocol}/{transport} valid profile failed"
+                )
                 body, log = lab.mihomo.run(proxy, server_name="wrong.example")
-                self.assertNotIn(MARKER, body, f"{protocol}/{transport} accepted a wrong hostname")
+                self.assertNotIn(
+                    MARKER, body, f"{protocol}/{transport} accepted a wrong hostname"
+                )
                 self.assertIn(
                     WRONG_HOSTNAME,
                     log,
                     f"{protocol}/{transport}: refusal was not a wrong-hostname error. Log:\n{log[-800:]}",
                 )
-                print(f"  Mihomo {protocol}/{transport}: wrong hostname refused (certificate not valid for wrong.example)")
+                print(
+                    f"  Mihomo {protocol}/{transport}: wrong hostname refused (certificate not valid for wrong.example)"
+                )
 
-    def test_known_defect_trojan_servername_is_ignored_by_mihomo(self):
-        """Reproduces the export defect with a strict check of its exact signature."""
+    def test_legacy_trojan_sni_regression_is_rejected(self):
+        """The actual export works; moving SNI back to its historical key fails."""
         with _fixture(self.xray, self.mihomo, self.folder, self.processes) as lab:
             user = lab.new_user("mihomo-defect")
             lab.agent.tick()
@@ -387,51 +420,69 @@ class MihomoAcceptanceTest(unittest.TestCase):
             default = lab.default_device(user["id"])
             for protocol, transport in TROJAN:
                 proxy = lab.proxy(clash, protocol, transport, default)
-                self.assertEqual(proxy.get("servername"), "localhost")
-                self.assertNotIn("sni", proxy, "defect reproduction expects the export without sni")
-                body, log = lab.mihomo.run(proxy)
+                self.assertEqual(proxy.get("sni"), "localhost")
+                self.assertNotIn("servername", proxy)
+                body, _ = lab.mihomo.run(proxy)
+                self.assertIn(MARKER, body)
+                legacy = dict(proxy)
+                legacy["servername"] = legacy.pop("sni")
+                body, log = lab.mihomo.run(legacy)
                 self.assertNotIn(MARKER, body)
                 self.assertIn(
                     DEFECT_SIGNATURE,
                     log,
                     f"{protocol}/{transport}: failure is not the known servername defect. Log:\n{log[-800:]}",
                 )
-                print(f"  Known defect reproduced for {protocol}/{transport}: servername ignored, dial IP checked")
+                print(
+                    f"  {protocol}/{transport}: real export works, legacy wrong-SNI export rejected"
+                )
 
-    @unittest.expectedFailure
-    def test_trojan_profiles_transfer_once_the_export_is_fixed(self):
-        """Expected failure until the trojan export sets a name Mihomo reads. Remove the decorator when it passes."""
+    def test_trojan_profiles_transfer_without_export_rewriting(self):
         with _fixture(self.xray, self.mihomo, self.folder, self.processes) as lab:
             user = lab.new_user("mihomo-trojan")
             lab.agent.tick()
             clash = lab.clash(lab.token(user["id"]))
             default = lab.default_device(user["id"])
             for protocol, transport in TROJAN:
-                body, log = lab.mihomo.run(lab.proxy(clash, protocol, transport, default))
-                self.assertIn(MARKER, body, f"{protocol}/{transport} did not transfer. Log:\n{log[-400:]}")
+                body, log = lab.mihomo.run(
+                    lab.proxy(clash, protocol, transport, default)
+                )
+                self.assertIn(
+                    MARKER,
+                    body,
+                    f"{protocol}/{transport} did not transfer. Log:\n{log[-400:]}",
+                )
 
     def test_device_bytes_and_cut_off_with_mihomo(self):
         with _fixture(self.xray, self.mihomo, self.folder, self.processes) as lab:
             user = lab.new_user("mihomo-device")
-            second = lab.panel.post(f"/api/users/{user['id']}/devices", json={"name": "second-phone"}).json()
+            second = lab.panel.post(
+                f"/api/users/{user['id']}/devices", json={"name": "second-phone"}
+            ).json()
             lab.agent.tick()
             token = lab.token(user["id"])
             clash = lab.clash(token)
             default = lab.default_device(user["id"])
             stale = {}
-            for protocol, transport in WORKING:
+            for protocol, transport in SIX_PROFILES:
                 proxy = lab.proxy(clash, protocol, transport, "second-phone")
                 stale[(protocol, transport)] = proxy
                 body, _ = lab.mihomo.run(proxy)
-                self.assertIn(MARKER, body, f"{protocol}/{transport} second device failed")
+                self.assertIn(
+                    MARKER, body, f"{protocol}/{transport} second device failed"
+                )
                 body, _ = lab.mihomo.run(lab.proxy(clash, protocol, transport, default))
-                self.assertIn(MARKER, body, f"{protocol}/{transport} default device failed")
+                self.assertIn(
+                    MARKER, body, f"{protocol}/{transport} default device failed"
+                )
 
             lab.agent.tick()
             rows = {d["name"]: d for d in lab.devices(user["id"])}
             for name in (default, "second-phone"):
                 self.assertGreater(
-                    rows[name]["uploaded"] + rows[name]["downloaded"], 0, f"no bytes for {name}"
+                    rows[name]["uploaded"] + rows[name]["downloaded"],
+                    0,
+                    f"no bytes for {name}",
                 )
             periods = lab.panel.get(f"/api/users/{user['id']}/periods").json()
             self.assertGreater(sum(p["uploaded"] + p["downloaded"] for p in periods), 0)
@@ -447,12 +498,20 @@ class MihomoAcceptanceTest(unittest.TestCase):
                 any(" · second-phone · " in p["name"] for p in fresh["proxies"]),
                 "disabled device still appears in the fresh subscription",
             )
-            for protocol, transport in WORKING:
+            for protocol, transport in SIX_PROFILES:
                 body, log = lab.mihomo.run(stale[(protocol, transport)])
-                self.assertNotIn(MARKER, body, f"{protocol}/{transport} stale second-device profile still works")
+                self.assertNotIn(
+                    MARKER,
+                    body,
+                    f"{protocol}/{transport} stale second-device profile still works",
+                )
                 body, _ = lab.mihomo.run(lab.proxy(fresh, protocol, transport, default))
-                self.assertIn(MARKER, body, f"{protocol}/{transport} default device stopped")
-            print("  Disabled device: stored Mihomo profiles stopped on the four working profiles; default device kept working")
+                self.assertIn(
+                    MARKER, body, f"{protocol}/{transport} default device stopped"
+                )
+            print(
+                "  Disabled device: stored Mihomo profiles stopped on all six profiles; default device kept working"
+            )
 
 
 if __name__ == "__main__":

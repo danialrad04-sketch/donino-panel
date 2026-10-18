@@ -257,6 +257,9 @@ def profiles(clients, inbounds):
                 extra, options = _transport_options(transport, s)
                 query = {"security": "tls", "sni": s["sni"], **extra}
                 proxy["password"] = secret
+                # Mihomo's Trojan adapter reads `sni`; VMess/VLESS read
+                # `servername`. Otherwise an IP dial verifies the wrong name.
+                proxy["sni"] = proxy.pop("servername")
                 if transport != "tcp":
                     proxy.update({"network": transport, **options})
             links.append(

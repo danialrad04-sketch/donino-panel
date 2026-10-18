@@ -122,11 +122,41 @@ def save(path, data):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("command", choices=("status", "check", "checkpoint"))
-    parser.add_argument("--actor", default="claude")
+    parser.add_argument("--actor")
     parser.add_argument("--input", type=Path)
     args = parser.parse_args()
     try:
-        task = assignment(ROOT, args.actor)
+        if args.command == "check":
+            actors = (
+                [args.actor]
+                if args.actor
+                else read(ROOT / "docs/coordination/assignments.json")["assignments"]
+            )
+            for actor in actors:
+                task = assignment(ROOT, actor)
+                validate(read(inside(ROOT, task["checkpoint"])), task)
+            print("Coordination checkpoints validated")
+            return
+        actor = args.actor or "claude"
+        task = assignment(ROOT, actor)
+        if task.get("suspended"):
+            if args.command == "checkpoint":
+                parser.exit(
+                    1, "Actor is paused; resume requires a new user instruction.\n"
+                )
+            print(
+                json.dumps(
+                    {
+                        "actor": actor,
+                        "status": "paused",
+                        "reason": task.get("suspension_reason", ""),
+                        "assignment": task,
+                    },
+                    ensure_ascii=False,
+                    indent=2,
+                )
+            )
+            return
         path = inside(ROOT, task["checkpoint"])
         if args.command == "checkpoint":
             if not args.input:

@@ -1,0 +1,22 @@
+{
+  "task_id": "codex-v1-progress",
+  "status": "in_progress",
+  "branch": "development/mihomo-complete",
+  "last_verified_commit": null,
+  "completed": [
+    "بررسی PR ۱۷ و اصلاح SNI خروجی Trojan برای Mihomo",
+    "هر ۹ آزمون Mihomo با شش مسیر واقعی و بدون expected failure موفق شد"
+  ],
+  "remaining": [
+    "پذیرش کامل Mihomo شش مسیر",
+    "اتصال پایدار نقشهٔ تانل به inboundهای پنل و محافظت در برابر تغییر تنظیمات"
+  ],
+  "next_action": "آزمون واقعی Mihomo را کامل، شواهد و CI را ثبت و سپس binding تانل را پیاده کن.",
+  "tests": [
+    "Mihomo/Xray واقعی: 9 OK",
+    "هماهنگی شامل توقف Claude: 3 OK",
+    "source release: 2 OK"
+  ],
+  "blockers": [],
+  "pr_url": null
+}

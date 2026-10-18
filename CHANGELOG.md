@@ -1,5 +1,10 @@
 # Donino releases
 
+## Unreleased — verified Mihomo client exports
+
+- Fix Trojan Mihomo SNI export (`sni`), including the existing TCP profile. All six TLS profiles now pass real-client transfer, CA/hostname rejection, device accounting and revocation without expected failures.
+- Pin the Mihomo fetcher and real-client CI on SQLite/PostgreSQL. Preserve the Claude handoff and suspend further Claude work at the user’s request; Codex continues.
+
 ## 1.0.0-alpha.8 — Claude handoffs and local tunnel bridge, 2026-10-18
 
 - Add root Claude/shared instructions, assigned task and persistent resumable checkpoints with a validating atomic-write CLI. Completed Claude work waits in a review PR; no live cross-chat messaging or limit reset is claimed.
