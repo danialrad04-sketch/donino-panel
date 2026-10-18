@@ -43,6 +43,8 @@ def require_empty():
             "tunnel_checks",
             "tunnel_endpoints",
             "tunnel_monitors",
+            "wg_endpoints",
+            "wg_peers",
             "smart_exits",
             "smart_sessions",
         ):

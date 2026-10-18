@@ -49,5 +49,12 @@ def strip_smart_schema(db):
 
 def strip_monitor_schema(db):
     """Build an actual pre-14 fixture without orphaning monitoring consent."""
+    strip_wireguard_schema(db)
     db.execute("DROP TABLE tunnel_monitors")
     db.execute("DROP TABLE tunnel_monitor_runtime")
+
+
+def strip_wireguard_schema(db):
+    db.execute("DROP TABLE wg_peers")
+    db.execute("DROP TABLE wg_endpoints")
+    db.execute("DROP TABLE wg_runtime")

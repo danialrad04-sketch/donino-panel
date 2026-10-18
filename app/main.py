@@ -1012,6 +1012,9 @@ def rotate_credentials(uid: str, account=Depends(writer)):
                 "UPDATE devices SET secret=? WHERE id=?",
                 (str(uuid.uuid4()), device["id"]),
             )
+        from .wireguard import rotate_device_keys
+        for device in db.execute("SELECT id FROM devices WHERE user_id=?", (uid,)).fetchall():
+            rotate_device_keys(db, device[0])
         audit(db, account["username"], "user.rotate-credentials", uid)
     return {"ok": True}
 
@@ -1084,6 +1087,8 @@ def rotate_device(did: str, account=Depends(writer)):
     with database() as db:
         one(db, "devices", did)
         db.execute("UPDATE devices SET secret=? WHERE id=?", (str(uuid.uuid4()), did))
+        from .wireguard import rotate_device_keys
+        rotate_device_keys(db, did)
         audit(db, account["username"], "device.rotate-secret", did)
     return {"ok": True}
 
@@ -1535,3 +1540,8 @@ def qr_code(
         media_type="image/svg+xml",
         headers={"Content-Disposition": "inline; filename=donino-qr.svg"},
     )
+
+# Loaded after shared accounting/input definitions to avoid a circular model import.
+from .wireguard import mount as mount_wireguard
+
+mount_wireguard(app)

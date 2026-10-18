@@ -1,31 +1,24 @@
 {
   "task_id": "codex-v1-progress",
   "status": "in_progress",
-  "branch": "development/tunnel-monitor",
+  "branch": "development/wireguard",
   "last_verified_commit": null,
   "completed": [
-    "PR ۲۱ ادغام و alpha.12 منتشر شد؛ checkpoint نهایی بدون تغییر در history آرشیو شد.",
-    "schema 14، رضایت محدود پایش، fencing نتیجهٔ دیررس، heartbeat، تمدید/قطع انتشار/backoff و رابط فارسی پیاده شد.",
-    "پذیرش واقعی شش TLS از WSS/QUIC، قطع هر دو و بازگشت QUIC موفق؛ Chromium/موبایل موفق.",
-    "پذیرش نصب بومی Debian و Ubuntu: verifier/CA خوانا، رد تنظیمات خراب پیش از توقف پنل، heartbeat، opt-out پایدار، restart، backup/restore و uninstall موفق.",
-    "زمان‌بندی proof قدیمیِ هنوز تازه اصلاح شد؛ انتظار نام backup آزمون Smart DNS با schema جاری هماهنگ شد.",
-    "لغو worker slot کلاینتِ هنوز در حال اجرا را آزاد نمی‌کند؛ guard ثبت نهایی جلوی positive دیررس بین مشاهده و commit را می‌گیرد.",
-    "ترتیب stop کردن patch.dict قبل از teardown پایه اصلاح شد؛ رگرسیون ایزوله‌ماندن محیط جلوی انتقال PostgreSQL به fixture قدیمی Xray را می‌گیرد."
+    "alpha.13 منتشر و checkpoint نهایی آن بدون تغییر آرشیو شد.",
+    "schema 15، endpoint/peer با کلید مستقل رمزگذاری‌شده، IP پایدار، conf/QR خصوصی، rotation و scope نود پیاده شد.",
+    "عامل جدا با intent امضاشده/instance/sequence/TTL، دفتر durable، quota/expiry محلی و watchdog، حفاظت رابط نامتعلق، userspace صریح و صفحهٔ فارسی پیاده شد."
   ],
   "remaining": [
-    "اجرای کامل نهایی و CI روی head نهایی PR ۲۲؛ سپس ادغام و prerelease alpha.13 با latest=false.",
-    "دیگر gateهای v1 و پذیرش دو VPS واقعی باقی‌اند."
+    "WireGuard مستقل دستگاه، تخصیص IP، config امضاشده و عامل واقعی با حسابداری/انقضا/ابطال",
+    "پذیرش شبکه واقعی ایزوله، رابط و نصب، migration/restore SQLite/PostgreSQL",
+    "OpenVPN و دیگر gateهای stable v1 پس از این برش"
   ],
-  "next_action": "روی head نهایی PR ۲۲ نتیجهٔ اجرای کامل محلی و ۱۲ job متمایز CI را بررسی کن؛ سپس با SHA منطبق ادغام و alpha.13 را prerelease/latest=false منتشر کن. کلاد متوقف است.",
+  "next_action": "نتیجهٔ /tmp/donino-wg-network.log را بررسی کن؛ برای تغییرات agent تازه دوباره Docker build cached انجام بده. شبکهٔ واقعی wg-quick در netns، accounting/revoke/period/expiry/restore را کامل کن. سپس UI/نصب و CI. stable هنوز مجاز به اعلام نیست؛ کلاد متوقف است.",
   "tests": [
-    "19 آزمون متمرکز پایش، 11 endpoint، 2 preflight نصب موفق؛ opt-out خراب‌بودن config را نیز دور می‌زند تا سرویس امن خاموش شود.",
-    "real tunnel شش TLS: WSS/QUIC loss + recovery موفق؛ Chromium/390px نهایی موفق.",
-    "نصب بومی Debian و Ubuntu موفق با heartbeat/opt-out و حفظ DNS/Smart DNS/mTLS/backup/restore.",
-    "اجرای کامل نخست: 256 آزمون، یک failure انتظار pre-v13 در آزمون قدیمی، 2 skip؛ نام backup واقعاً v14 است. اصلاح شد و اجرای نهایی در جریان است.",
-    "13 آزمون endpoint نهایی شامل هر دو race لغو/ثبت موفق؛ اجرای کامل/CI نهایی باید روی head جدید بررسی شود.",
-    "اجرای کامل کد 5677537: 259 آزمون، 257 موفق، 2 skip محیطی؛ 13 آزمون endpoint نهایی موفق.",
-    "CI آن head: 22 از 24 موفق؛ فقط PostgreSQL به علت نشت environment fixture جدید شکست خورد. ترتیب cleanup اصلاح شد و هر 20 آزمون monitor/isolation محلی موفق‌اند؛ CI باید روی head جدید تکرار شود."
+    "9 آزمون API/عامل با kernel fixture موفق؛ این شاهد انتقال واقعی نیست.",
+    "کرنل آزمایشگاه WireGuard ندارد (Unknown device type). Docker image با wireguard-go/tools رسمی آماده شد؛ تست واقعی در حال اصلاح/اجراست.",
+    "اولین fixture مشکل نبود procps/sysctl داشت؛ اضافه شد. syntax چندخطی nft fixture اصلاح شد."
   ],
   "blockers": [],
-  "pr_url": "https://github.com/danialrad04-sketch/donino-panel/pull/22"
+  "pr_url": null
 }
