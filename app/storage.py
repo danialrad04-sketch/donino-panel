@@ -33,7 +33,14 @@ def backup_database(destination):
 
 def require_empty():
     with database() as db:
-        for table in ("admins", "users", "nodes", "inbounds", "audit"):
+        for table in (
+            "admins",
+            "users",
+            "nodes",
+            "inbounds",
+            "audit",
+            "tunnel_bindings",
+        ):
             if (
                 table_exists(db, table)
                 and db.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]

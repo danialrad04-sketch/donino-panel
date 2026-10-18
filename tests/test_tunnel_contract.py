@@ -65,6 +65,52 @@ class TunnelContractTest(PanelBase):
                 self.assertNotIn("PRIVATE KEY", result.text)
                 self.assertEqual(directory.stat().st_mode & 0o777, 0o700)
                 self.assertTrue((directory / "ca/server.key").is_file())
+                node = self.post(
+                    "/nodes", {"name": "bound-origin", "host": "198.51.100.20"}
+                ).json()
+                inbound = self.post(
+                    "/inbounds",
+                    {
+                        "node_id": node["id"],
+                        "name": "bound-vpn",
+                        "protocol": "trojan",
+                        "port": 9443,
+                        "sni": "localhost",
+                        "cert_file": "/node/server.pem",
+                        "key_file": "/node/server.key",
+                    },
+                ).json()
+                linked = self.post(
+                    "/tunnels/bindings",
+                    {
+                        "node_id": node["id"],
+                        "profile_id": "a" * 32,
+                        "iran": "192.0.2.10",
+                        "services": [
+                            {"inbound_id": inbound["id"], "listen_port": 1443}
+                        ],
+                        "transports": ["frp-wss", "frp-quic"],
+                    },
+                )
+                self.assertEqual(linked.status_code, 201, linked.text)
+                bound = linked.json()
+                target = root / "control/plans" / bound["plan_id"]
+                foreign_bound = json.loads((target / "foreign/node.json").read_text())
+                self.assertEqual(
+                    foreign_bound["targets"][bound["summary"]["services"][0]["id"]],
+                    "127.0.0.1:9443",
+                )
+                self.assertTrue(bound["source_matches"])
+                from app.db import database
+
+                with database() as db:
+                    db.execute(
+                        "UPDATE inbounds SET port=9553 WHERE id=?", (inbound["id"],)
+                    )
+                refused = self.post(
+                    f"/tunnels/bindings/{bound['id']}/start", {"confirm_replace": True}
+                )
+                self.assertEqual(refused.status_code, 409, refused.text)
                 # Invalid IDs never become shell commands or arbitrary filenames.
                 bad = self.post(
                     "/tunnels/start", {"plan_id": "../other", "confirm_replace": True}

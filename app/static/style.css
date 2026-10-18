@@ -909,6 +909,16 @@ label.check input {
 #tunnel-content section + section {
   margin-top: 24px;
 }
+.tunnel-service-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(90px, 140px);
+  align-items: end;
+  gap: 12px;
+  padding: 8px 0;
+}
+.tunnel-service-choice {
+  width: auto;
+}
 .full {
   min-width: 0;
 }

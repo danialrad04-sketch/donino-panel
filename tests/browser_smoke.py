@@ -32,15 +32,48 @@ def exercise_tunnel_ui(page):
             }
         ],
         "jobs": [],
+        "bindings": [],
     }
     requests = []
+    inbound = page.evaluate(
+        "(({id,node_id,port}) => ({id,node_id,port}))(data.inbounds[0])"
+    )
 
     def worker(route):
-        endpoint = route.request.url.rsplit("/", 1)[-1]
+        path = route.request.url.split("/api/tunnels/", 1)[-1]
+        endpoint = path.rsplit("/", 1)[-1]
         body = route.request.post_data_json if route.request.method == "POST" else None
         if endpoint == "state":
             return route.fulfill(json=state)
+        if path.startswith("bindings/") and route.request.method == "GET":
+            return route.fulfill(json=state["bindings"][0])
         requests.append((endpoint, body))
+        if endpoint == "bindings":
+            value = {
+                "id": "d" * 32,
+                "plan_id": "b" * 32,
+                "node_id": body["node_id"],
+                "profile_id": body["profile_id"],
+                "phase": "previewed",
+                "source_matches": True,
+                "can_start": True,
+                "job_id": None,
+                "summary": {
+                    "iran": body["iran"],
+                    "foreign": "198.51.100.20",
+                    "transports": body["transports"],
+                    "services": [
+                        {
+                            "id": "vpn-" + inbound["id"].replace("-", ""),
+                            "listen": "0.0.0.0:"
+                            + str(body["services"][0]["listen_port"]),
+                            "target": "127.0.0.1:" + str(inbound["port"]),
+                        }
+                    ],
+                },
+            }
+            state["bindings"] = [value]
+            return route.fulfill(status=201, json=value)
         if endpoint == "preview":
             return route.fulfill(
                 status=201,
@@ -59,15 +92,21 @@ def exercise_tunnel_ui(page):
                     },
                 },
             )
+        if endpoint == "start" and path.startswith("bindings/"):
+            state["bindings"][0].update(
+                phase="running", can_start=False, job_id="e" * 32
+            )
+            return route.fulfill(status=202, json=state["bindings"][0])
         if endpoint == "start":
             job = {"id": "c" * 32, "status": "running", "stage": "queued"}
             state["jobs"] = [job]
             return route.fulfill(status=202, json=job)
         return route.fulfill(status=500, json={"detail": "Unexpected fixture route"})
 
-    page.route("**/api/tunnels/*", worker)
+    page.route("**/api/tunnels/**", worker)
     try:
         page.evaluate("render()")
+        page.locator("#tunnel-plan [name=mode]").select_option("manual")
         page.locator("#tunnel-plan [name=iran]").fill("192.0.2.10")
         page.locator("#tunnel-plan [name=services]").fill("vpn,443,8443")
         page.locator("#tunnel-plan button[type=submit]").click()
@@ -89,8 +128,33 @@ def exercise_tunnel_ui(page):
         page.locator("#tunnel-jobs").get_by_text("در حال اجرا", exact=True).wait_for()
         assert requests[-1] == ("start", {"plan_id": "b" * 32, "confirm_replace": True})
         assert requests[0][1]["services"][0]["target_port"] == 8443
+        page.evaluate("render()")
+        page.locator("#tunnel-plan [name=iran]").fill("192.0.2.10")
+        page.locator(".tunnel-service-choice").first.check()
+        page.locator("#tunnel-plan [name=port_" + inbound["id"] + "]").fill("1443")
+        page.locator("#tunnel-plan button[type=submit]").click()
+        page.locator("#tunnel-review").wait_for(state="visible")
+        assert requests[-1][0] == "bindings"
+        assert requests[-1][1]["services"] == [
+            {"inbound_id": inbound["id"], "listen_port": 1443}
+        ]
+        assert requests[-1][1]["node_id"] == inbound["node_id"]
+        page.evaluate("render()")
+        page.get_by_role("button", name="مرور نقشه", exact=True).click()
+        page.locator("#tunnel-review").wait_for(state="visible")
+        assert page.locator("#tunnel-start").is_disabled()
+        page.locator("#tunnel-confirm").check()
+        page.locator("#tunnel-start").click()
+        page.locator("#tunnel-jobs").get_by_text(
+            "نصب در حال اجرا", exact=True
+        ).wait_for()
+        assert requests[-1] == ("start", {"confirm_replace": True})
+        assert page.evaluate("document.documentElement.scrollWidth <= innerWidth"), (
+            "Bound tunnel mobile overflow"
+        )
+
     finally:
-        page.unroute("**/api/tunnels/*", worker)
+        page.unroute("**/api/tunnels/**", worker)
         page.set_viewport_size({"width": 1440, "height": 1050})
 
 

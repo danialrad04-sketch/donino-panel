@@ -8,6 +8,7 @@ from pydantic import ValidationError
 
 from .db import audit, database
 from .deps import owner
+from . import tunnel_bindings as bindings
 from .tunnel_bridge import (
     BridgeError,
     Connection,
@@ -85,7 +86,30 @@ def mount_tunnel_api(app):
                     "reason": "سرویس محلی یا مجوز socket در دسترس نیست؛ راهنمای اتصال تانل را بررسی کنید.",
                 }
             raise
-        return {**result, "enabled": True, "supported_transports": list(SUPPORTED)}
+        return {
+            **result,
+            "enabled": True,
+            "supported_transports": list(SUPPORTED),
+            "bindings": bindings.list_bindings(result),
+        }
+
+    @router.get("/api/tunnels/bindings")
+    def binding_list(account=Depends(owner)):
+        return bindings.list_bindings()
+
+    @router.get("/api/tunnels/bindings/{binding_id}")
+    def binding_detail(binding_id: str, account=Depends(owner)):
+        return bindings.list_bindings(binding_id=binding_id)[0]
+
+    @router.post("/api/tunnels/bindings", status_code=201)
+    def bound_preview(body: bindings.BoundPreview, account=Depends(owner)):
+        return bindings.create(body, account, call)
+
+    @router.post("/api/tunnels/bindings/{binding_id}/start", status_code=202)
+    def bound_start(
+        binding_id: str, body: bindings.ConfirmBinding, account=Depends(owner)
+    ):
+        return bindings.start(binding_id, account, call)
 
     @router.post("/api/tunnels/pair", status_code=201)
     def pair(body: PairInput, account=Depends(owner)):
@@ -105,6 +129,13 @@ def mount_tunnel_api(app):
 
     @router.post("/api/tunnels/start", status_code=202)
     def start(body: StartInput, account=Depends(owner)):
+        with database() as db:
+            if db.execute(
+                "SELECT 1 FROM tunnel_bindings WHERE plan_id=?", (body.plan_id,)
+            ).fetchone():
+                raise HTTPException(
+                    409, "نقشهٔ متصل به ورودی پنل باید از مسیر binding شروع شود"
+                )
         result = public(Job, call("POST", "/start", body.model_dump()))
         record(account, "start", result["id"])
         return result
