@@ -16,6 +16,84 @@ from app.security import hotp
 from playwright.sync_api import sync_playwright
 
 
+def exercise_tunnel_ui(page):
+    page.locator("a[data-page=tunnels]").click()
+    page.get_by_role("heading", name="آماده‌سازی اتصال تانل").wait_for()
+    state = {
+        "enabled": True,
+        "available": True,
+        "busy": False,
+        "profiles": [
+            {
+                "id": "a" * 32,
+                "name": "خارج آزمایشی",
+                "host": "198.51.100.20",
+                "management": "https-v1",
+            }
+        ],
+        "jobs": [],
+    }
+    requests = []
+
+    def worker(route):
+        endpoint = route.request.url.rsplit("/", 1)[-1]
+        body = route.request.post_data_json if route.request.method == "POST" else None
+        if endpoint == "state":
+            return route.fulfill(json=state)
+        requests.append((endpoint, body))
+        if endpoint == "preview":
+            return route.fulfill(
+                status=201,
+                json={
+                    "id": "b" * 32,
+                    "expires_at": time.time() + 3600,
+                    "summary": {
+                        "iran": body["iran"],
+                        "foreign": "198.51.100.20",
+                        "transports": body["transports"],
+                        "services": body["services"],
+                        "firewall": {
+                            "iran": {"tcp": [443, 24443], "udp": []},
+                            "foreign": {"tcp": [9444], "udp": []},
+                        },
+                    },
+                },
+            )
+        if endpoint == "start":
+            job = {"id": "c" * 32, "status": "running", "stage": "queued"}
+            state["jobs"] = [job]
+            return route.fulfill(status=202, json=job)
+        return route.fulfill(status=500, json={"detail": "Unexpected fixture route"})
+
+    page.route("**/api/tunnels/*", worker)
+    try:
+        page.evaluate("render()")
+        page.locator("#tunnel-plan [name=iran]").fill("192.0.2.10")
+        page.locator("#tunnel-plan [name=services]").fill("vpn,443,8443")
+        page.locator("#tunnel-plan button[type=submit]").click()
+        page.locator("#tunnel-review").wait_for(state="visible")
+        assert page.locator("#tunnel-start").is_disabled()
+        page.locator("#tunnel-confirm").check()
+        page.locator("#tunnel-plan [name=services]").fill("vpn,444,8443")
+        assert page.locator("#tunnel-review").is_hidden(), (
+            "Changed spec must invalidate the reviewed plan"
+        )
+        page.locator("#tunnel-plan button[type=submit]").click()
+        page.locator("#tunnel-review").wait_for(state="visible")
+        page.set_viewport_size({"width": 390, "height": 844})
+        assert page.evaluate("document.documentElement.scrollWidth <= innerWidth"), (
+            "Tunnel mobile overflow"
+        )
+        page.locator("#tunnel-confirm").check()
+        page.locator("#tunnel-start").click()
+        page.locator("#tunnel-jobs").get_by_text("در حال اجرا", exact=True).wait_for()
+        assert requests[-1] == ("start", {"plan_id": "b" * 32, "confirm_replace": True})
+        assert requests[0][1]["services"][0]["target_port"] == 8443
+    finally:
+        page.unroute("**/api/tunnels/*", worker)
+        page.set_viewport_size({"width": 1440, "height": 1050})
+
+
 def main():
     output = Path(os.environ.get("DONINO_SCREENSHOT_DIR", "/tmp/donino-browser"))
     output.mkdir(parents=True, exist_ok=True)
@@ -148,6 +226,7 @@ def main():
                     has_text="اعتبارنامهٔ خصوصی DoH"
                 ).wait_for()
                 page.locator("#close-modal").click()
+                exercise_tunnel_ui(page)
                 page.locator("a[data-page=overview]").click()
                 page.locator("#main h1").filter(has_text="شبکه، در یک نگاه").wait_for()
                 page.locator("#toast").wait_for(state="hidden")
@@ -172,7 +251,15 @@ def main():
                 assert page.evaluate(
                     "document.documentElement.scrollWidth <= innerWidth"
                 ), "Mobile overview overflow"
-                for view in ["users", "nodes", "inbounds", "dns", "audit", "settings"]:
+                for view in [
+                    "users",
+                    "nodes",
+                    "inbounds",
+                    "dns",
+                    "tunnels",
+                    "audit",
+                    "settings",
+                ]:
                     page.locator("a[data-page=" + view + "]").click()
                     page.wait_for_timeout(100)
                     assert page.evaluate(

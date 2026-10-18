@@ -51,6 +51,7 @@ from .engines import XRAY
 from .node_api import mount_node_api
 from .dns_api import mount_dns_api
 from .doctor_api import mount_doctor_api
+from .tunnel_api import mount_tunnel_api
 from .node_identity import sign_desired
 from .budgets import allocations, close_budgets, summaries, reserve_total
 from .deps import (
@@ -102,6 +103,7 @@ mount_network_api(app)
 mount_node_api(app)
 mount_dns_api(app)
 mount_doctor_api(app)
+mount_tunnel_api(app)
 
 
 @app.middleware("http")

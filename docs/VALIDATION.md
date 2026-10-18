@@ -1,5 +1,15 @@
 # Validation record
 
+## Claude coordination and local tunnel bridge — 2026-10-18
+
+New coverage validates task/checkpoint matching, safe paths, review evidence, atomic JSON checkpoints, owner/scope and opt-in boundaries, strict typed service specs, explicit boolean replacement confirmation, rejected command/path/experimental inputs, redacted validation and worker errors, bounded/redirect-free transport, socket ownership and no automatic retry of an uncertain mutation.
+
+The pinned Donino Tunnel `4c19214598d32bd2868f9f46030d8a5dbd494d97` worker runs on a real Unix socket in the contract fixture. Real renderer/OpenSSL output produces a private two-node FRP WSS + QUIC plan; loopback destination, both paths, key file privacy and response credential omission are checked. Host service discovery is stubbed. No carrier is installed and no Iran/foreign VPN traffic is claimed by this fixture. The dedicated `tunnel-contract` CI job fetches this exact source revision.
+
+Chromium acceptance passed for the disabled integration view and a simulated enabled controller: plan preview, edit invalidation, explicit replacement confirmation, job status and 390px layout. Existing admin, DNS, portal, MFA and theme flows still pass with no JavaScript errors or third-party requests. The enabled browser fixture validates UI behavior; it is separate from the real worker contract test. Local full-suite and exact-commit remote results are recorded in the release/PR checks before publication.
+
+Initial two-role installation, automatic subscription endpoint binding, least-privilege worker isolation, two-node install/restart/partition acceptance and real ISP/ACME/game validation remain open. Coordination is Git-based asynchronous handoff; it cannot automatically resume a rate-limited chat or recover uncommitted work from another machine.
+
 ## doctor-dns catalog and staged migration — 2026-10-18
 
 The local SQLite suite discovered 150 checks and passed with the PostgreSQL-only restore fault and optional real Unbound checks skipped. Seven new cases cover the full 505-domain catalog, unknown-group refusal and owner permissions, read-only/deterministic source inspection, preserved source byte units and private archives, unrecognized hashes/shared-IP conflicts, idempotent staging, pre-action backup failure, transactional rollback on a mid-import identity conflict, selective rollback and refusal after target changes. Normal account activation is refused for staged users.

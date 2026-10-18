@@ -1,0 +1,13 @@
+{
+  "format": "donino-coordination-v1",
+  "assignments": {
+    "claude": {
+      "task_id": "xray-transports-v1",
+      "branch": "claude/xray-transports-v1",
+      "document": "docs/coordination/tasks/xray-transports-v1.fa.md",
+      "checkpoint": "docs/coordination/checkpoints/claude.json",
+      "base_commit": "74278ad",
+      "coordinator": "codex"
+    }
+  }
+}

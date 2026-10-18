@@ -1,0 +1,12 @@
+{
+  "task_id": "xray-transports-v1",
+  "status": "assigned",
+  "branch": "claude/xray-transports-v1",
+  "last_verified_commit": null,
+  "completed": [],
+  "remaining": ["پیاده‌سازی و پذیرش چهار transport طبق task"],
+  "next_action": "آخرین main و PRهای موجود را بررسی کن؛ شاخهٔ مأموریت را بساز یا ادامه بده و آزمون Xray موجود را بخوان.",
+  "tests": [],
+  "blockers": [],
+  "pr_url": null
+}

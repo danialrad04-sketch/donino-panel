@@ -1,5 +1,12 @@
 # Donino releases
 
+## 1.0.0-alpha.8 — Claude handoffs and local tunnel bridge, 2026-10-18
+
+- Add root Claude/shared instructions, assigned task and persistent resumable checkpoints with a validating atomic-write CLI. Completed Claude work waits in a review PR; no live cross-chat messaging or limit reset is claimed.
+- Add an opt-in owner-only local Unix-socket Donino Tunnel bridge for pinned HTTPS pairing, connection checks, private two-node previews and durable installation jobs. Initially exposes TCP services over FRP WSS/QUIC, with whitelist responses and redacted validation errors.
+- Add Persian tunnel setup/status UI, explicit whole-set replacement review, plan invalidation after edits and form-preserving background refresh. Initial role installation and automatic subscription endpoint binding remain separate work.
+- Pin a real Donino Tunnel worker/renderer contract in CI; record Hashem architecture research without importing its implementation. No Iran/VPS/carrier-transfer acceptance is claimed by the contract fixture.
+
 ## 1.0.0-alpha.7 — doctor-dns catalog and staged import, 2026-10-18
 
 - Bundle the pinned MIT doctor-dns catalog with attribution: 42 services, 48 groups and 505 domains. Owners can build independent DNS rewrite policies from selected groups and explicit relay addresses; no relay is installed or claimed by this action.
