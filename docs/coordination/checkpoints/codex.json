@@ -2,28 +2,28 @@
   "task_id": "codex-v1-progress",
   "status": "in_progress",
   "branch": "development/smart-dns-routing",
-  "last_verified_commit": "388c33bb27ed0413b0519d51445064a0d78ce74f",
+  "last_verified_commit": "2be0beab0da474a573c055f8a6764e75de4f91ef",
   "completed": [
     "PR ۱۹ ادغام و alpha.10 با ۱۰ job موفق منتشر شد",
     "Smart DNS با TLS passthrough، دو جایگزین، مجوز IP، حجم مستقل و schema 13",
     "رابط نود/مسیریابی/حجم و نصب اختیاری frontend هم‌پورت 443",
     "رفع حفظ credential در ویرایش UI و حفظ UUIDهای route در فرم متنی",
     "نصب Debian/Ubuntu و بازیابی دومیزبان با توقف نقش‌ها؛ heartbeat موقت دادهٔ کاربر محسوب نمی‌شود",
-    "پذیرش نهایی شبکه، مرورگر و مجموعهٔ یکپارچه؛ ثبت PR ۲۰"
+    "پذیرش نهایی شبکه، مرورگر و مجموعهٔ یکپارچه؛ ثبت PR ۲۰",
+    "هر ۱۰ job متمایز CI روی 2be0bea موفق شد؛ PR ۲۰ در a6aca08 ادغام و v1.0.0-alpha.11 به‌صورت prerelease و latest=false منتشر شد. latest پایدار v0.2.0 است."
   ],
   "remaining": [
-    "بررسی ۱۰ job متمایز CI روی head نهایی PR ۲۰، سپس ادغام و prerelease alpha.11",
     "آزمون VPS/دامنه/بازی واقعی، ظرفیت/retention و آماده‌سازی خودکار خروجی دوردست",
     "WireGuard/OpenVPN و دیگر فازهای باقی‌ماندهٔ طرح v1"
   ],
-  "next_action": "PR ۲۰ را روی head نهایی بررسی کن. فقط پس از موفقیت jobهای CI و تطبیق SHA، merge و v1.0.0-alpha.11 prerelease (latest=false) منتشر کن. اگر قطع شد، از همین PR/checkpoint ادامه بده. کلاد متوقف بماند.",
+  "next_action": "alpha.11 منتشر شده است؛ آن را دوباره ایجاد نکن. از main در a6aca08 یا جدیدتر یک شاخهٔ محدود بساز و گام بعدِ v1 را طبق MASTER-PLAN و وضعیت واقعی اجرا کن. اولویت عملیاتی Smart DNS: آماده‌سازی امن خروجی دوردست، ظرفیت/retention و پذیرش واقعی؛ فاز WireGuard/OpenVPN نیز هنوز اجرا نشده است. کلاد همچنان متوقف بماند. این ثبت پس از انتشار روی شاخهٔ task است؛ کد منتشرشده همان 2be0bea است.",
   "tests": [
     "مجموعهٔ یکپارچهٔ محلی با Xray/Mihomo/FRP و worker واقعی: 227 آزمون، 225 موفق، 2 skip (fault PostgreSQL و Unbound محلی؛ CI محیط هر دو را دارد)",
     "17 آزمون Smart DNS شامل UDP، دو خروجی TLS، HTTPS مقصد، تغییر سیاست، failover، quota، ابطال، ECH و مهاجرت/restore موفق",
     "10 آزمون نصب/پیش‌پرواز/rollback و heartbeat مقصد خالی موفق",
     "Debian 12 و Ubuntu 24.04: نصب، نصب مجدد، restart، TLS/mTLS، backup رمزگذاری‌شده، restore دومیزبان و uninstall با حفظ داده موفق",
     "Chromium: نود، probe نمایشی، فعال‌سازی با حفظ credential، route متنی، کاتالوگ، quota، فرم موبایل 390px و مسیرهای قبلی؛ بدون JS error و third-party request",
-    "manifest، coordination check، diff check، syntax و lint فایل‌های جدید موفق؛ نتیجهٔ CI روی head نهایی باید بررسی شود"
+    "manifest، coordination check، diff check و lint موفق؛ هر ۱۰ job متمایز CI (۲۰ بررسی push/PR) روی head 2be0bea موفق، درخت main پس از merge یکسان است. نتایج و محدودیت‌ها در PR ۲۰ و release alpha.11 ثبت شدند."
   ],
   "blockers": [],
   "pr_url": "https://github.com/danialrad04-sketch/donino-panel/pull/20"

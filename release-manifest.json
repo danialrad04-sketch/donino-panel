@@ -1,7 +1,7 @@
 {
   "format": "donino-source-v1",
   "version": "1.0.0a11",
-  "source_sha256": "5d1279e450c48a4f9268139a02994a39e403ab892af89b1115588b91a34c216c",
+  "source_sha256": "8155aa18f55e653558704d6b8b3020184c6689c7f1924ead6e5e848bff352200",
   "files": {
     "AGENTS.md": "83a8541632ccf5eff2469297ec44dd914e8d80c7b89407b06bdee36c0261c0a8",
     "CHANGELOG.md": "3993629b7f3fb045ae6f1463aee56aea57760fe274934dc4fff30d8846f6c1b2",
@@ -104,11 +104,11 @@
     "docs/UPGRADE-0.2.fa.md": "8dcade198068212720d008de6797aa4c47596dba9aadf2a5e32dbe742c6cec4e",
     "docs/VALIDATION.md": "91f46b384604833835dc738cdd55a579774dee40bddb3e55d11c9f921dd93622",
     "docs/XRAY-TRANSPORT-ACCEPTANCE.md": "304bab4878b1ff50426011f9dcb6e47aa6e33a8fbc5b4d896621a010fd6ad89e",
-    "docs/coordination/CODEX-STATUS.fa.md": "91e206ac219ad046133da85d5c04d71b7a3e08969c4682b374d619c0507a0241",
+    "docs/coordination/CODEX-STATUS.fa.md": "686845bb6a7512c0d5c45eb768917d7477255472aa20d9dacb20b9a1038caee1",
     "docs/coordination/README.fa.md": "c7a0dae0343dc653512ade4cf169a7becb31bd041cd913a0d9bb12b5e22dbe5e",
     "docs/coordination/assignments.json": "a1c7173a2ff96d25c7ab80f7f7344319d149d13e2a4fab1fc46a3f9932fc4280",
     "docs/coordination/checkpoints/claude.json": "b0cf12f259c1de00c43b4d74a69a0dde438697fd269965011385ebee20ef129f",
-    "docs/coordination/checkpoints/codex.json": "17b7cc75fea1b7fcfd206db94702b0f485babb3d87ce4b6856b65d50d46a93d7",
+    "docs/coordination/checkpoints/codex.json": "19cbb48fc211c69e50eaee0d614a19eae5bb5786e45e1f8118b5a04ab90b823a",
     "docs/coordination/history/mihomo-tls-acceptance-v1.claude.json": "b0cf12f259c1de00c43b4d74a69a0dde438697fd269965011385ebee20ef129f",
     "docs/coordination/history/tunnel-verification-alpha10.codex.json": "424bf169d6f8c988f5e8e7a3a2f493bb30f5d3aa75af834b891c8fe3697a9a33",
     "docs/coordination/history/xray-acceptance-v1.claude.json": "066e8834399b612b24199a2ccc13792be976f43a9ab8f1a045f2ceaf48563807",

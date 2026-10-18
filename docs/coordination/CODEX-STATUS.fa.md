@@ -24,3 +24,5 @@ Schema 11، binding پایدار node/inbound، ساخت مقصد از DB، مح
 PR ۱۸ و alpha.9 ادغام و منتشر شدند. مرحلهٔ قبل در `development/tunnel-verification` و PR ۱۹ تکمیل شد: آزمون واقعی شش مسیر TLS روی حامل‌های FRP، رسید محافظت‌شده، انتشار اضافیِ موقت در اشتراک، ابطال هنگام تغییر/restore و schema 12. مرجع نتیجهٔ نهایی بررسی‌ها و انتشار، همان PR و checkpoint است. نصب اولیهٔ نقش‌ها، مانیتور/تمدید امن lease و پذیرش دو VPS واقعی هنوز کار بعدند؛ کلاد فعلاً متوقف می‌ماند.
 
 به‌روزرسانی alpha 11: PR ۱۹ ادغام و alpha.10 منتشر شد. کار فعال در `development/smart-dns-routing`، افزودن Smart DNS واقعی HTTPS و مدیریت خروجی/حجم است. PR ۲۰ برای این مرحله ثبت شده است؛ مرجع نتیجهٔ نهایی، checkpoint و همان PR است؛ کلاد متوقف می‌ماند.
+
+ثبت پس از انتشار: PR ۲۰ ادغام شد و [alpha.11](https://github.com/danialrad04-sketch/donino-panel/releases/tag/v1.0.0-alpha.11) روی head آزموده‌شدهٔ `2be0bea` منتشر است؛ درخت main در `a6aca08` یکسان بود و هر ۱۰ job CI موفق بود. ادامه، کار بعدی v1 است و تکرار انتشار alpha.11 نیست. این checkpoint تکمیلی روی شاخهٔ task نگهداری می‌شود؛ کلاد متوقف می‌ماند.
