@@ -1,6 +1,7 @@
 import os
 import threading
 import time
+import unittest
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from unittest.mock import patch
@@ -33,6 +34,12 @@ class MonitorTest(EndpointFixture):
         self.check = self.verify().json()
         self.assertEqual(self.publish(self.check).status_code, 200)
         self.assertTrue(monitor.heartbeat(self.instance))
+
+    def tearDown(self):
+        # Stop patch.dict before PanelBase restores the process environment.
+        # Its addCleanup remains as a guard for a partial setUp failure.
+        self.opt.stop()
+        super().tearDown()
 
     def enable(self, **changes):
         body = {"check_id": self.check["id"], "confirm_auto_renew": True} | changes
@@ -358,3 +365,20 @@ class MonitorTest(EndpointFixture):
                     "SELECT 1 FROM tunnel_checks WHERE id=?", (self.check["id"],)
                 ).fetchone()
             )
+
+
+class MonitorFixtureIsolationTest(unittest.TestCase):
+    def test_monitor_fixture_restores_environment_for_following_engines(self):
+        before = dict(os.environ)
+        case = MonitorTest("test_shutdown_before_publication_withdraws_without_renewal")
+        case.setUp()
+        try:
+            self.assertEqual(os.environ["DONINO_TUNNEL_MONITOR"], "1")
+        finally:
+            try:
+                case.tearDown()
+            finally:
+                case.doCleanups()
+        self.assertTrue(
+            dict(os.environ) == before, "Monitor fixture leaked process environment"
+        )
