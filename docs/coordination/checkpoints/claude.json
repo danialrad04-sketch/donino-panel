@@ -1,14 +1,26 @@
 {
   "task_id": "mihomo-tls-acceptance-v1",
-  "status": "assigned",
+  "status": "waiting_for_review",
   "branch": "claude/mihomo-tls-acceptance-v1",
-  "last_verified_commit": null,
-  "completed": [],
-  "remaining": [
-    "کلاینت واقعی Mihomo برای شش پروفایل TLS، کنترل منفی TLS و ثبت بایت/ابطال دستگاه"
+  "last_verified_commit": "d080276c679e7d4d80972bc9f6c60b14657d81b9",
+  "completed": [
+    "باینری Mihomo v1.19.32 با SHA-256 پین‌شده و fetch محدود دریافت و تأیید شد؛ باینری داخل مخزن نیست",
+    "چهار پروفایل VLESS WS/gRPC و VMess WS/gRPC از خروجی واقعی subscription با Mihomo واقعی منتقل شدند",
+    "CA نامعتبر و hostname نادرست برای چهار پروفایل سالم با خطای گواهی Go رد شدند؛ برای چهار پروفایل trojan نیز CA نامعتبر با خطای unknown authority رد شد (کنترل آزمایشگاهی sni)",
+    "بایت‌ها به device ID و دورهٔ جاری رسیدند و غیرفعال‌کردن دستگاه، پروفایل ذخیره‌شده را در چهار پروفایل سالم قطع کرد",
+    "defect export trojan با reproducer و امضای خطای دقیق ثبت شد؛ آزمون انتقال trojan به‌صورت expected failure است",
+    "PR ۱۷، docs/MIHOMO-ACCEPTANCE.md، workflow جداگانهٔ mihomo.yml و manifest"
   ],
-  "next_action": "main تازه و مأموریت mihomo-tls-acceptance-v1 را بخوان؛ شاخهٔ تازه بساز، باینری پین‌شده را با checksum دریافت کن و fixture واقعی subscription را آماده کن.",
-  "tests": [],
-  "blockers": [],
-  "pr_url": null
+  "remaining": [],
+  "next_action": "بازبینی Codex روی PR ۱۷ و تصمیم دربارهٔ اصلاح export trojan در app/core.py (افزودن sni یا معادل) که خارج از این مأموریت است؛ پس از اصلاح، decorator expected failure را بردار.",
+  "tests": [
+    "tests/test_mihomo.py با Mihomo v1.19.32 و Xray v26.3.27: 9 OK، 1 expected failure",
+    "کل suite روی SQLite با Xray و Unbound: 178 OK، 9 skipped (موارد واقعی Mihomo بدون DONINO_TEST_MIHOMO)",
+    "release_manifest.py --check: verified؛ نسخه بدون تغییر",
+    "git diff --check: clean"
+  ],
+  "blockers": [
+    "export trojan: subscription فقط servername تنظیم می‌کند و Mihomo آن را برای trojan نمی‌خواند؛ شرط بسته‌شدن پذیرش trojan اصلاح profiles() در app/core.py است (مالکیت Codex/محصول)"
+  ],
+  "pr_url": "https://github.com/danialrad04-sketch/donino-panel/pull/17"
 }

@@ -1,7 +1,7 @@
 {
   "format": "donino-source-v1",
   "version": "1.0.0a8",
-  "source_sha256": "4041f7095aafd684c1f9b5b1a2179c1745e97f07d00347b300c9be29f2266402",
+  "source_sha256": "1d41dde419057aa9f18c2fd30f9972e1afe71d5b594105cffbfc2cf3cf5b1897",
   "files": {
     "AGENTS.md": "055ecf4f9b89ec21b07dff4703798161f00a49c2685df37142f2ba7128d2d0b3",
     "CHANGELOG.md": "567df2aa26226e88fafc03b8a4d5da8c7cc6dc3df51cf6fb8d3a5498c1ff8551",
@@ -94,7 +94,7 @@
     "docs/coordination/CODEX-STATUS.fa.md": "d639de353b45cd1887ebf3ee4c8645e9efde0437873895efb634bda4bf786c2f",
     "docs/coordination/README.fa.md": "de76058ef6a88b9fafd356734b2cf1e709562c2c4192717d4dc79f5559db7c7c",
     "docs/coordination/assignments.json": "f94b81bbbb725d2a5f8721ae45958d0afa4c7b3da1a2c96f49e76387c6de216c",
-    "docs/coordination/checkpoints/claude.json": "bf0d93a0915e4c99ebd8ed4bbf33e3c4fd811be22e03676880d1bc3c46967680",
+    "docs/coordination/checkpoints/claude.json": "b0cf12f259c1de00c43b4d74a69a0dde438697fd269965011385ebee20ef129f",
     "docs/coordination/history/xray-acceptance-v1.claude.json": "066e8834399b612b24199a2ccc13792be976f43a9ab8f1a045f2ceaf48563807",
     "docs/coordination/reviews/xray-acceptance-v1.fa.md": "bbbdc4cd9f38b9a4932785e24cc147a4971ebd358b979918dbbefe4cd015977f",
     "docs/coordination/reviews/xray-transports-v1.fa.md": "75722908436e63b312ced42cd574d61eacf45640a2cb192f78ac03cc51e50219",
