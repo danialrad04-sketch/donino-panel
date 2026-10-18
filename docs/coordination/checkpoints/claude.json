@@ -1,14 +1,23 @@
 {
   "task_id": "xray-acceptance-v1",
-  "status": "assigned",
+  "status": "waiting_for_review",
   "branch": "claude/xray-acceptance-v1",
-  "last_verified_commit": null,
-  "completed": [],
-  "remaining": [
-    "پذیرش live-add، قطع انقضا و کنترل منفی TLS برای هر چهار transport جدید"
+  "last_verified_commit": "60b34f1ec83e928cf34984c1f775c3c5af7c3ef4",
+  "completed": [
+    "پذیرش live-add هات برای یک کاربر و یک دستگاه جدید: PID و epoch ثابت ماندند، جریان باز قبلی سالم ماند، انتقال هر چهار مسیر و شمارش به device ID و دورهٔ درست تأیید شد",
+    "انقضای واقعی ساعتی: انتقال پیش از انقضا موفق، پس از انقضا و tick لینک‌های ذخیره‌شده و اشتراک جدید رد شدند؛ تغییر انقضا به گذشته از API نیز پس از tick قطع کرد",
+    "کنترل منفی TLS برای هر چهار مسیر: CA معتبر با hostname درست موفق؛ CA نامعتبر و hostname ناسازگار رد شدند و در لاگ کلاینت x509 ثبت شد",
+    "سند شواهد docs/XRAY-TRANSPORT-ACCEPTANCE.md نوشته شد"
   ],
-  "next_action": "آخرین main شامل PR ۱۳ و راهنمای ریشه را بخوان؛ شاخهٔ claude/xray-acceptance-v1 را از main تازه بساز و آزمون واقعی transportها را تکمیل کن.",
-  "tests": [],
+  "remaining": [],
+  "next_action": "بازبینی Codex روی PR ۱۵ را منتظر بمان؛ تا مأموریت یا بازخورد جدید نیاید، کار تازه‌ای انتخاب نشود.",
+  "tests": [
+    "test_xray_transports.py با Xray v26.3.27 روی SQLite: 10 OK",
+    "test_xray_transports.py با Xray v26.3.27 روی PostgreSQL 16 محلی: 10 OK",
+    "کل suite روی SQLite با Xray و Unbound: 168 OK، 2 skipped (PostgreSQL-only و Unbound-only)",
+    "release_manifest.py --check: verified؛ نسخه بدون تغییر",
+    "git diff --check: clean"
+  ],
   "blockers": [],
-  "pr_url": null
+  "pr_url": "https://github.com/danialrad04-sketch/donino-panel/pull/15"
 }
