@@ -1,28 +1,31 @@
 {
   "task_id": "codex-v1-progress",
   "status": "in_progress",
-  "branch": "development/smart-exit-installer",
-  "last_verified_commit": "00c1afae042e6081e21757219b625e1f7d48497f",
+  "branch": "development/tunnel-monitor",
+  "last_verified_commit": null,
   "completed": [
-    "alpha.11 منتشر و checkpoint آن بدون تغییر آرشیو شد",
-    "نصب مستقل Smart DNS exit با کاربر/فایل/نسخهٔ جدا، بدون DB اضافی",
-    "TLS موجود و مسیر ACME، تمدید با rollback، credential پایدار و رد credential مفقود/خراب پیش از توقف سرویس",
-    "اصلاح start/restart تکراری و جلوگیری از restart هنگام رد گواهی خراب",
-    "پذیرش نهایی نقش مستقل در Debian/Ubuntu و سازگاری نصب کنترل‌پنل Debian/مرورگر"
+    "PR ۲۱ ادغام و alpha.12 منتشر شد؛ checkpoint نهایی بدون تغییر در history آرشیو شد.",
+    "schema 14، رضایت محدود پایش، fencing نتیجهٔ دیررس، heartbeat، تمدید/قطع انتشار/backoff و رابط فارسی پیاده شد.",
+    "پذیرش واقعی شش TLS از WSS/QUIC، قطع هر دو و بازگشت QUIC موفق؛ Chromium/موبایل موفق.",
+    "پذیرش نصب بومی Debian و Ubuntu: verifier/CA خوانا، رد تنظیمات خراب پیش از توقف پنل، heartbeat، opt-out پایدار، restart، backup/restore و uninstall موفق.",
+    "زمان‌بندی proof قدیمیِ هنوز تازه اصلاح شد؛ انتظار نام backup آزمون Smart DNS با schema جاری هماهنگ شد.",
+    "لغو worker slot کلاینتِ هنوز در حال اجرا را آزاد نمی‌کند؛ guard ثبت نهایی جلوی positive دیررس بین مشاهده و commit را می‌گیرد.",
+    "ترتیب stop کردن patch.dict قبل از teardown پایه اصلاح شد؛ رگرسیون ایزوله‌ماندن محیط جلوی انتقال PostgreSQL به fixture قدیمی Xray را می‌گیرد."
   ],
   "remaining": [
-    "هر ۱۲ job متمایز CI را روی head نهایی بررسی کن؛ سپس PR ۲۱ را ادغام و alpha.12 را prerelease/latest=false منتشر کن.",
-    "مستندات و CI نقش مستقل، PR و پیش‌انتشار پس از موفقیت آزمون‌ها",
-    "فاز WireGuard/OpenVPN و دیگر gateهای v1 همچنان باقی‌اند"
+    "اجرای کامل نهایی و CI روی head نهایی PR ۲۲؛ سپس ادغام و prerelease alpha.13 با latest=false.",
+    "دیگر gateهای v1 و پذیرش دو VPS واقعی باقی‌اند."
   ],
-  "next_action": "روی head نهایی PR ۲۱ منتظر موفقیت ۱۲ job متمایز CI بمان؛ با تطبیق SHA ادغام و v1.0.0-alpha.12 را prerelease/latest=false منتشر کن. کلاد متوقف است. پس از این برش عملیاتی، اولویت اجرای واقعی WireGuard طبق طرح است؛ آن پروتکل هنوز پشتیبانی‌شده نیست.",
+  "next_action": "روی head نهایی PR ۲۲ نتیجهٔ اجرای کامل محلی و ۱۲ job متمایز CI را بررسی کن؛ سپس با SHA منطبق ادغام و alpha.13 را prerelease/latest=false منتشر کن. کلاد متوقف است.",
   "tests": [
-    "9 آزمون متمرکز نقش مستقل و rollback جفت گواهی موفق",
-    "نصب مستقل Debian و Ubuntu: install/upgrade/restart، TLS/auth، اسرار خصوصی، رد گواهی/رمز/دامنه نامعتبر، credential خراب/مفقود، تمدید و uninstall موفق",
-    "نصب بومی کنترل‌پنل Debian و Chromium با مسیرهای قبلی موفق",
-    "اجرای کامل نهایی: 236 آزمون، 234 موفق، 2 skip (fault PostgreSQL و Unbound محلی) با Xray/Mihomo/FRP و worker واقعی؛ dedicated CI محیط هر دو را فراهم می‌کند.",
-    "manifest، coordination و diff check موفق؛ CI روی head نهایی PR ۲۱ باید بررسی شود."
+    "19 آزمون متمرکز پایش، 11 endpoint، 2 preflight نصب موفق؛ opt-out خراب‌بودن config را نیز دور می‌زند تا سرویس امن خاموش شود.",
+    "real tunnel شش TLS: WSS/QUIC loss + recovery موفق؛ Chromium/390px نهایی موفق.",
+    "نصب بومی Debian و Ubuntu موفق با heartbeat/opt-out و حفظ DNS/Smart DNS/mTLS/backup/restore.",
+    "اجرای کامل نخست: 256 آزمون، یک failure انتظار pre-v13 در آزمون قدیمی، 2 skip؛ نام backup واقعاً v14 است. اصلاح شد و اجرای نهایی در جریان است.",
+    "13 آزمون endpoint نهایی شامل هر دو race لغو/ثبت موفق؛ اجرای کامل/CI نهایی باید روی head جدید بررسی شود.",
+    "اجرای کامل کد 5677537: 259 آزمون، 257 موفق، 2 skip محیطی؛ 13 آزمون endpoint نهایی موفق.",
+    "CI آن head: 22 از 24 موفق؛ فقط PostgreSQL به علت نشت environment fixture جدید شکست خورد. ترتیب cleanup اصلاح شد و هر 20 آزمون monitor/isolation محلی موفق‌اند؛ CI باید روی head جدید تکرار شود."
   ],
   "blockers": [],
-  "pr_url": "https://github.com/danialrad04-sketch/donino-panel/pull/21"
+  "pr_url": "https://github.com/danialrad04-sketch/donino-panel/pull/22"
 }

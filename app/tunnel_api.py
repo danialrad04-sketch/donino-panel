@@ -9,7 +9,7 @@ from pydantic import ValidationError
 from .db import audit, database
 from .deps import owner
 from . import tunnel_bindings as bindings
-from . import tunnel_endpoints as endpoints, tunnel_probe
+from . import tunnel_endpoints as endpoints, tunnel_probe, tunnel_monitor
 from .tunnel_bridge import (
     BridgeError,
     Connection,
@@ -138,6 +138,16 @@ def mount_tunnel_api(app):
     @router.post("/api/tunnels/connection")
     def connection(body: ConnectionInput, account=Depends(owner)):
         return public(Connection, call("POST", "/connection", body.model_dump()))
+
+    @router.put("/api/tunnels/bindings/{binding_id}/monitor")
+    def enable_monitor(
+        binding_id: str, body: tunnel_monitor.MonitorInput, account=Depends(owner)
+    ):
+        return tunnel_monitor.enable(binding_id, body, account)
+
+    @router.delete("/api/tunnels/bindings/{binding_id}/monitor")
+    def disable_monitor(binding_id: str, account=Depends(owner)):
+        return tunnel_monitor.disable(binding_id, account)
 
     @router.post("/api/tunnels/preview", status_code=201)
     def preview(body: PreviewInput, account=Depends(owner)):

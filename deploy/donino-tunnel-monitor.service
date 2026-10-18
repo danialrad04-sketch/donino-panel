@@ -1,0 +1,28 @@
+[Unit]
+Description=Donino real-client tunnel publication monitor (optional)
+After=network-online.target donino-panel.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=donino
+Group=donino
+SupplementaryGroups=donino-link
+WorkingDirectory=/opt/donino-panel/current
+EnvironmentFile=/etc/donino/panel.env
+ExecStart=/opt/donino-panel/current/.venv/bin/python -m agent.tunnel_monitor
+Restart=on-failure
+RestartSec=12
+MemoryMax=384M
+TasksMax=128
+LimitNOFILE=1024
+TimeoutStopSec=15
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/donino-panel
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

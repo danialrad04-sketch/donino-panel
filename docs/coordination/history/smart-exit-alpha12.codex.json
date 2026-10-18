@@ -1,0 +1,29 @@
+{
+  "task_id": "codex-v1-progress",
+  "status": "in_progress",
+  "branch": "development/smart-exit-installer",
+  "last_verified_commit": "a8493458dce5ef3e1821d1ef700bf5f547f643f7",
+  "completed": [
+    "alpha.11 منتشر و checkpoint آن بدون تغییر آرشیو شد",
+    "نصب مستقل Smart DNS exit با کاربر/فایل/نسخهٔ جدا، بدون DB اضافی",
+    "TLS موجود و مسیر ACME، تمدید با rollback، credential پایدار و رد credential مفقود/خراب پیش از توقف سرویس",
+    "اصلاح start/restart تکراری و جلوگیری از restart هنگام رد گواهی خراب",
+    "پذیرش نهایی نقش مستقل در Debian/Ubuntu و سازگاری نصب کنترل‌پنل Debian/مرورگر",
+    "هر ۱۲ job متمایز CI روی a849345 موفق شد؛ PR ۲۱ در 8557d78 ادغام و v1.0.0-alpha.12 به‌صورت prerelease/latest=false منتشر شد. stable latest همچنان v0.2.0 است."
+  ],
+  "remaining": [
+    "فاز WireGuard/AWG: credential مستقل دستگاه، peer/profile، خروجی conf/QR، حسابداری دوره، quota/expiry/revoke و پذیرش کلاینت واقعی",
+    "OpenVPN و دیگر موتورهای هدف؛ ظرفیت/retention و gateهای عملیات/انتشار کامل v1",
+    "پذیرش دامنه/VPS/ISP/بازی واقعی؛ محیط فعلی فقط آزمایشی است"
+  ],
+  "next_action": "alpha.12 منتشر شده است؛ انتشار آن را تکرار نکن. از origin/main در 8557d78 یا جدیدتر شاخهٔ محدود تازه بساز و فاز WireGuard طبق MASTER-PLAN/PROTO-01 را آغاز کن: ابتدا credential/device مستقل و مرز adapter/حسابداری را با مدل فعلی حفظ کن، سپس شبکه/کلاینت واقعی ایزوله، quota/expiry/revoke جریان باز و restart/restore را بپذیر. صرفاً تولید conf، پشتیبانی پروتکل نیست. کلاد همچنان متوقف است. این ثبت پس از انتشار روی شاخهٔ task است؛ کد منتشرشده همان a849345 است.",
+  "tests": [
+    "9 آزمون متمرکز نقش مستقل و rollback جفت گواهی موفق",
+    "نصب مستقل Debian و Ubuntu: install/upgrade/restart، TLS/auth، اسرار خصوصی، رد گواهی/رمز/دامنه نامعتبر، credential خراب/مفقود، تمدید و uninstall موفق",
+    "نصب بومی کنترل‌پنل Debian و Chromium با مسیرهای قبلی موفق",
+    "اجرای کامل نهایی: 236 آزمون، 234 موفق، 2 skip (fault PostgreSQL و Unbound محلی) با Xray/Mihomo/FRP و worker واقعی؛ dedicated CI محیط هر دو را فراهم می‌کند.",
+    "manifest، coordination و diff check موفق؛ هر ۱۲ job متمایز CI (۲۴ اجرای push/PR) روی a849345 موفق و درخت main پس از merge یکسان بود. PR ۲۱ و release alpha.12 مرجع شواهد هستند."
+  ],
+  "blockers": [],
+  "pr_url": "https://github.com/danialrad04-sketch/donino-panel/pull/21"
+}

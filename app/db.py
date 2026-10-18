@@ -16,7 +16,7 @@ try:  # PostgreSQL is optional; SQLite stays the default backend.
 except ImportError:  # pragma: no cover - exercised only without the postgres extra
     psycopg = None
 
-SCHEMA_VERSION = 13
+SCHEMA_VERSION = 14
 MAX_DEVICES_PER_USER = 20
 # Arbitrary constant key for the PostgreSQL writer lock (serializes writers, like BEGIN IMMEDIATE).
 _PG_WRITER_LOCK = 4541776
@@ -521,6 +521,22 @@ def initialize():
                 id INTEGER PRIMARY KEY, instance_id TEXT NOT NULL,
                 addresses TEXT NOT NULL, lease_until INTEGER NOT NULL)""")
             set_schema_version(db, 13)
+        if version < 14:
+            db.execute("""CREATE TABLE tunnel_monitors (
+                binding_id TEXT PRIMARY KEY REFERENCES tunnel_bindings(id),
+                enabled INTEGER NOT NULL, revision TEXT NOT NULL, actor TEXT NOT NULL,
+                device_id TEXT NOT NULL, device_revision TEXT NOT NULL,
+                source_revision TEXT NOT NULL, job_id TEXT NOT NULL,
+                inbound_ids TEXT NOT NULL, probe_revision TEXT NOT NULL,
+                interval_seconds INTEGER NOT NULL, next_run INTEGER NOT NULL,
+                phase TEXT NOT NULL, run_id TEXT, instance_id TEXT, claim_until INTEGER,
+                last_started INTEGER, last_finished INTEGER, last_success INTEGER,
+                last_check_id TEXT, error_code TEXT, failures INTEGER NOT NULL DEFAULT 0,
+                created INTEGER NOT NULL, updated INTEGER NOT NULL)""")
+            db.execute("CREATE INDEX tunnel_monitors_due ON tunnel_monitors(enabled,next_run)")
+            db.execute("""CREATE TABLE tunnel_monitor_runtime (
+                id INTEGER PRIMARY KEY, instance_id TEXT NOT NULL, lease_until INTEGER NOT NULL)""")
+            set_schema_version(db, 14)
 
 
 def encrypt_legacy_mfa(db):

@@ -3,6 +3,7 @@ import os
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import contextmanager
 from pathlib import Path
 from unittest.mock import patch
 
@@ -19,7 +20,7 @@ import test_tunnel_bindings as fixtures
 from support import strip_smart_schema
 
 
-class EndpointTest(fixtures.BindingFixture):
+class EndpointFixture(fixtures.BindingFixture):
     def setUp(self):
         super().setUp()
         self.available = patch("app.tunnel_probe.available", return_value=True)
@@ -55,6 +56,51 @@ class EndpointTest(fixtures.BindingFixture):
 
     def subscription(self):
         return self.client.get(f"/sub/{self.token}?format=clash").json()["proxies"]
+
+
+class EndpointTest(EndpointFixture):
+    def test_cancellation_between_final_observation_and_commit_cannot_bless_receipt(
+        self,
+    ):
+        from app import tunnel_endpoints
+
+        transactions = 0
+
+        @contextmanager
+        def boundary():
+            nonlocal transactions
+            transactions += 1
+            with database() as db:
+                yield db
+            if transactions == 2:
+                with database() as db:
+                    tunnel_endpoints.invalidate_all(db)
+
+        with patch("app.tunnel_endpoints.database", boundary):
+            result = self.verify()
+        self.assertEqual(result.json()["phase"], "failed")
+        self.assertEqual(self.publish(result.json()).status_code, 409)
+
+    def test_worker_cancellation_keeps_global_slot_until_real_probe_finishes(self):
+        from app import tunnel_endpoints
+
+        entered, release = threading.Event(), threading.Event()
+        self.run_probe.side_effect = lambda _: (entered.set(), release.wait(10))
+        with ThreadPoolExecutor(1) as pool:
+            future = pool.submit(self.verify)
+            try:
+                self.assertTrue(entered.wait(10))
+                with database() as db:
+                    tunnel_endpoints.invalidate_all(db)
+                self.assertEqual(self.verify().status_code, 409)
+                self.assertEqual(self.run_probe.call_count, 1)
+            finally:
+                release.set()
+            result = future.result(timeout=10)
+        self.assertEqual(result.json()["phase"], "failed")
+        self.assertEqual(self.publish(result.json()).status_code, 409)
+        self.run_probe.side_effect = None
+        self.assertEqual(self.verify().json()["phase"], "succeeded")
 
     def test_success_publishes_only_a_guarded_additive_endpoint_and_unpublish_is_idempotent(
         self,

@@ -70,6 +70,22 @@ def available():
         return False
 
 
+def configuration_revision():
+    """Fence a grant when operator destination, trust or executable path changes."""
+    binary, target, digest, ca = configuration()
+    trust = b""
+    if ca:
+        try:
+            with open(ca, "rb") as source:
+                trust = source.read(1024 * 1024 + 1)
+            if len(trust) > 1024 * 1024:
+                raise OSError("CA bundle too large")
+        except OSError:
+            raise ProbeError("probe_not_configured") from None
+    value = json.dumps([binary, target.geturl(), digest, ca, VERSION]).encode()
+    return hashlib.sha256(value + b"\x00" + trust).hexdigest()
+
+
 def _exact(sock, size):
     data = b""
     while len(data) < size:

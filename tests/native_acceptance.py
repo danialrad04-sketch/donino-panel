@@ -6,6 +6,7 @@ All keys and setup credentials are temporary, private and never printed.
 """
 
 import argparse
+import hashlib
 import ipaddress
 import json
 import os
@@ -234,10 +235,12 @@ class NativeFixture:
         )
         return name, client
 
-    def install(self, name):
+    def install(self, name, *, monitor=False, disable_monitor=False):
         self.exec(
             name,
             "./install.sh",
+            *(["--with-tunnel-monitor"] if monitor else []),
+            *(["--without-tunnel-monitor"] if disable_monitor else []),
             *(
                 ["--with-smart-dns", "--smart-dns-ip", "127.0.0.1"]
                 if self.smart
@@ -260,6 +263,88 @@ class NativeFixture:
             "/testcerts/panel.key",
             "--ca-file",
             "/testcerts/ca.pem",
+        )
+
+    def prepare_monitor(self, name):
+        binary = self.folder / "verifier" / "mihomo"
+        subprocess.run(
+            [sys.executable, str(ROOT / "scripts/fetch_mihomo.py"), str(binary.parent)],
+            check=True,
+            stdout=subprocess.DEVNULL,
+        )
+        self.exec(name, "groupadd", "donino-link")
+        self.exec(name, "mkdir", "-p", "/opt/donino-probe")
+        self.docker("cp", str(binary), name + ":/opt/donino-probe/mihomo")
+        self.exec(name, "chmod", "755", "/opt/donino-probe/mihomo")
+        self.exec(
+            name,
+            "install",
+            "-m",
+            "644",
+            "/testcerts/ca.pem",
+            "/opt/donino-probe/ca.pem",
+        )
+        self.exec(
+            name,
+            "/opt/donino-panel/current/.venv/bin/python",
+            "-c",
+            """from ops.common import read_env,atomic_write
+from pathlib import Path
+path=Path('/etc/donino/panel.env')
+values=read_env(path)
+values.update(DONINO_TUNNEL_BRIDGE='1',DONINO_TUNNEL_PROBE_MIHOMO='/opt/donino-probe/mihomo',DONINO_TUNNEL_PROBE_URL='https://panel.test/static/logo.svg',DONINO_TUNNEL_PROBE_SHA256='invalid',DONINO_TUNNEL_PROBE_CA='/opt/donino-probe/ca.pem')
+atomic_write(path,''.join(k+'='+v+'\\n' for k,v in values.items()))
+""",
+        )
+        self.exec(
+            name,
+            "/opt/donino-panel/current/.venv/bin/python",
+            "-c",
+            """import subprocess
+pid=lambda:subprocess.check_output(['systemctl','show','donino-panel','-p','MainPID','--value'])
+before=pid()
+r=subprocess.run(['./install.sh','upgrade','--with-tunnel-monitor','--domain','panel.test','--expected-ip','127.0.0.1'],capture_output=True)
+assert r.returncode != 0
+assert b'Tunnel monitor requires' in r.stderr
+assert pid()==before
+""",
+        )
+        digest = hashlib.sha256((ROOT / "app/static/logo.svg").read_bytes()).hexdigest()
+        self.exec(
+            name,
+            "/opt/donino-panel/current/.venv/bin/python",
+            "-c",
+            """import sys
+from ops.common import read_env,atomic_write
+from pathlib import Path
+path=Path('/etc/donino/panel.env');values=read_env(path)
+values['DONINO_TUNNEL_PROBE_SHA256']=sys.argv[1]
+atomic_write(path,''.join(k+'='+v+'\\n' for k,v in values.items()))
+""",
+            digest,
+        )
+
+    def monitor_ready(self, name):
+        self.exec(name, "systemctl", "is-active", "--quiet", "donino-tunnel-monitor")
+        self.exec(
+            name,
+            "/opt/donino-panel/current/.venv/bin/python",
+            "-c",
+            """import os,time
+from ops.common import read_env
+os.environ.update(read_env('/etc/donino/panel.env'))
+from app.db import database
+from app.tunnel_monitor import ready
+for attempt in range(60):
+    with database() as db:
+        ok=ready(db)
+        assert not db.execute('SELECT 1 FROM tunnel_monitors WHERE enabled=1').fetchone()
+    if ok:
+        break
+    if attempt==59:
+        raise AssertionError('Monitor heartbeat unavailable')
+    time.sleep(0.5)
+""",
         )
 
     def doctor(self, name):
@@ -365,7 +450,9 @@ else:
             flush=True,
         )
         self.smart = True  # Also exercise conversion from the original TLS listener.
-        self.install(first)
+        self.prepare_monitor(first)
+        self.install(first, monitor=True)
+        self.monitor_ready(first)
         smart = client.get("/api/dns/smart/status").json()
         assert smart["enabled"] and smart["gateway_ready"], smart
         self.exec(
@@ -573,8 +660,28 @@ except (OSError,ssl.SSLError):
         assert count == "1"
         client.close()
         restored.close()
+        self.install(first, disable_monitor=True)
+        self.exec(
+            first,
+            "/usr/bin/python3",
+            "-c",
+            """import json,subprocess
+from pathlib import Path
+assert json.loads(Path('/var/lib/donino-installer/state.json').read_text())['tunnel_monitor'] is False
+assert 'DONINO_TUNNEL_MONITOR=0' in Path('/etc/donino/panel.env').read_text()
+assert subprocess.run(['systemctl','is-active','--quiet','donino-tunnel-monitor']).returncode != 0
+assert subprocess.run(['systemctl','is-enabled','--quiet','donino-tunnel-monitor']).returncode != 0
+""",
+        )
+        self.exec(first, "./install.sh", "uninstall")
+        self.exec(
+            first,
+            "/usr/bin/python3",
+            "-c",
+            "from pathlib import Path; assert not Path('/etc/systemd/system/donino-tunnel-monitor.service').exists(); assert Path('/etc/donino/panel.env').is_file()",
+        )
         print(
-            f"PASS {self.os_name}: systemd install/reinstall/restart, verified local HTTPS, bootstrap, encrypted backup, second-host DB+MFA restore and data-preserving uninstall. Public ACME/ISP/VM checks remain separate."
+            f"PASS {self.os_name}: systemd install/reinstall/restart, tunnel monitor opt-in/heartbeat/opt-out, verified local HTTPS, bootstrap, encrypted backup, second-host DB+MFA restore and data-preserving uninstall. Public ACME/ISP/VM checks remain separate."
         )
 
     def cleanup(self):
