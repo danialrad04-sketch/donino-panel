@@ -15,11 +15,12 @@ from app.db import (
     schema_version,
     set_schema_version,
     table_exists,
+    SCHEMA_VERSION,
 )
 from test_accounts import PanelBase
 
 
-class BindingTest(PanelBase):
+class BindingFixture(PanelBase):
     def setUp(self):
         super().setUp()
         os.environ["DONINO_TUNNEL_BRIDGE"] = "1"
@@ -117,6 +118,8 @@ class BindingTest(PanelBase):
             f"/tunnels/bindings/{binding['id']}/start", {"confirm_replace": True}
         )
 
+
+class BindingTest(BindingFixture):
     def test_plan_compiles_from_database_and_survives_reinitialization_without_secrets(
         self,
     ):
@@ -314,21 +317,25 @@ class BindingTest(PanelBase):
 
     def test_v10_migration_preserves_nodes_and_backs_up_before_ddl(self):
         with database() as db:
+            db.execute("DROP TABLE tunnel_endpoints")
+            db.execute("DROP TABLE tunnel_checks")
             db.execute("DROP TABLE tunnel_bindings")
             set_schema_version(db, 10)
         initialize()
         with database() as db:
-            self.assertEqual(schema_version(db), 11)
+            self.assertEqual(schema_version(db), SCHEMA_VERSION)
             self.assertTrue(table_exists(db, "tunnel_bindings"))
             self.assertEqual(
                 db.execute("SELECT COUNT(*) FROM inbounds").fetchone()[0], 1
             )
-        backups = list(Path(self.tmp.name).glob("*.pre-v11-*"))
+        backups = list(Path(self.tmp.name).glob(f"*.pre-v{SCHEMA_VERSION}-*"))
         self.assertEqual(len(backups), 1)
         self.assertEqual(backups[0].stat().st_mode & 0o777, 0o600)
 
     def test_migration_backup_failure_leaves_v10_intact(self):
         with database() as db:
+            db.execute("DROP TABLE tunnel_endpoints")
+            db.execute("DROP TABLE tunnel_checks")
             db.execute("DROP TABLE tunnel_bindings")
             set_schema_version(db, 10)
         with patch("app.db.migration_backup", side_effect=OSError("Disk full")):

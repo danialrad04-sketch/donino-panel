@@ -1409,7 +1409,9 @@ def user_profiles(db, user):
             )
         }
         inbounds = [row for row in inbounds if row["node_id"] in allowed]
-    return profiles(clients, inbounds)
+    from .tunnel_endpoints import subscription_rows
+
+    return profiles(clients, subscription_rows(db, inbounds))
 
 
 @app.get("/sub/{token}")

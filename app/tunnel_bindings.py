@@ -119,6 +119,8 @@ def matches(db, row):
 
 
 def metadata(db, row):
+    from .tunnel_endpoints import details
+
     current = matches(db, row)
     return {
         "id": row["id"],
@@ -129,6 +131,7 @@ def metadata(db, row):
         "plan_id": row["plan_id"],
         "job_id": row["job_id"],
         "source_revision": row["source_revision"],
+        "services": json.loads(row["request"])["services"],
         "source_matches": current,
         "summary": json.loads(row["summary"]) if row["summary"] else None,
         "expires_at": row["expires"],
@@ -138,12 +141,13 @@ def metadata(db, row):
         "can_start": current
         and row["phase"] == "previewed"
         and row["expires"] > time.time(),
-        "application_verified": False,
-        "endpoint_published": False,
+        **details(db, row),
     }
 
 
 def list_bindings(worker=None, binding_id=None):
+    from .tunnel_endpoints import synchronize
+
     with database() as db:
         rows = (
             [one(db, "tunnel_bindings", binding_id)]
@@ -180,6 +184,7 @@ def list_bindings(worker=None, binding_id=None):
                     "UPDATE tunnel_bindings SET phase=?,job_id=?,error_code=NULL,updated=? WHERE id=?",
                     (job["status"], job["id"], int(time.time()), row["id"]),
                 )
+            synchronize(db, worker)
         return [metadata(db, one(db, "tunnel_bindings", row["id"])) for row in rows]
 
 
@@ -302,6 +307,9 @@ def start(binding_id, account, controller):
         )
         plan_id = current["plan_id"]
         if not error:
+            from .tunnel_endpoints import invalidate_all
+
+            invalidate_all(db)
             audit(db, account["username"], "tunnel.binding.start", binding_id)
     if error:
         raise HTTPException(

@@ -38,7 +38,7 @@ function tunnelOperationContent(state) {
     rollback_failed: "بازگشت نیازمند بررسی",
   };
   const bound = bindings.length
-    ? `<h3>نقشه‌های متصل به پنل</h3><div class="table-scroll"><table><thead><tr><th>نود / نقشه</th><th>وضعیت</th><th>تنظیمات مبدأ</th><th>عملیات</th></tr></thead><tbody>${bindings.map((b) => `<tr><td>${esc(data.nodes.find((n) => n.id === b.node_id)?.name || "نود حذف‌شده")}<span class="subline mono">${esc(b.id.slice(0, 8))}</span></td><td>${esc(labels[b.phase] || b.phase)}</td><td>${b.source_matches ? "مطابق" : "تغییر کرده؛ نقشهٔ تازه لازم است"}</td><td>${b.can_start ? `<button type="button" data-binding-review="${esc(b.id)}">مرور نقشه</button>` : "—"}</td></tr>`).join("")}</tbody></table></div>`
+    ? `<h3>نقشه‌های متصل به پنل</h3><div class="table-scroll"><table><thead><tr><th>نود / نقشه</th><th>وضعیت</th><th>تنظیمات مبدأ</th><th>عملیات</th></tr></thead><tbody>${bindings.map((b) => `<tr><td>${esc(data.nodes.find((n) => n.id === b.node_id)?.name || "نود حذف‌شده")}<span class="subline mono">${esc(b.id.slice(0, 8))}</span></td><td>${esc(labels[b.phase] || b.phase)}${b.endpoint_published ? '<span class="subline">آدرس تانل در اشتراک منتشر شده</span>' : ""}${(b.checks || []).length ? `<span class="subline">آخرین آزمون VPN: ${esc({ succeeded: "موفق", failed: "ناموفق", running: "در حال اجرا", invalidated: "باطل‌شده" }[b.checks[0].phase] || b.checks[0].phase)}</span>` : ""}</td><td>${b.source_matches ? "مطابق" : "تغییر کرده؛ نقشهٔ تازه لازم است"}</td><td>${b.can_start ? `<button type="button" data-binding-review="${esc(b.id)}">مرور نقشه</button>` : ""}${b.phase === "succeeded" && b.source_matches ? `<button type="button" data-binding-verify="${esc(b.id)}">آزمون و انتشار</button>` : ""}${b.endpoint_published ? `<button type="button" data-binding-unpublish="${esc(b.id)}">لغو انتشار</button>` : ""}</td></tr>`).join("")}</tbody></table></div>`
     : "";
   const known = new Set(bindings.map((b) => b.job_id));
   const other = state.jobs.filter((j) => !known.has(j.id));
@@ -78,7 +78,7 @@ async function loadTunnels() {
         .join(
           "",
         )}</select></label><label>IP یا دامنهٔ ایران<input name="iran" dir="ltr" value="${esc(state.iran_address || "")}" required></label><label>حامل<select name="carrier"><option value="frp-wss">FRP WSS</option><option value="frp-quic">FRP QUIC</option><option value="both">هر دو، با مسیر جایگزین برای اتصال جدید</option></select></label><label>ساخت نقشه<select name="mode"><option value="panel">از اتصال‌های همین پنل</option><option value="manual">پورت‌های دستی</option></select></label><label id="tunnel-node-choice">نود خارج<select name="node_id" required>${data.nodes.map((n) => `<option value="${esc(n.id)}">${esc(n.name)} · ${esc(n.host)}</option>`).join("")}</select></label><fieldset id="tunnel-inbounds" class="full"></fieldset><label id="tunnel-manual-services" hidden>سرویس‌ها: نام، پورت ایران، پورت مقصد خارج<textarea name="services" dir="ltr" rows="4" disabled placeholder="vpn,1443,8443"></textarea></label><button type="button" id="tunnel-connection">آزمون ارتباط مدیریت</button><button class="primary" type="submit">نمایش نقشه و پورت‌ها</button></form></section>
-      <section id="tunnel-review" hidden><h2>۳. مرور و نصب</h2><pre id="tunnel-map" dir="ltr"></pre><label><input type="checkbox" id="tunnel-confirm">جایگزینی مجموعهٔ تانل‌های مدیریت‌شدهٔ هر دو سرور و احتمال قطع اتصال جاری را تأیید می‌کنم.</label><button type="button" class="primary" id="tunnel-start" disabled>شروع نصب دوطرفه</button></section><p id="tunnel-message" role="status"></p><section><h2>عملیات پایدار</h2><button type="button" id="tunnel-reload">دریافت وضعیت</button><div id="tunnel-jobs">${tunnelOperationContent(state)}</div></section>`;
+      <section id="tunnel-review" hidden><h2>۳. مرور و نصب</h2><pre id="tunnel-map" dir="ltr"></pre><label><input type="checkbox" id="tunnel-confirm">جایگزینی مجموعهٔ تانل‌های مدیریت‌شدهٔ هر دو سرور و احتمال قطع اتصال جاری را تأیید می‌کنم.</label><button type="button" class="primary" id="tunnel-start" disabled>شروع نصب دوطرفه</button></section><section id="tunnel-acceptance" hidden></section><p id="tunnel-message" role="status"></p><section><h2>عملیات پایدار</h2><button type="button" id="tunnel-reload">دریافت وضعیت</button><div id="tunnel-jobs">${tunnelOperationContent(state)}</div></section>`;
     const pair = box.querySelector("#tunnel-pair"),
       form = box.querySelector("#tunnel-plan"),
       review = box.querySelector("#tunnel-review"),
@@ -162,6 +162,36 @@ async function loadTunnels() {
     });
     renderInboundChoices();
     box.addEventListener("click", async (e) => {
+      const remove = e.target.closest("[data-binding-unpublish]");
+      if (remove) {
+        action(remove, async () => {
+          await api(
+            `/tunnels/bindings/${remove.dataset.bindingUnpublish}/publication`,
+            { method: "DELETE" },
+          );
+          box.querySelector("#tunnel-acceptance").hidden = true;
+          message.textContent =
+            "آدرس تانل از اشتراک‌های بعدی حذف شد؛ نصب تانل و اعتبارنامه‌ها باقی هستند.";
+          await loadTunnelJobs();
+        });
+        return;
+      }
+      const verify = e.target.closest("[data-binding-verify]");
+      if (verify) {
+        action(verify, async () => {
+          const value = await api(
+            `/tunnels/bindings/${verify.dataset.bindingVerify}`,
+          );
+          renderTunnelAcceptance(
+            box,
+            value,
+            action,
+            message,
+            state.probe_available,
+          );
+        });
+        return;
+      }
       const button = e.target.closest("[data-binding-review]");
       if (!button || busy) return;
       invalidate();
@@ -292,4 +322,123 @@ async function loadTunnels() {
   } catch (error) {
     if (box.isConnected) box.textContent = error.message;
   }
+}
+
+function renderTunnelAcceptance(box, binding, action, message, available) {
+  const section = box.querySelector("#tunnel-acceptance");
+  section.hidden = false;
+  if (!available) {
+    section.innerHTML =
+      "<h2>۴. آزمون و انتشار</h2><p>کلاینت و مقصد امن آزمون هنوز روی میزبان پنل پیکربندی نشده‌اند. راهنمای تانل را برای فعال‌سازی بررسی کنید.</p>";
+    return;
+  }
+  section.innerHTML = `<h2>۴. آزمون واقعی VPN و انتشار</h2><p>حداکثر ۸ اتصال TLS را انتخاب کنید. ترافیک آزمون از حجم دستگاه انتخاب‌شده مصرف می‌شود. آزمون مجدد، انتشار قبلی مسیرهای مربوط را لغو می‌کند. نتیجه سلامت لحظهٔ آزمون است.</p><form class="form-grid" id="tunnel-verify-form"><label>جستجوی حساب<input name="search" type="search" autocomplete="off"></label><label>حساب آزمون<select name="user_id" required></select></label><label>دستگاه آزمون<select name="device_id" required></select></label><fieldset class="full"><legend>اتصال‌های قابل بررسی</legend>${(binding.services || []).map((s, i) => `<label><input type="checkbox" name="inbound" value="${esc(s.inbound_id)}" ${i < 8 ? "checked" : ""}> ${esc(data.inbounds.find((r) => r.id === s.inbound_id)?.name || s.inbound_id.slice(0, 8))} · ${s.listen_port}</label>`).join("")}</fieldset><button type="submit" class="primary">آزمون انتقال VPN</button></form><div id="tunnel-publication"></div>`;
+  const form = section.querySelector("form");
+  let userGeneration = 0,
+    inputGeneration = 0,
+    timer;
+  const changed = () => {
+    inputGeneration += 1;
+    section.querySelector("#tunnel-publication").replaceChildren();
+  };
+  form.addEventListener("input", changed);
+  form.addEventListener("change", changed);
+  async function devices() {
+    const generation = ++userGeneration;
+    form.elements.device_id.replaceChildren();
+    if (!form.elements.user_id.value) return;
+    try {
+      const rows = await api(`/users/${form.elements.user_id.value}/devices`);
+      if (!section.isConnected || generation !== userGeneration) return;
+      rows
+        .filter((r) => r.enabled)
+        .forEach((r) => form.elements.device_id.add(new Option(r.name, r.id)));
+    } catch (error) {
+      message.textContent = error.message;
+    }
+  }
+  function users(rows) {
+    form.elements.user_id.replaceChildren();
+    rows
+      .filter((r) => r.enabled)
+      .forEach((r) => form.elements.user_id.add(new Option(r.name, r.id)));
+    devices();
+  }
+  users(data.users);
+  form.elements.user_id.onchange = devices;
+  let searchGeneration = 0;
+  form.elements.search.oninput = () => {
+    clearTimeout(timer);
+    const generation = ++searchGeneration;
+    timer = setTimeout(async () => {
+      try {
+        const rows = await api(
+          "/users?limit=25&q=" + encodeURIComponent(form.elements.search.value),
+        );
+        if (section.isConnected && generation === searchGeneration) users(rows);
+      } catch (error) {
+        message.textContent = error.message;
+      }
+    }, 250);
+  };
+  form.onsubmit = (e) => {
+    e.preventDefault();
+    const inbound_ids = [
+      ...form.querySelectorAll("[name=inbound]:checked"),
+    ].map((input) => input.value);
+    if (!inbound_ids.length || inbound_ids.length > 8) {
+      message.textContent = "بین ۱ تا ۸ اتصال انتخاب کنید.";
+      return;
+    }
+    const body = { device_id: form.elements.device_id.value, inbound_ids };
+    const requestedGeneration = inputGeneration;
+    section.querySelector("#tunnel-publication").replaceChildren();
+    action(form.querySelector("button"), async () => {
+      message.textContent =
+        "کلاینت واقعی در حال آزمون انتقال است؛ تا پایان منتظر بمانید.";
+      const check = await api(`/tunnels/bindings/${binding.id}/verify`, {
+        method: "POST",
+        body: JSON.stringify(body),
+      });
+      if (!section.isConnected || section.hidden) return;
+      if (requestedGeneration !== inputGeneration) {
+        message.textContent =
+          "انتخاب‌ها هنگام آزمون تغییر کردند؛ نتیجه در تاریخچه است. برای انتشار، انتخاب‌ها را دوباره آزمون کنید.";
+        await loadTunnelJobs();
+        return;
+      }
+      if (check.phase !== "succeeded") {
+        message.textContent =
+          "آزمون انتقال موفق نشد؛ آدرس تانل منتشر نشد. وضعیت مسیر و گواهی را بررسی کنید.";
+        await loadTunnelJobs();
+        return;
+      }
+      message.textContent =
+        "انتقال VPN موفق شد؛ برای افزودن آدرس به اشتراک تأیید جداگانه لازم است.";
+      const publication = section.querySelector("#tunnel-publication");
+      publication.innerHTML =
+        '<p>انتشار فقط اتصال‌های آزموده‌شده را به اشتراک اضافه می‌کند. آدرس اصلی باقی می‌ماند. آدرس تانل پس از ۲۴ ساعت از خروجی حذف می‌شود مگر دوباره آزمون و منتشر شود؛ این کار کانفیگ ذخیره‌شدهٔ کلاینت را باطل نمی‌کند.</p><label><input type="checkbox" id="tunnel-publish-confirm">افزودن آدرس آزموده‌شده به اشتراک کاربران مجاز نود را تأیید می‌کنم.</label><button type="button" id="tunnel-publish" disabled>انتشار در اشتراک</button>';
+      const button = publication.querySelector("button"),
+        confirm = publication.querySelector("input");
+      confirm.onchange = () => {
+        button.disabled = !confirm.checked;
+      };
+      button.onclick = () => {
+        if (!confirm.checked) return;
+        confirm.checked = false;
+        button.disabled = true;
+        action(button, async () => {
+          await api(`/tunnels/bindings/${binding.id}/publication`, {
+            method: "POST",
+            body: JSON.stringify({ check_id: check.id, confirm_publish: true }),
+          });
+          publication.replaceChildren();
+          message.textContent =
+            "آدرس تانل برای ۲۴ ساعت به اشتراک اضافه شد. برای تمدید، آزمون تازه و انتشار لازم است.";
+          await loadTunnelJobs();
+        });
+      };
+      await loadTunnelJobs();
+    });
+  };
 }
