@@ -41,6 +41,14 @@ protocol's actual SNI field. The node fixture trims the private-network routing
 block solely to reach the loopback echo target, as in existing Xray acceptance.
 Observed Mihomo dial destinations are checked to be loopback.
 
+Startup waits for a private marker created by the pinned client's fixed
+`-post-up` hook, which executes after the engine enters its running state.
+The SOCKS listener and provider-start log appear earlier, while the engine can
+acknowledge SOCKS and silently drop application data. Waiting for those alone
+caused intermittent CI failures. The hook uses only a quoted fixture-owned path;
+it does not interpolate subscription data. Transfers are not retried to mask
+failures, and certificate rejection assertions remain required.
+
 The dedicated pinned workflow runs the real checks on SQLite and PostgreSQL.
 Exact-head remote results are attached to PR #17. Local command:
 

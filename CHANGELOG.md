@@ -1,9 +1,12 @@
 # Donino releases
 
-## Unreleased — verified Mihomo client exports
+## 1.0.0-alpha.9 — verified Mihomo and durable tunnel plans, 2026-10-18
 
 - Fix Trojan Mihomo SNI export (`sni`), including the existing TCP profile. All six TLS profiles now pass real-client transfer, CA/hostname rejection, device accounting and revocation without expected failures.
 - Pin the Mihomo fetcher and real-client CI on SQLite/PostgreSQL. Preserve the Claude handoff and suspend further Claude work at the user’s request; Codex continues.
+
+- Add schema-11 durable tunnel plans compiled from selected node/inbounds, with revision/expiry/peer guards, atomic start claims, lost-response reconciliation and restored preview UI. Application verification and automatic endpoint publication remain separate gates.
+- Back up schema 10 before migration; preserve job history after node deletion and refuse restore over binding history.
 
 ## 1.0.0-alpha.8 — Claude handoffs and local tunnel bridge, 2026-10-18
 

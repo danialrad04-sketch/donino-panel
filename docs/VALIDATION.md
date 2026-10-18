@@ -1,5 +1,16 @@
 # Validation record
 
+## Durable inbound-bound tunnel plans — 2026-10-18
+
+Schema 11 adds persistent node/inbound-to-plan bindings. The final local integrated suite discovered 189 checks: 187 passed with real pinned Xray, Mihomo and the Unix-socket tunnel worker enabled. Two environment-specific checks (PostgreSQL restore fault injection and real Unbound) were skipped locally; dedicated CI provides those environments. After correcting Mihomo startup readiness to wait for its post-up running state, all nine real Mihomo tests passed again. Remote results for the final commit are recorded on PR #18 before publication.
+
+Binding coverage checks DB-derived targets and metadata privacy, preservation across reinitialization, changed port/settings/disabled or removed origins, mutation during worker preview, expiry/peer drift and raw-start bypass refusal, single concurrent start, recovery of a lost start response by plan/job identity, refusal of substituted worker targets/jobs, schema-10 upgrade backup and failure-before-DDL. Restore also refuses an otherwise empty destination that still contains binding history.
+
+The pinned real Unix worker contract now builds both manual and inbound-bound two-role plans, checks generated private files and confirms stale-origin rejection before any install. Service identity uses the complete inbound UUID encoded within the pinned worker's 32-character limit. Chromium acceptance covers panel selection, DB target planning, persistent preview re-review, explicit replacement, manual mode and 390px layout, alongside existing portal/DNS/account flows.
+
+These are plan/control acceptance results. No carrier transfer, real two-VPS install, automatic subscription endpoint cutover, game/ISP/public ACME acceptance or independent active-path health is inferred. Worker `succeeded` remains installation history; application verification and endpoint publication are explicitly false.
+
+
 ## Claude coordination and local tunnel bridge — 2026-10-18
 
 New coverage validates task/checkpoint matching, safe paths, review evidence, atomic JSON checkpoints, owner/scope and opt-in boundaries, strict typed service specs, explicit boolean replacement confirmation, rejected command/path/experimental inputs, redacted validation and worker errors, bounded/redirect-free transport, socket ownership and no automatic retry of an uncertain mutation.

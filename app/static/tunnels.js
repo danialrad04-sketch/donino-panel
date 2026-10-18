@@ -22,6 +22,28 @@ function tunnelJobs(rows) {
     ? `<div class="table-scroll"><table><thead><tr><th>عملیات</th><th>وضعیت</th><th>مرحله</th></tr></thead><tbody>${rows.map((j) => `<tr><td class="mono">${esc(j.id.slice(0, 8))}</td><td>${esc(labels[j.status] || j.status)}</td><td>${esc(j.stage)}</td></tr>`).join("")}</tbody></table></div>`
     : "<p>هنوز عملیات نصبی ثبت نشده است.</p>";
 }
+function tunnelOperationContent(state) {
+  const bindings = state.bindings || [];
+  const labels = {
+    preparing: "در حال ساخت نقشه",
+    previewed: "آمادهٔ مرور",
+    stale: "نیازمند نقشهٔ تازه",
+    preview_unknown: "پاسخ ساخت نقشه نامطمئن",
+    starting: "شروع ثبت شد",
+    start_unknown: "نتیجهٔ شروع نامطمئن؛ وضعیت را دریافت کنید",
+    running: "نصب در حال اجرا",
+    succeeded: "نصب حامل موفق؛ آزمون VPN لازم است",
+    failed: "نصب ناموفق",
+    interrupted: "نصب متوقف شد",
+    rollback_failed: "بازگشت نیازمند بررسی",
+  };
+  const bound = bindings.length
+    ? `<h3>نقشه‌های متصل به پنل</h3><div class="table-scroll"><table><thead><tr><th>نود / نقشه</th><th>وضعیت</th><th>تنظیمات مبدأ</th><th>عملیات</th></tr></thead><tbody>${bindings.map((b) => `<tr><td>${esc(data.nodes.find((n) => n.id === b.node_id)?.name || "نود حذف‌شده")}<span class="subline mono">${esc(b.id.slice(0, 8))}</span></td><td>${esc(labels[b.phase] || b.phase)}</td><td>${b.source_matches ? "مطابق" : "تغییر کرده؛ نقشهٔ تازه لازم است"}</td><td>${b.can_start ? `<button type="button" data-binding-review="${esc(b.id)}">مرور نقشه</button>` : "—"}</td></tr>`).join("")}</tbody></table></div>`
+    : "";
+  const known = new Set(bindings.map((b) => b.job_id));
+  const other = state.jobs.filter((j) => !known.has(j.id));
+  return bound + (other.length || !bindings.length ? tunnelJobs(other) : "");
+}
 async function loadTunnelJobs() {
   const box = document.querySelector("#tunnel-jobs");
   if (!box || page !== "tunnels" || !owner()) return;
@@ -29,7 +51,7 @@ async function loadTunnelJobs() {
     const state = await api("/tunnels/state");
     if (box.isConnected)
       box.innerHTML = state.available
-        ? tunnelJobs(state.jobs)
+        ? tunnelOperationContent(state)
         : esc(state.reason || "کنترل‌کننده در دسترس نیست");
   } catch (error) {
     if (box.isConnected) box.textContent = error.message;
@@ -47,7 +69,7 @@ async function loadTunnels() {
     }
     box.innerHTML = `<p class="notice">نسخهٔ آزمایشی: فوروارد TCP روی FRP WSS و FRP QUIC. نصب، مجموعهٔ کامل تانل‌های مدیریت‌شدهٔ دو سرور را جایگزین می‌کند و ممکن است اتصال جاری قطع شود. این فرم اشتراک کاربران را خودکار تغییر نمی‌دهد.</p>
       <section><h2>۱. جفت‌سازی خارج</h2><form id="tunnel-pair" class="form-grid"><label>نام اتصال<input name="name" required maxlength="64"></label><label>IP یا دامنهٔ خارج<input name="host" dir="ltr" required></label><label>پورت مدیریت HTTPS<input name="agent_port" type="number" min="1024" max="65535" value="9444" required></label><label>کد یک‌بارمصرف پنل خارج<input name="code" type="password" autocomplete="off" required></label><button class="primary" type="submit">جفت‌سازی امن</button></form></section>
-      <section><h2>۲. نقشهٔ تانل</h2><p>مقصد هر سرویس، پورت اتصال موجود روی loopback سرور خارج است. گواهی، SNI و اعتبارنامهٔ کاربران در سرویس مقصد حفظ می‌شوند. کد جفت‌سازی در این پنل ذخیره نمی‌شود.</p><form id="tunnel-plan" class="form-grid"><label>اتصال خارج<select name="profile_id" required>${state.profiles
+      <section><h2>۲. نقشهٔ تانل</h2><p>نود انتخاب‌شده باید روی همان سرور خارجِ جفت‌شده باشد. مقصد از پورت اتصال موجود در پنل ساخته می‌شود؛ فقط پورت عمومی ایران را تعیین کنید. گواهی، SNI و اعتبارنامهٔ کاربران در سرویس مقصد حفظ می‌شوند. کد جفت‌سازی در این پنل ذخیره نمی‌شود.</p><form id="tunnel-plan" class="form-grid"><label>اتصال خارج<select name="profile_id" required>${state.profiles
         .filter((p) => p.management === "https-v1")
         .map(
           (p) =>
@@ -55,8 +77,8 @@ async function loadTunnels() {
         )
         .join(
           "",
-        )}</select></label><label>IP یا دامنهٔ ایران<input name="iran" dir="ltr" value="${esc(state.iran_address || "")}" required></label><label>حامل<select name="carrier"><option value="frp-wss">FRP WSS</option><option value="frp-quic">FRP QUIC</option><option value="both">هر دو، با مسیر جایگزین برای اتصال جدید</option></select></label><label>سرویس‌ها: نام، پورت ایران، پورت مقصد خارج<textarea name="services" dir="ltr" rows="4" required placeholder="vpn,443,8443"></textarea></label><button type="button" id="tunnel-connection">آزمون ارتباط مدیریت</button><button class="primary" type="submit">نمایش نقشه و پورت‌ها</button></form></section>
-      <section id="tunnel-review" hidden><h2>۳. مرور و نصب</h2><pre id="tunnel-map" dir="ltr"></pre><label><input type="checkbox" id="tunnel-confirm">جایگزینی مجموعهٔ تانل‌های مدیریت‌شدهٔ هر دو سرور و احتمال قطع اتصال جاری را تأیید می‌کنم.</label><button type="button" class="primary" id="tunnel-start" disabled>شروع نصب دوطرفه</button></section><p id="tunnel-message" role="status"></p><section><h2>عملیات پایدار</h2><button type="button" id="tunnel-reload">دریافت وضعیت</button><div id="tunnel-jobs">${tunnelJobs(state.jobs)}</div></section>`;
+        )}</select></label><label>IP یا دامنهٔ ایران<input name="iran" dir="ltr" value="${esc(state.iran_address || "")}" required></label><label>حامل<select name="carrier"><option value="frp-wss">FRP WSS</option><option value="frp-quic">FRP QUIC</option><option value="both">هر دو، با مسیر جایگزین برای اتصال جدید</option></select></label><label>ساخت نقشه<select name="mode"><option value="panel">از اتصال‌های همین پنل</option><option value="manual">پورت‌های دستی</option></select></label><label id="tunnel-node-choice">نود خارج<select name="node_id" required>${data.nodes.map((n) => `<option value="${esc(n.id)}">${esc(n.name)} · ${esc(n.host)}</option>`).join("")}</select></label><fieldset id="tunnel-inbounds" class="full"></fieldset><label id="tunnel-manual-services" hidden>سرویس‌ها: نام، پورت ایران، پورت مقصد خارج<textarea name="services" dir="ltr" rows="4" disabled placeholder="vpn,1443,8443"></textarea></label><button type="button" id="tunnel-connection">آزمون ارتباط مدیریت</button><button class="primary" type="submit">نمایش نقشه و پورت‌ها</button></form></section>
+      <section id="tunnel-review" hidden><h2>۳. مرور و نصب</h2><pre id="tunnel-map" dir="ltr"></pre><label><input type="checkbox" id="tunnel-confirm">جایگزینی مجموعهٔ تانل‌های مدیریت‌شدهٔ هر دو سرور و احتمال قطع اتصال جاری را تأیید می‌کنم.</label><button type="button" class="primary" id="tunnel-start" disabled>شروع نصب دوطرفه</button></section><p id="tunnel-message" role="status"></p><section><h2>عملیات پایدار</h2><button type="button" id="tunnel-reload">دریافت وضعیت</button><div id="tunnel-jobs">${tunnelOperationContent(state)}</div></section>`;
     const pair = box.querySelector("#tunnel-pair"),
       form = box.querySelector("#tunnel-plan"),
       review = box.querySelector("#tunnel-review"),
@@ -104,6 +126,65 @@ async function loadTunnels() {
         message.textContent = "جفت‌سازی انجام شد؛ نقشهٔ تانل را بسازید.";
       });
     };
+    function renderInboundChoices() {
+      const bound = form.elements.mode.value === "panel";
+      box.querySelector("#tunnel-node-choice").hidden = !bound;
+      form.elements.node_id.disabled = !bound;
+      box.querySelector("#tunnel-manual-services").hidden = bound;
+      form.elements.services.disabled = bound;
+      form.elements.services.required = !bound;
+      const choices = box.querySelector("#tunnel-inbounds");
+      choices.hidden = !bound;
+      if (!bound) {
+        choices.replaceChildren();
+        return;
+      }
+      const inbounds = data.inbounds.filter(
+        (i) => i.node_id === form.elements.node_id.value && i.enabled,
+      );
+      choices.innerHTML =
+        "<legend>اتصال‌ها و پورت عمومی ایران</legend>" +
+        (inbounds.length
+          ? inbounds
+              .map(
+                (i) =>
+                  `<div class="tunnel-service-row"><label><input type="checkbox" class="tunnel-service-choice" data-inbound="${esc(i.id)}"> ${esc(i.name)} · ${esc(i.protocol.toUpperCase())} · مقصد ${i.port}</label><label>پورت ایران<input type="number" min="1" max="65535" required disabled name="port_${esc(i.id)}" value="${i.port === 443 ? 1443 : i.port}" dir="ltr"></label></div>`,
+              )
+              .join("")
+          : "<p>نود و اتصال فعال روی سرور خارج بسازید یا حالت دستی را انتخاب کنید.</p>");
+    }
+    form.elements.mode.onchange = renderInboundChoices;
+    form.elements.node_id.onchange = renderInboundChoices;
+    form.addEventListener("change", (e) => {
+      if (e.target.matches(".tunnel-service-choice"))
+        form.elements["port_" + e.target.dataset.inbound].disabled =
+          !e.target.checked;
+    });
+    renderInboundChoices();
+    box.addEventListener("click", async (e) => {
+      const button = e.target.closest("[data-binding-review]");
+      if (!button || busy) return;
+      invalidate();
+      action(button, async () => {
+        const value = await api(
+          "/tunnels/bindings/" + button.dataset.bindingReview,
+        );
+        if (!box.isConnected) return;
+        if (!value.can_start)
+          throw new Error(
+            "این نقشه تغییر کرده یا قابل شروع نیست؛ نقشهٔ تازه بسازید.",
+          );
+        plan = { ...value, bound: true };
+        box.querySelector("#tunnel-map").textContent = JSON.stringify(
+          value.summary,
+          null,
+          2,
+        );
+        review.hidden = false;
+        message.textContent =
+          "نقشهٔ ذخیره‌شده بازیابی شد؛ مقصدها و پورت‌ها را دوباره مرور کنید. این مرحله هنوز تأیید انتقال VPN نیست.";
+      });
+    });
     form.addEventListener("input", invalidate);
     form.addEventListener("change", invalidate);
     box.querySelector("#tunnel-connection").onclick = (e) =>
@@ -123,39 +204,53 @@ async function loadTunnels() {
       action(form.querySelector("button[type=submit]"), async () => {
         const requestedGeneration = generation;
         const values = Object.fromEntries(new FormData(form));
-        const services = values.services
-          .trim()
-          .split(/\r?\n/)
-          .map((line) => {
-            const parts = line.split(",").map((s) => s.trim());
-            if (parts.length !== 3)
-              throw new Error(
-                "هر سطر باید نام، پورت ایران و پورت خارج داشته باشد.",
-              );
-            return {
-              id: parts[0],
-              listen_port: Number(parts[1]),
-              target_port: Number(parts[2]),
-            };
-          });
-        const proposedPlan = await api("/tunnels/preview", {
-          method: "POST",
-          body: JSON.stringify({
-            profile_id: values.profile_id,
-            iran: values.iran.trim(),
-            services,
-            transports:
-              values.carrier === "both"
-                ? ["frp-wss", "frp-quic"]
-                : [values.carrier],
-          }),
-        });
+        const bound = values.mode === "panel";
+        const services = bound
+          ? [...form.querySelectorAll(".tunnel-service-choice:checked")].map(
+              (input) => ({
+                inbound_id: input.dataset.inbound,
+                listen_port: Number(
+                  form.elements["port_" + input.dataset.inbound].value,
+                ),
+              }),
+            )
+          : values.services
+              .trim()
+              .split(/\r?\n/)
+              .map((line) => {
+                const parts = line.split(",").map((s) => s.trim());
+                if (parts.length !== 3)
+                  throw new Error(
+                    "هر سطر باید نام، پورت ایران و پورت خارج داشته باشد.",
+                  );
+                return {
+                  id: parts[0],
+                  listen_port: Number(parts[1]),
+                  target_port: Number(parts[2]),
+                };
+              });
+        const proposedPlan = await api(
+          bound ? "/tunnels/bindings" : "/tunnels/preview",
+          {
+            method: "POST",
+            body: JSON.stringify({
+              profile_id: values.profile_id,
+              iran: values.iran.trim(),
+              services,
+              ...(bound ? { node_id: values.node_id } : {}),
+              transports:
+                values.carrier === "both"
+                  ? ["frp-wss", "frp-quic"]
+                  : [values.carrier],
+            }),
+          },
+        );
         if (requestedGeneration !== generation || !box.isConnected) {
           message.textContent =
             "فرم هنگام دریافت نقشه تغییر کرد؛ دوباره نقشه بسازید.";
           return;
         }
-        plan = proposedPlan;
+        plan = { ...proposedPlan, bound };
         box.querySelector("#tunnel-map").textContent = JSON.stringify(
           plan.summary,
           null,
@@ -171,13 +266,21 @@ async function loadTunnels() {
     };
     start.onclick = () => {
       if (!plan || !confirm.checked) return;
-      const id = plan.id;
+      const id = plan.id,
+        bound = plan.bound;
       invalidate();
       action(start, async () => {
-        const job = await api("/tunnels/start", {
-          method: "POST",
-          body: JSON.stringify({ plan_id: id, confirm_replace: true }),
-        });
+        const job = await api(
+          bound ? `/tunnels/bindings/${id}/start` : "/tunnels/start",
+          {
+            method: "POST",
+            body: JSON.stringify(
+              bound
+                ? { confirm_replace: true }
+                : { plan_id: id, confirm_replace: true },
+            ),
+          },
+        );
         message.textContent =
           "عملیات " +
           job.id.slice(0, 8) +

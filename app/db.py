@@ -16,7 +16,7 @@ try:  # PostgreSQL is optional; SQLite stays the default backend.
 except ImportError:  # pragma: no cover - exercised only without the postgres extra
     psycopg = None
 
-SCHEMA_VERSION = 10
+SCHEMA_VERSION = 11
 MAX_DEVICES_PER_USER = 20
 # Arbitrary constant key for the PostgreSQL writer lock (serializes writers, like BEGIN IMMEDIATE).
 _PG_WRITER_LOCK = 4541776
@@ -470,6 +470,17 @@ def initialize():
                 selections TEXT NOT NULL, exclusions TEXT NOT NULL, custom_domains TEXT NOT NULL,
                 PRIMARY KEY(import_id,external_id))""")
             set_schema_version(db, 10)
+        if version < 11:
+            # Keep historical bindings when a node is removed; a running worker
+            # job must not disappear by cascading an unrelated panel delete.
+            db.execute("""CREATE TABLE tunnel_bindings (
+                id TEXT PRIMARY KEY, node_id TEXT NOT NULL, profile_id TEXT NOT NULL,
+                peer_host TEXT NOT NULL, source_revision TEXT NOT NULL,
+                request TEXT NOT NULL, phase TEXT NOT NULL, plan_id TEXT UNIQUE,
+                job_id TEXT UNIQUE, summary TEXT, expires INTEGER,
+                error_code TEXT, created INTEGER NOT NULL, updated INTEGER NOT NULL)""")
+            db.execute("CREATE INDEX tunnel_bindings_recent ON tunnel_bindings(created,id)")
+            set_schema_version(db, 11)
 
 
 def encrypt_legacy_mfa(db):
