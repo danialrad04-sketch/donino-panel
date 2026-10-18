@@ -2,7 +2,7 @@
   "task_id": "codex-v1-progress",
   "status": "in_progress",
   "branch": "development/smart-exit-installer",
-  "last_verified_commit": null,
+  "last_verified_commit": "00c1afae042e6081e21757219b625e1f7d48497f",
   "completed": [
     "alpha.11 منتشر و checkpoint آن بدون تغییر آرشیو شد",
     "نصب مستقل Smart DNS exit با کاربر/فایل/نسخهٔ جدا، بدون DB اضافی",
@@ -11,17 +11,18 @@
     "پذیرش نهایی نقش مستقل در Debian/Ubuntu و سازگاری نصب کنترل‌پنل Debian/مرورگر"
   ],
   "remaining": [
-    "آزمون واحد و نصب مستقل Debian/Ubuntu، تمدید و شکست گواهی، حفظ credential و uninstall",
+    "هر ۱۲ job متمایز CI را روی head نهایی بررسی کن؛ سپس PR ۲۱ را ادغام و alpha.12 را prerelease/latest=false منتشر کن.",
     "مستندات و CI نقش مستقل، PR و پیش‌انتشار پس از موفقیت آزمون‌ها",
     "فاز WireGuard/OpenVPN و دیگر gateهای v1 همچنان باقی‌اند"
   ],
-  "next_action": "اجرای کامل نهایی و CI نقش مستقل را روی PR بررسی کن؛ سپس alpha.12 را فقط پس از موفقیت head دقیق منتشر کن. فعلاً کار کلاد متوقف است.",
+  "next_action": "روی head نهایی PR ۲۱ منتظر موفقیت ۱۲ job متمایز CI بمان؛ با تطبیق SHA ادغام و v1.0.0-alpha.12 را prerelease/latest=false منتشر کن. کلاد متوقف است. پس از این برش عملیاتی، اولویت اجرای واقعی WireGuard طبق طرح است؛ آن پروتکل هنوز پشتیبانی‌شده نیست.",
   "tests": [
     "9 آزمون متمرکز نقش مستقل و rollback جفت گواهی موفق",
     "نصب مستقل Debian و Ubuntu: install/upgrade/restart، TLS/auth، اسرار خصوصی، رد گواهی/رمز/دامنه نامعتبر، credential خراب/مفقود، تمدید و uninstall موفق",
     "نصب بومی کنترل‌پنل Debian و Chromium با مسیرهای قبلی موفق",
-    "اجرای یکپارچهٔ اول 235 آزمون با 233 موفق و 2 skip محیطی؛ پس از تغییرهای نهایی، اجرای تازهٔ کامل در جریان است"
+    "اجرای کامل نهایی: 236 آزمون، 234 موفق، 2 skip (fault PostgreSQL و Unbound محلی) با Xray/Mihomo/FRP و worker واقعی؛ dedicated CI محیط هر دو را فراهم می‌کند.",
+    "manifest، coordination و diff check موفق؛ CI روی head نهایی PR ۲۱ باید بررسی شود."
   ],
   "blockers": [],
-  "pr_url": null
+  "pr_url": "https://github.com/danialrad04-sketch/donino-panel/pull/21"
 }
