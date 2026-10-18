@@ -1,4 +1,4 @@
-# راهنمای نصب آزمایشی ۱.۰ alpha 6
+# راهنمای نصب آزمایشی ۱.۰ alpha 7
 
 این نصب‌کننده **نقش کنترل‌پنل** و با گزینهٔ `--with-dns`، [resolver و gateway DNS روی همان میزبان](DNS-PREVIEW.fa.md) را نصب می‌کند. DNS relay/exit و موتورهای تازه همراه فازهای بعد تکمیل می‌شوند. هدف OS: Debian 12 و Ubuntu 24.04 روی amd64 با systemd و Python 3.11+. آزمون نصب/بازیابی در کانتینرهای جدا با systemd انجام شده است؛ VM، VPS عمومی و صدور واقعی Let’s Encrypt هنوز شاهد پذیرش ندارند. برای production، این برچسب آزمایشی را با انتشار پایدار اشتباه نگیرید.
 
@@ -7,7 +7,7 @@
 روی سرور تمیز، A و در صورت استفاده AAAA دامنه را به IPهای واقعی همان سرور تنظیم و TCP/80 و TCP/443 را از فایروال میزبان/ارائه‌دهنده قابل دسترس کنید. سپس:
 
 ```bash
-git clone --branch v1.0.0-alpha.6 https://github.com/danialrad04-sketch/donino-panel.git
+git clone --branch v1.0.0-alpha.7 https://github.com/danialrad04-sketch/donino-panel.git
 cd donino-panel
 sudo ./install.sh --domain panel.example.com
 ```

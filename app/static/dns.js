@@ -7,7 +7,10 @@ function renderDNS() {
       "سیاست دامنه، سهمیهٔ درخواست و دسترسی هر کاربر را مستقل از ترافیک VPN مدیریت کنید.",
     ) +
     '<p class="notice">این بخش DNS را مدیریت می‌کند. عبور ترافیک بازی، Smart DNS و DoQ هنوز در این نسخه فعال نیستند. resolver محلی باید با نصب اختیاری DNS راه‌اندازی شده باشد.</p>' +
-    '<div id="dns-content">در حال دریافت…</div>'
+    '<div id="dns-content">در حال دریافت…</div>' +
+    (owner()
+      ? '<section class="card"><h2>انتقال doctor-dns</h2><p>پیش‌نمایش و انتقال مرحله‌ای با ابزار محلی سرور انجام می‌شود. حساب منتقل‌شده تا تطبیق حجم، انقضا و مسیر relay غیرفعال می‌ماند.</p><button data-action="dns-imports">مشاهدهٔ انتقال‌ها</button></section>'
+      : "")
   );
 }
 async function loadDNS() {
@@ -19,7 +22,7 @@ async function loadDNS() {
     dnsData = { policies, accounts };
     if (page !== "dns" || !$("#dns-content")) return;
     $("#dns-content").innerHTML =
-      `<section class="card"><div class="card-head"><h2>سیاست‌های دامنه</h2>${owner() ? '<button class="primary" data-action="dns-add-policy">سیاست جدید</button>' : ""}</div>${policies.length ? `<div class="table-scroll"><table><thead><tr><th>نام</th><th>قواعد</th>${owner() ? "<th>عملیات</th>" : ""}</tr></thead><tbody>${policies.map((p) => `<tr><td>${esc(p.name)}</td><td>${number(p.rules.length)}</td>${owner() ? `<td class="actions"><button data-action="dns-edit-policy" data-id="${p.id}">ویرایش</button><button class="danger" data-action="dns-delete-policy" data-id="${p.id}">حذف</button></td>` : ""}</tr>`).join("")}</tbody></table></div>` : '<p class="muted">ابتدا یک سیاست بسازید. سیاست بدون قاعده، پاسخ resolver معتبر را بدون بازنویسی برمی‌گرداند.</p>'}</section>
+      `<section class="card"><div class="card-head dns-policy-head"><h2>سیاست‌های دامنه</h2>${owner() ? '<button class="primary" data-action="dns-add-policy">سیاست جدید</button><button class="secondary" data-action="dns-catalog">از کاتالوگ سرویس‌ها</button>' : ""}</div>${policies.length ? `<div class="table-scroll"><table><thead><tr><th>نام</th><th>قواعد</th>${owner() ? "<th>عملیات</th>" : ""}</tr></thead><tbody>${policies.map((p) => `<tr><td>${esc(p.name)}</td><td>${number(p.rules.length)}</td>${owner() ? `<td class="actions"><button data-action="dns-edit-policy" data-id="${p.id}">ویرایش</button><button class="danger" data-action="dns-delete-policy" data-id="${p.id}">حذف</button></td>` : ""}</tr>`).join("")}</tbody></table></div>` : '<p class="muted">ابتدا یک سیاست بسازید. سیاست بدون قاعده، پاسخ resolver معتبر را بدون بازنویسی برمی‌گرداند.</p>'}</section>
     <section class="card"><div class="card-head"><h2>خدمت DNS کاربران</h2>${writable() ? '<button class="primary" data-action="dns-add-account">فعال‌سازی DNS</button>' : ""}</div>${accounts.length ? `<div class="table-scroll"><table><thead><tr><th>کاربر / سیاست</th><th>درخواست / سهمیه</th><th>بایت DNS</th><th>وضعیت</th>${writable() ? "<th>عملیات</th>" : ""}</tr></thead><tbody>${accounts.map((a) => `<tr><td><b>${esc(a.user_name)}</b><span class="subline">${esc(a.policy_name)}</span></td><td>${number(a.queries)} / ${a.query_limit ? number(a.query_limit) : "نامحدود"}<span class="subline">${number(a.qps)} درخواست در ثانیه</span></td><td>${bytes(a.request_bytes + a.response_bytes)}<span class="subline">${number(a.blocked)} مسدود؛ ${number(a.errors)} خطا</span></td><td>${badge(a.enabled ? "active" : "disabled")}</td>${writable() ? `<td class="actions"><button data-action="dns-edit-account" data-id="${a.id}">ویرایش</button><button data-action="dns-token" data-id="${a.id}">اعتبارنامه</button><button data-action="dns-periods" data-id="${a.id}">دوره‌ها</button><button data-action="dns-reset" data-id="${a.id}">دورهٔ تازه</button><button class="danger" data-action="dns-delete-account" data-id="${a.id}">حذف</button></td>` : ""}</tr>`).join("")}</tbody></table></div>` : '<p class="muted">DNS برای هیچ کاربری فعال نشده است. دسترسی عمومی پیش‌فرض بسته است.</p>'}</section>`;
   } catch (error) {
     if (page === "dns" && $("#dns-content"))
@@ -33,6 +36,8 @@ function showDNSCredential(value) {
   );
 }
 async function handleDNSAction(action, id) {
+  if (action === "dns-catalog") return catalogPolicyForm();
+  if (action === "dns-imports") return showDoctorImports();
   if (action === "dns-add-policy" || action === "dns-edit-policy") {
     const current = dnsData.policies.find((p) => p.id === id);
     form(
@@ -132,4 +137,56 @@ async function handleDNSAction(action, id) {
     );
     await loadDNS();
   }
+}
+
+async function catalogPolicyForm() {
+  const source = await api("/dns/catalog");
+  const groups = source.services.flatMap((service) =>
+    service.groups.map((group) => ({
+      service: service.key,
+      group: group.key,
+      label: service.label + " / " + group.label,
+      domains: group.domains.length,
+    })),
+  );
+  form(
+    "سیاست از کاتالوگ سرویس‌ها",
+    input("نام سیاست", "name", { full: true }) +
+      input("IP سرور relay؛ جداکردن با ویرگول", "relay_addresses", {
+        full: true,
+        extra: 'dir="ltr"',
+        hint: "ساخت سیاست، relay را نصب نمی‌کند. دسترسی بازی‌ها و دانلود روی ISP شما هنوز آزموده نشده است.",
+      }) +
+      `<fieldset class="full catalog-groups"><legend>گروه‌های سرویس</legend>${groups.map((g, i) => `<label><input type="checkbox" name="catalog_group_${i}">${esc(g.label)} (${number(g.domains)})</label>`).join("")}</fieldset><label class="full">استثناهای مستقیم؛ هر دامنه یک خط<textarea name="domains_off" rows="3" dir="ltr"></textarea><small>دامنه باید در گروه‌های انتخاب‌شده باشد. گروه بدون آدرس IPv6، پاسخ AAAA بازنویسی‌شده ندارد.</small></label>`,
+    async (f) => {
+      const selected = groups
+        .filter((g, i) => f["catalog_group_" + i] === "on")
+        .map((g) => ({ service: g.service, group: g.group }));
+      if (!selected.length) throw new Error("حداقل یک گروه را انتخاب کنید.");
+      await api("/dns/policies/from-catalog", {
+        method: "POST",
+        body: JSON.stringify({
+          name: f.name,
+          groups: selected,
+          relay_addresses: f.relay_addresses
+            .split(",")
+            .map((s) => s.trim())
+            .filter(Boolean),
+          domains_off: f.domains_off
+            .split(/\r?\n/)
+            .map((s) => s.trim())
+            .filter(Boolean),
+        }),
+      });
+      await saved();
+      toast("سیاست ساخته شد؛ راه‌اندازی relay جداگانه لازم است.");
+    },
+  );
+}
+async function showDoctorImports() {
+  const values = await api("/imports/doctor");
+  modal(
+    "انتقال‌های مرحله‌ای doctor-dns",
+    `<p class="notice">حجم Smart DNS به تعداد درخواست DNS یا حجم VPN تبدیل نشده است. IP، رمز و کیف پول منبع خودکار فعال نمی‌شوند. بازگشت فقط با ابزار محلی و تا پیش از تغییر حساب ممکن است.</p>${values.length ? `<div class="table-scroll"><table><thead><tr><th>شناسه</th><th>حساب</th><th>حجم منبع / مصرف</th><th>وضعیت</th></tr></thead><tbody>${values.map((v) => `<tr><td class="mono">${esc(v.id.slice(0, 8))}</td><td>${number(v.summary.counts.users)}</td><td>${bytes(v.summary.quota_bytes)} / ${bytes(v.summary.used_bytes)}</td><td>${v.state === "staged" ? "در انتظار تطبیق؛ غیرفعال" : "بازگشت انجام شد"}</td></tr>`).join("")}</tbody></table></div>` : "<p>انتقالی ثبت نشده است.</p>"}`,
+  );
 }

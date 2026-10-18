@@ -1,5 +1,14 @@
 # Donino releases
 
+## 1.0.0-alpha.7 — doctor-dns catalog and staged import, 2026-10-18
+
+- Bundle the pinned MIT doctor-dns catalog with attribution: 42 services, 48 groups and 505 domains. Owners can build independent DNS rewrite policies from selected groups and explicit relay addresses; no relay is installed or claimed by this action.
+- Add read-only source inspection, fingerprint confirmation, private pre-action backups and transactional, idempotent staging of doctor-dns accounts and templates. Preserve original Smart DNS byte totals, periods, expiry and private source metadata without converting them into DNS-query quotas, VPN usage or active wallet credit.
+- Keep imported accounts/devices disabled, refuse normal API activation, and require new proof before any source-IP permission. Source sessions are omitted. Password/receipt archives are encrypted with the existing private master key.
+- Add selective rollback that refuses changed users/related data, owner-only import metadata, catalog controls in the Persian DNS UI and a concrete Claude handoff for independent Xray transport work.
+
+Live Smart DNS relay/exit, game/ISP acceptance and operational activation of staged imports remain unfinished. This is a prerelease, not stable 1.0. See [catalog and import](docs/DOCTOR-DNS-IMPORT.fa.md).
+
 ## 1.0.0-alpha.6 — authenticated DNS preview, 2026-10-16
 
 - Add DNS policies with suffix priority, block/allow and A/AAAA rewrites; isolate caches by policy revision and DNSSEC flags, inspect aliases/targets, clear AD on synthesized answers and bound negative caching and UDP response size.

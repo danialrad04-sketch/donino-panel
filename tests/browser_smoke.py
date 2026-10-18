@@ -125,6 +125,19 @@ def main():
                 )
                 page.locator("#edit-form button[type=submit]").click()
                 page.locator("#modal").wait_for(state="hidden")
+                page.get_by_role(
+                    "button", name="از کاتالوگ سرویس‌ها", exact=True
+                ).click()
+                page.locator("#edit-form [name=name]").fill("کاتالوگ پلی‌استیشن")
+                page.locator("#edit-form [name=relay_addresses]").fill("1.2.3.4")
+                page.locator("#edit-form [name=catalog_group_0]").check()
+                page.locator("#edit-form button[type=submit]").click()
+                page.locator("#modal").wait_for(state="hidden")
+                page.get_by_role("button", name="مشاهدهٔ انتقال‌ها", exact=True).click()
+                page.locator("#modal-title").filter(
+                    has_text="انتقال‌های مرحله‌ای"
+                ).wait_for()
+                page.locator("#close-modal").click()
                 page.get_by_role("button", name="فعال‌سازی DNS", exact=True).click()
                 page.locator("#edit-form [name=user_id]").select_option(
                     label="کاربر آزمایشی"
@@ -165,6 +178,15 @@ def main():
                     assert page.evaluate(
                         "document.documentElement.scrollWidth <= innerWidth"
                     ), view + " overflow"
+                    if view == "dns":
+                        page.get_by_role(
+                            "button", name="از کاتالوگ سرویس‌ها", exact=True
+                        ).click()
+                        page.locator("#edit-form [name=relay_addresses]").wait_for()
+                        assert page.evaluate(
+                            "document.documentElement.scrollWidth <= innerWidth"
+                        ), "Mobile catalog form overflow"
+                        page.locator("#close-modal").click()
                 page.locator('[data-action="mfa-setup"]').click()
                 page.locator("#edit-form [name=password]").fill(password)
                 page.locator("#edit-form button[type=submit]").click()
