@@ -1,7 +1,7 @@
 {
   "format": "donino-source-v1",
   "version": "1.0.0a8",
-  "source_sha256": "5de96c32397607685d1721e1ec0fd8f81bb57538ebb892b624f0181840264a38",
+  "source_sha256": "4041f7095aafd684c1f9b5b1a2179c1745e97f07d00347b300c9be29f2266402",
   "files": {
     "AGENTS.md": "055ecf4f9b89ec21b07dff4703798161f00a49c2685df37142f2ba7128d2d0b3",
     "CHANGELOG.md": "567df2aa26226e88fafc03b8a4d5da8c7cc6dc3df51cf6fb8d3a5498c1ff8551",
@@ -80,6 +80,7 @@
     "docs/INSTALLER-PREVIEW.fa.md": "2d06f9966435abc127f6a2ef42f9f48ab0b5ffd1cc2a6e1c403524d7f9647be8",
     "docs/INSTALLER-SPEC.fa.md": "855cc2f6500f90026159eca2d743e644944f478b542a4e605a9960af1c90f202",
     "docs/MASTER-PLAN.fa.md": "172d4ead51b3f8d19717003311dbd5c78d2309c866db752a0ee7f6576b51a84f",
+    "docs/MIHOMO-ACCEPTANCE.md": "e32bf506bf51b149f69bdeeb4a5fb421b5ce95ab9bfbf0472cc92fd7e2c35461",
     "docs/NODE-SECURITY.fa.md": "c5a7baa2713ac0774449a907ad7574fd95766a898b3f2a606c21e15c4d19d8e5",
     "docs/PROTOCOL-MATRIX.fa.md": "2d5a57ec2fc271ab306c9956fce9b565dd12efb94b64c1399b21a1e07f30c02f",
     "docs/RESEARCH.fa.md": "b4aab87d22336634b60865f4f70e4e73ece50cd4627f395b936a3d3310ceeb4a",
@@ -121,6 +122,7 @@
     "requirements.lock": "1440a021760631670d1262d04c1b441a971337dabac4069ae3f06e1467fd0dc5",
     "requirements.txt": "1f65f0d6af836e6facf9a839893725f957ae970f750c7950cc605f6d039f1143",
     "scripts/coordination.py": "7886566bb797173d9574da2c17987a41ea73234372a57bb1f75663a5edb815c6",
+    "scripts/fetch_mihomo.py": "da97129cef8deba1b14bbd9352623b6968833e06e52e27ff7dba3081bd2181db",
     "scripts/fetch_xray.py": "61d9eda815b2aa75e5cdb1d91bae8922de7b663a98b95bc31d48d9a301ab0608",
     "scripts/release_manifest.py": "08f3b518b69fc6cf679c15e9f312fb9d5bf8c9262f949d3918b9cf1008bcd078"
   }
