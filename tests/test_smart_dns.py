@@ -319,7 +319,7 @@ class SmartDNSTest(SmartFixture):
             self.assertEqual(
                 db.execute("SELECT COUNT(*) FROM dns_accounts").fetchone()[0], 1
             )
-        self.assertTrue(list(Path(self.tmp.name).glob("*.pre-v13-*")))
+        self.assertTrue(list(Path(self.tmp.name).glob(f"*.pre-v{SCHEMA_VERSION}-*")))
         self.exit = self.add_exit(self.exit_body)
         with database() as db:
             db.execute("UPDATE dns_accounts SET relay_enabled=1")

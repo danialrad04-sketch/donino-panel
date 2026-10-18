@@ -74,6 +74,11 @@ class MonitorInstallerTest(unittest.TestCase):
                     native.options(args, state, config)
                 self.assertEqual(run.call_count, before)
                 self.assertEqual(os.environ, original)
+                self.assertFalse(
+                    native.options(
+                        arguments(["--without-tunnel-monitor"]), state, config
+                    )
+                )
 
     def test_independent_exit_refuses_control_monitor_flag(self):
         from ops.exit_install import main

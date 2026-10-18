@@ -10,7 +10,7 @@ from pydantic import Field, field_validator, model_validator
 
 from . import tunnel_bindings as bindings, tunnel_probe
 from .core import profiles, is_reality, transport_of
-from .db import audit, database
+from .db import audit, database, table_exists
 from .deps import one
 from .tunnel_bridge import Input, State, enabled
 
@@ -67,7 +67,7 @@ def invalidate_all(db):
     from . import tunnel_monitor as monitor
 
     monitor.fence(db, error="monitor_worker_changed")
-    if monitor.table_exists(db, "tunnel_monitor_runtime"):
+    if table_exists(db, "tunnel_monitor_runtime"):
         db.execute("DELETE FROM tunnel_monitor_runtime")
     # Every worker start replaces the whole managed set, including manual plans.
     db.execute("DELETE FROM tunnel_endpoints")
@@ -185,7 +185,12 @@ def verify(binding_id, body, account, controller, *, monitor_claim=None):
         client, device_revision = _client(db, row, body.device_id)
         proxies = _profiles(db, row, body.inbound_ids, client)
         if not monitor_claim:
-            monitor.fence(db, binding_id)
+            previous = monitor._row(db, binding_id)
+            monitor.fence(
+                db,
+                binding_id,
+                withdraw_endpoints=bool(previous and previous["enabled"]),
+            )
         # Retesting a selected path withdraws its old lease immediately. A new
         # failure cannot leave a previous positive proof available for publish.
         for prior in (

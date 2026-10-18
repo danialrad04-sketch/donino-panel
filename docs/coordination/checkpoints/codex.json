@@ -6,20 +6,21 @@
   "completed": [
     "PR ۲۱ ادغام و alpha.12 منتشر شد؛ checkpoint نهایی بدون تغییر در history آرشیو شد.",
     "schema 14، رضایت محدود پایش، fencing نتیجهٔ دیررس، heartbeat، تمدید/قطع انتشار/backoff و رابط فارسی پیاده شد.",
-    "پذیرش واقعی شش TLS از WSS/QUIC، قطع هر دو و بازگشت QUIC موفق؛ Chromium/موبایل موفق."
+    "پذیرش واقعی شش TLS از WSS/QUIC، قطع هر دو و بازگشت QUIC موفق؛ Chromium/موبایل موفق.",
+    "پذیرش نصب بومی Debian و Ubuntu: verifier/CA خوانا، رد تنظیمات خراب پیش از توقف پنل، heartbeat، opt-out پایدار، restart، backup/restore و uninstall موفق.",
+    "زمان‌بندی proof قدیمیِ هنوز تازه اصلاح شد؛ انتظار نام backup آزمون Smart DNS با schema جاری هماهنگ شد."
   ],
   "remaining": [
-    "اجرای کامل جاری و نصب بومی Debian/Ubuntu را تکمیل و هر ایراد را اصلاح کن.",
-    "بازبینی diff، CI دقیق head، PR و پیش‌انتشار alpha.13 پس از موفقیت checks.",
+    "اجرای کامل نهایی و CI روی head نهایی PR ۲۲؛ سپس ادغام و prerelease alpha.13 با latest=false.",
     "دیگر gateهای v1 و پذیرش دو VPS واقعی باقی‌اند."
   ],
-  "next_action": "نتیجهٔ /tmp/donino-alpha13-full.log و /tmp/donino-alpha13-native-debian.log را بررسی کن؛ سپس Ubuntu و CI. کلاد متوقف است.",
+  "next_action": "نتیجهٔ /tmp/donino-alpha13-final-full.log و همهٔ ۱۲ job متمایز CI روی head نهایی PR ۲۲ را بررسی کن؛ با SHA منطبق ادغام و v1.0.0-alpha.13 را prerelease/latest=false منتشر کن. کلاد متوقف است.",
   "tests": [
-    "17 آزمون متمرکز پایش پیش از افزودهٔ CLI موفق؛ افزودنی‌های CLI اکنون در اجرای کامل بررسی می‌شوند.",
-    "2 آزمون پیش‌نیاز نصب موفق؛ پشتیبانی --without-tunnel-monitor سپس اضافه و در اجرای کامل تکرار می‌شود.",
-    "real tunnel WSS/QUIC loss + recovery موفق؛ Chromium/390px موفق.",
-    "اولین native در preflight مثبت به علت CA خصوصی fixture رد شد؛ CA عمومی در /opt/donino-probe با خواندن سرویس قرار گرفت؛ تکرار در حال اجراست."
+    "19 آزمون متمرکز پایش، 11 endpoint، 2 preflight نصب موفق؛ opt-out خراب‌بودن config را نیز دور می‌زند تا سرویس امن خاموش شود.",
+    "real tunnel شش TLS: WSS/QUIC loss + recovery موفق؛ Chromium/390px نهایی موفق.",
+    "نصب بومی Debian و Ubuntu موفق با heartbeat/opt-out و حفظ DNS/Smart DNS/mTLS/backup/restore.",
+    "اجرای کامل نخست: 256 آزمون، یک failure انتظار pre-v13 در آزمون قدیمی، 2 skip؛ نام backup واقعاً v14 است. اصلاح شد و اجرای نهایی در جریان است."
   ],
   "blockers": [],
-  "pr_url": null
+  "pr_url": "https://github.com/danialrad04-sketch/donino-panel/pull/22"
 }

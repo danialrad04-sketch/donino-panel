@@ -16,6 +16,19 @@ function renderTunnelMonitor(box, binding, action, message) {
   const section = box.querySelector("#tunnel-acceptance");
   section.hidden = false;
   const monitor = binding.monitor || { service_ready: false, enabled: false };
+  const failure =
+    {
+      monitor_scope_changed:
+        "تنظیمات، دستگاه، دوره، مالک یا اعتماد آزمون تغییر کرده؛ آزمون و رضایت تازه لازم است.",
+      monitor_worker_changed:
+        "نصب یا جفت تانل تغییر کرده؛ وضعیت را بررسی و پذیرش تازه انجام دهید.",
+      monitor_interrupted:
+        "اجرای قبلی متوقف شده؛ تا آزمون موفق بعدی انتشار متوقف می‌ماند.",
+      monitor_operator_disabled:
+        "پایش از میزبان خاموش شده؛ فعال‌سازی دوباره به پذیرش و رضایت تازه نیاز دارد.",
+      monitor_disabled: "پایش با عملیات دستی متوقف شده است.",
+    }[monitor.error_code] ||
+    "آزمون مسیر تأیید نشد؛ ارتباط کنترل‌کننده، گواهی و اعتبار دستگاه آزمون را بررسی کنید.";
   const published = binding.published_inbounds || [];
   const fresh = (binding.checks || []).find(
     (c) =>
@@ -28,7 +41,7 @@ function renderTunnelMonitor(box, binding, action, message) {
   );
   const stamp = (value) =>
     value ? new Date(value * 1000).toLocaleString("fa-IR") : "—";
-  section.innerHTML = `<h2>پایش و تمدید خودکار تانل</h2><p>وضعیت: ${esc(tunnelMonitorPhase(monitor))}</p><p>آخرین موفقیت: ${esc(stamp(monitor.last_success))} · آزمون بعدی: ${esc(stamp(monitor.next_run))} · خطاهای پیاپی: ${Number(monitor.failures || 0)}</p><p>پایش از حجم دستگاه آزمون مصرف می‌کند. فقط همین نصب، دستگاه و اتصال‌های تأییدشده تمدید می‌شوند. قطع مسیر یا توقف سرویس، آدرس تانل را از اشتراک‌های تازه حذف می‌کند؛ بازیابی مسیر در همان محدوده می‌تواند آن را دوباره منتشر کند. کانفیگ ذخیره‌شدهٔ کلاینت با این کار باطل نمی‌شود.</p>${monitor.enabled ? '<button type="button" id="tunnel-monitor-stop">خاموش‌کردن پایش و لغو انتشار</button>' : monitor.service_ready && fresh ? `<form id="tunnel-monitor-form" class="form-grid"><label>فاصلهٔ آزمون<select name="interval"><option value="300">۵ دقیقه</option><option value="900">۱۵ دقیقه</option><option value="1800">۳۰ دقیقه</option><option value="3600">۶۰ دقیقه</option></select></label><label class="full"><input type="checkbox" name="consent">مصرف حجم آزمون، تمدید خودکار و بازنشر پس از بازیابی همین مسیر را تأیید می‌کنم.</label><button type="submit" class="primary" disabled>فعال‌کردن پایش خودکار</button></form>` : `<p>${monitor.service_ready ? "برای فعال‌سازی، ابتدا آزمون تازه و انتشار دقیقاً همان اتصال‌ها لازم است." : "نصب سرویس اختیاری و تنظیم کلاینت آزمون روی میزبان پنل لازم است؛ راهنمای تانل را بررسی کنید."}</p>`}`;
+  section.innerHTML = `<h2>پایش و تمدید خودکار تانل</h2><p>وضعیت: ${esc(tunnelMonitorPhase(monitor))}</p>${monitor.error_code ? `<p class="notice">${esc(failure)}</p>` : ""}<p>آخرین موفقیت: ${esc(stamp(monitor.last_success))} · آزمون بعدی: ${esc(stamp(monitor.next_run))} · خطاهای پیاپی: ${Number(monitor.failures || 0)}</p><p>پایش از حجم دستگاه آزمون مصرف می‌کند. فقط همین نصب، دستگاه و اتصال‌های تأییدشده تمدید می‌شوند. قطع مسیر یا توقف سرویس، آدرس تانل را از اشتراک‌های تازه حذف می‌کند؛ بازیابی مسیر در همان محدوده می‌تواند آن را دوباره منتشر کند. کانفیگ ذخیره‌شدهٔ کلاینت با این کار باطل نمی‌شود.</p>${monitor.enabled ? '<button type="button" id="tunnel-monitor-stop">خاموش‌کردن پایش و لغو انتشار</button>' : monitor.service_ready && fresh ? `<form id="tunnel-monitor-form" class="form-grid"><label>فاصلهٔ آزمون<select name="interval"><option value="300">۵ دقیقه</option><option value="900">۱۵ دقیقه</option><option value="1800">۳۰ دقیقه</option><option value="3600">۶۰ دقیقه</option></select></label><label class="full"><input type="checkbox" name="consent">مصرف حجم آزمون، تمدید خودکار و بازنشر پس از بازیابی همین مسیر را تأیید می‌کنم.</label><button type="submit" class="primary" disabled>فعال‌کردن پایش خودکار</button></form>` : `<p>${monitor.service_ready ? "برای فعال‌سازی، ابتدا آزمون تازه و انتشار دقیقاً همان اتصال‌ها لازم است." : "نصب سرویس اختیاری و تنظیم کلاینت آزمون روی میزبان پنل لازم است؛ راهنمای تانل را بررسی کنید."}</p>`}`;
   const stop = section.querySelector("#tunnel-monitor-stop");
   if (stop)
     stop.onclick = () =>

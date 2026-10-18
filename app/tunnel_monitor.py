@@ -234,7 +234,7 @@ def enable(binding_id, body, account):
             check["inbound_ids"],
             tunnel_probe.configuration_revision(),
             body.interval_seconds,
-            now + body.interval_seconds,
+            max(now, check["finished"] + body.interval_seconds),
             check["finished"],
             check["id"],
             now,

@@ -85,6 +85,7 @@ class MonitorTest(EndpointFixture):
         self.assertTrue(self.tick())
         self.assertEqual(self.state_monitor()["phase"], "healthy")
         self.assertEqual(len(self.subscription()), 2)
+
         with database() as db:
             self.assertGreater(
                 db.execute("SELECT expires FROM tunnel_endpoints").fetchone()[0],
@@ -110,6 +111,17 @@ class MonitorTest(EndpointFixture):
             ("healthy", 0),
         )
         self.assertEqual(len(self.subscription()), 2)
+
+    def test_consent_on_older_fresh_proof_is_scheduled_without_health_gap(self):
+        now = int(time.time())
+        with database() as db:
+            db.execute(
+                "UPDATE tunnel_checks SET finished=?,expires=? WHERE id=?",
+                (now - 400, now + 200, self.check["id"]),
+            )
+        result = self.enable()
+        self.assertEqual(result.status_code, 200, result.text)
+        self.assertLessEqual(result.json()["next_run"], int(time.time()))
 
     def test_dead_or_hung_scheduler_filters_exports_before_lease_expiry(self):
         self.enable()
