@@ -1,23 +1,14 @@
 {
-  "task_id": "xray-acceptance-v1",
-  "status": "waiting_for_review",
-  "branch": "claude/xray-acceptance-v1",
-  "last_verified_commit": "60b34f1ec83e928cf34984c1f775c3c5af7c3ef4",
-  "completed": [
-    "پذیرش live-add هات برای یک کاربر و یک دستگاه جدید: PID و epoch ثابت ماندند، جریان باز قبلی سالم ماند، انتقال هر چهار مسیر و شمارش به device ID و دورهٔ درست تأیید شد",
-    "انقضای واقعی ساعتی: انتقال پیش از انقضا موفق، پس از انقضا و tick لینک‌های ذخیره‌شده و اشتراک جدید رد شدند؛ تغییر انقضا به گذشته از API نیز پس از tick قطع کرد",
-    "کنترل منفی TLS برای هر چهار مسیر: CA معتبر با hostname درست موفق؛ CA نامعتبر و hostname ناسازگار رد شدند و در لاگ کلاینت x509 ثبت شد",
-    "سند شواهد docs/XRAY-TRANSPORT-ACCEPTANCE.md نوشته شد"
+  "task_id": "mihomo-tls-acceptance-v1",
+  "status": "assigned",
+  "branch": "claude/mihomo-tls-acceptance-v1",
+  "last_verified_commit": null,
+  "completed": [],
+  "remaining": [
+    "کلاینت واقعی Mihomo برای شش پروفایل TLS، کنترل منفی TLS و ثبت بایت/ابطال دستگاه"
   ],
-  "remaining": [],
-  "next_action": "بازبینی Codex روی PR ۱۵ را منتظر بمان؛ تا مأموریت یا بازخورد جدید نیاید، کار تازه‌ای انتخاب نشود.",
-  "tests": [
-    "test_xray_transports.py با Xray v26.3.27 روی SQLite: 10 OK",
-    "test_xray_transports.py با Xray v26.3.27 روی PostgreSQL 16 محلی: 10 OK",
-    "کل suite روی SQLite با Xray و Unbound: 168 OK، 2 skipped (PostgreSQL-only و Unbound-only)",
-    "release_manifest.py --check: verified؛ نسخه بدون تغییر",
-    "git diff --check: clean"
-  ],
+  "next_action": "main تازه و مأموریت mihomo-tls-acceptance-v1 را بخوان؛ شاخهٔ تازه بساز، باینری پین‌شده را با checksum دریافت کن و fixture واقعی subscription را آماده کن.",
+  "tests": [],
   "blockers": [],
-  "pr_url": "https://github.com/danialrad04-sketch/donino-panel/pull/15"
+  "pr_url": null
 }

@@ -13,8 +13,10 @@ continue work already assigned by the user.
   blockers in a checkpoint. Push recoverable commits to your task branch.
   A local checkpoint alone is not visible to a different machine.
 - A checkpoint is a handoff, not a distributed lock or a live messaging service.
-  Never force-push, overwrite another contributor's checkpoint, or merge an
+  Never force-push, overwrite another contributor's in-progress checkpoint, or merge an
   unrelated development branch to resolve concurrency.
+  After review, the coordinator may archive a completed handoff intact under
+  `docs/coordination/history/` and initialize the checkpoint for a new assignment.
 - Schema 10 on main is the database baseline. Do not import the incompatible
   Alembic model from the old `development/1.0` branch.
 - Keep private keys, pairing codes, DB snapshots, tokens and private plans out of

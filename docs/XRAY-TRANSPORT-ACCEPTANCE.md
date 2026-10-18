@@ -36,11 +36,27 @@ DONINO_TEST_XRAY=... DONINO_TEST_UNBOUND=/usr/sbin/unbound \
 | `test_device_user_quota_and_period_cut_offs` | Per-device counters increase for two devices on all four transports. Disabling a device cuts only that device. Disabling a user removes all clients. Quota exhaustion removes clients and sets status `limited`. Period reset restarts Xray and restores transfers. A client without the test CA is refused. | Pass |
 | Unit checks (5 tests) | Vision flow only on REALITY/TCP; legacy rows keep their transport; URI, VMess JSON and Mihomo fields per transport; API accepts only the listed protocol/transport pairs; TLS transports require certificate paths. | Pass |
 
-Full runs:
+Runs reported with the initial implementation, before the final handoff checkpoint:
 
 - SQLite, all files: 168 tests OK, 2 skipped (PostgreSQL-only and Unbound-only cases, which need their environment variables).
 - PostgreSQL 16, `test_xray_transports.py`: 10 tests OK.
 - SQLite, `test_xray_transports.py`: 10 tests OK.
+
+## Codex integration review
+
+The final handoff initially failed CI: the source manifest was stale after the
+checkpoint update, and a coordination test incorrectly assumed the tracked
+checkpoint was always in its initial state. Those failures were fixed rather
+than treating the earlier green implementation run as proof for the final head.
+The checkpoint CLI now refreshes the manifest, with an isolated CLI regression.
+Socket reads handle partial replies and EOF, and config validation has a timeout.
+
+Codex independently reran all 10 real-Xray checks successfully and all three
+coordination checks successfully. Full exact-head results, including PostgreSQL,
+real Unbound and both native OS fixtures, are attached to
+[PR #15](https://github.com/danialrad04-sketch/donino-panel/pull/15). The unchanged
+Claude handoff is archived under `docs/coordination/history/` and its subsequent
+assignment is recorded separately; it is not evidence of real Mihomo acceptance.
 
 ## Observed behaviour
 

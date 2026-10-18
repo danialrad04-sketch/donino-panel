@@ -2,11 +2,11 @@
   "format": "donino-coordination-v1",
   "assignments": {
     "claude": {
-      "task_id": "xray-acceptance-v1",
-      "branch": "claude/xray-acceptance-v1",
-      "document": "docs/coordination/tasks/xray-acceptance-v1.fa.md",
+      "task_id": "mihomo-tls-acceptance-v1",
+      "branch": "claude/mihomo-tls-acceptance-v1",
+      "document": "docs/coordination/tasks/mihomo-tls-acceptance-v1.fa.md",
       "checkpoint": "docs/coordination/checkpoints/claude.json",
-      "base_commit": "ac3bc37",
+      "base_commit": "f00ced87f775dd3233a7d1cbec58a43ac3750769",
       "coordinator": "codex"
     }
   }
