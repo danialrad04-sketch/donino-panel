@@ -19,6 +19,8 @@ Start here on **every session**, including when the entire user message is
 5. After a meaningful milestone, before switching context, and when nearing a
    limit, save `docs/coordination/checkpoints/claude.json`. Use
    `python scripts/coordination.py checkpoint --actor claude --input /tmp/claude-checkpoint.json`.
+   This also refreshes the source manifest; include both changed files in the
+   commit. After any later product/docs edit, regenerate the manifest again.
    The input must use the fields shown in the coordination guide. Commit the
    work and checkpoint and push the task branch. In `last_verified_commit`,
    record the **code commit actually tested**, not an untested later commit.

@@ -5,6 +5,7 @@ import argparse
 import json
 import os
 import re
+import sys
 import tempfile
 from pathlib import Path
 
@@ -132,6 +133,12 @@ def main():
                 raise ValueError("checkpoint requires --input")
             data = validate(read(args.input), task)
             save(path, data)
+            # Checkpoints are part of the release source inventory. Updating a
+            # handoff must not leave the source manifest stale after final CI.
+            sys.path.insert(0, str(ROOT))
+            from ops.manifest import write_manifest
+
+            write_manifest(ROOT)
         data = validate(read(path), task)
         if args.command == "status":
             print(
