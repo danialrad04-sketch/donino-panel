@@ -6,7 +6,8 @@ function renderDNS() {
       "DNS اختصاصی",
       "سیاست دامنه، سهمیهٔ درخواست و دسترسی هر کاربر را مستقل از ترافیک VPN مدیریت کنید.",
     ) +
-    '<p class="notice">این بخش DNS را مدیریت می‌کند. عبور ترافیک بازی، Smart DNS و DoQ هنوز در این نسخه فعال نیستند. resolver محلی باید با نصب اختیاری DNS راه‌اندازی شده باشد.</p>' +
+    '<p class="notice">DNS و مسیریابی Smart DNS به مجوز حساب و IP ثبت‌شده وابسته‌اند. مسیر Smart DNS فعلی HTTPS با SNI آشکار است؛ بازی/UDP، ECH و DoQ پذیرش جداگانه می‌خواهند. resolver و gateway باید راه‌اندازی شده باشند.</p>' +
+    '<section id="smart-dns-content" class="card">در حال دریافت وضعیت خروجی‌ها…</section>' +
     '<div id="dns-content">در حال دریافت…</div>' +
     (owner()
       ? '<section class="card"><h2>انتقال doctor-dns</h2><p>پیش‌نمایش و انتقال مرحله‌ای با ابزار محلی سرور انجام می‌شود. حساب منتقل‌شده تا تطبیق حجم، انقضا و مسیر relay غیرفعال می‌ماند.</p><button data-action="dns-imports">مشاهدهٔ انتقال‌ها</button></section>'
@@ -24,6 +25,7 @@ async function loadDNS() {
     $("#dns-content").innerHTML =
       `<section class="card"><div class="card-head dns-policy-head"><h2>سیاست‌های دامنه</h2>${owner() ? '<button class="primary" data-action="dns-add-policy">سیاست جدید</button><button class="secondary" data-action="dns-catalog">از کاتالوگ سرویس‌ها</button>' : ""}</div>${policies.length ? `<div class="table-scroll"><table><thead><tr><th>نام</th><th>قواعد</th>${owner() ? "<th>عملیات</th>" : ""}</tr></thead><tbody>${policies.map((p) => `<tr><td>${esc(p.name)}</td><td>${number(p.rules.length)}</td>${owner() ? `<td class="actions"><button data-action="dns-edit-policy" data-id="${p.id}">ویرایش</button><button class="danger" data-action="dns-delete-policy" data-id="${p.id}">حذف</button></td>` : ""}</tr>`).join("")}</tbody></table></div>` : '<p class="muted">ابتدا یک سیاست بسازید. سیاست بدون قاعده، پاسخ resolver معتبر را بدون بازنویسی برمی‌گرداند.</p>'}</section>
     <section class="card"><div class="card-head"><h2>خدمت DNS کاربران</h2>${writable() ? '<button class="primary" data-action="dns-add-account">فعال‌سازی DNS</button>' : ""}</div>${accounts.length ? `<div class="table-scroll"><table><thead><tr><th>کاربر / سیاست</th><th>درخواست / سهمیه</th><th>بایت DNS</th><th>وضعیت</th>${writable() ? "<th>عملیات</th>" : ""}</tr></thead><tbody>${accounts.map((a) => `<tr><td><b>${esc(a.user_name)}</b><span class="subline">${esc(a.policy_name)}</span></td><td>${number(a.queries)} / ${a.query_limit ? number(a.query_limit) : "نامحدود"}<span class="subline">${number(a.qps)} درخواست در ثانیه</span></td><td>${bytes(a.request_bytes + a.response_bytes)}<span class="subline">${number(a.blocked)} مسدود؛ ${number(a.errors)} خطا</span></td><td>${badge(a.enabled ? "active" : "disabled")}</td>${writable() ? `<td class="actions"><button data-action="dns-edit-account" data-id="${a.id}">ویرایش</button><button data-action="dns-token" data-id="${a.id}">اعتبارنامه</button><button data-action="dns-periods" data-id="${a.id}">دوره‌ها</button><button data-action="dns-reset" data-id="${a.id}">دورهٔ تازه</button><button class="danger" data-action="dns-delete-account" data-id="${a.id}">حذف</button></td>` : ""}</tr>`).join("")}</tbody></table></div>` : '<p class="muted">DNS برای هیچ کاربری فعال نشده است. دسترسی عمومی پیش‌فرض بسته است.</p>'}</section>`;
+    await loadSmartDNS();
   } catch (error) {
     if (page === "dns" && $("#dns-content"))
       $("#dns-content").textContent = error.message;
@@ -36,6 +38,7 @@ function showDNSCredential(value) {
   );
 }
 async function handleDNSAction(action, id) {
+  if (action.startsWith("dns-smart-")) return handleSmartDNSAction(action, id);
   if (action === "dns-catalog") return catalogPolicyForm();
   if (action === "dns-imports") return showDoctorImports();
   if (action === "dns-add-policy" || action === "dns-edit-policy") {
@@ -43,7 +46,7 @@ async function handleDNSAction(action, id) {
     form(
       current ? "ویرایش سیاست DNS" : "سیاست DNS جدید",
       input("نام سیاست", "name", { value: current?.name || "", full: true }) +
-        `<label class="full">قواعد دامنه<textarea name="rules" rows="8" dir="ltr">${esc((current?.rules || []).map((r) => r.action + " " + r.domain + (r.addresses.length ? " " + r.addresses.join(",") : "")).join("\n"))}</textarea><small>هر خط: block example.com برای مسدودسازی، allow sub.example.com برای استثنا، یا rewrite example.com 1.2.3.4 برای بازنویسی. دامنه و زیردامنه‌های آن مشمول‌اند؛ قاعدهٔ دقیق‌تر اولویت دارد. خالی = بدون بازنویسی.</small></label>`,
+        `<label class="full">قواعد دامنه<textarea name="rules" rows="8" dir="ltr">${esc((current?.rules || []).map((r) => r.action + " " + r.domain + ((r.action === "route" ? r.exit_ids : r.addresses)?.length ? " " + (r.action === "route" ? r.exit_ids : r.addresses).join(",") : "")).join("\n"))}</textarea><small>هر خط: block example.com برای مسدودسازی، allow sub.example.com برای استثنا، rewrite example.com 1.2.3.4 برای بازنویسی، یا route example.com UUID1,UUID2 برای خروجی‌های مرتب. UUIDها شناسهٔ نود خروجی‌اند؛ فرم مسیریابی آن‌ها را انتخاب می‌کند. دامنه و زیردامنه‌های آن مشمول‌اند؛ قاعدهٔ دقیق‌تر اولویت دارد.</small></label>`,
       async (f) => {
         const rules = f.rules
           .split(/\r?\n/)
@@ -54,14 +57,15 @@ async function handleDNSAction(action, id) {
             if (
               !(
                 (["block", "allow"].includes(parts[0]) && parts.length === 2) ||
-                (parts[0] === "rewrite" && parts.length === 3)
+                (["rewrite", "route"].includes(parts[0]) && parts.length === 3)
               )
             )
               throw new Error("ساختار یکی از قواعد صحیح نیست.");
             return {
               action: parts[0],
               domain: parts[1],
-              addresses: parts[2] ? parts[2].split(",") : [],
+              addresses: parts[0] === "rewrite" ? parts[2].split(",") : [],
+              exit_ids: parts[0] === "route" ? parts[2].split(",") : [],
             };
           });
         await api("/dns/policies" + (current ? "/" + current.id : ""), {
@@ -101,6 +105,9 @@ async function handleDNSAction(action, id) {
               query_limit: Number(f.query_limit),
               qps: Number(f.qps),
               enabled: f.enabled === "true",
+              relay_enabled: !!current?.relay_enabled,
+              relay_limit: current?.relay_limit || 0,
+              relay_connections: current?.relay_connections || 8,
             }),
           },
         );

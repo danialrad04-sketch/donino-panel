@@ -29,4 +29,18 @@ def configure(folder, name="panel.db"):
 
 
 # Tests that open the SQLite file directly (or test SQLite-only migration paths).
-sqlite_only = unittest.skipIf(bool(postgres_url()), "SQLite file test; not applicable to PostgreSQL")
+sqlite_only = unittest.skipIf(
+    bool(postgres_url()), "SQLite file test; not applicable to PostgreSQL"
+)
+
+
+def strip_smart_schema(db):
+    """Build an actual pre-13 fixture before testing earlier upgrade steps."""
+    for table in ("smart_sessions", "smart_exits", "smart_gateway"):
+        db.execute(f"DROP TABLE {table}")
+    for table, columns in (
+        ("dns_accounts", ("relay_enabled", "relay_limit", "relay_connections")),
+        ("dns_periods", ("relay_up", "relay_down", "relay_sessions", "relay_errors")),
+    ):
+        for column in columns:
+            db.execute(f"ALTER TABLE {table} DROP COLUMN {column}")

@@ -60,6 +60,7 @@ class NativeFixture:
         }
         self.image = "donino-native-test:" + os_name
         self.os_name = os_name
+        self.smart = os_name == "ubuntu24"
         self.log = self.folder / "operations.log"
         self.log.touch(mode=0o600)
 
@@ -237,6 +238,11 @@ class NativeFixture:
         self.exec(
             name,
             "./install.sh",
+            *(
+                ["--with-smart-dns", "--smart-dns-ip", "127.0.0.1"]
+                if self.smart
+                else []
+            ),
             "--with-dns",
             "--dns-port",
             "53" if self.os_name == "ubuntu24" else "5353",
@@ -358,7 +364,29 @@ else:
             + ": optional Unbound, authenticated HTTPS DoH and leased UDP/TCP/DoT passed",
             flush=True,
         )
+        self.smart = True  # Also exercise conversion from the original TLS listener.
         self.install(first)
+        smart = client.get("/api/dns/smart/status").json()
+        assert smart["enabled"] and smart["gateway_ready"], smart
+        self.exec(
+            first,
+            "/opt/donino-panel/current/.venv/bin/python",
+            "-c",
+            """import socket,ssl
+context=ssl.create_default_context(cafile='/testcerts/ca.pem')
+with socket.create_connection(('127.0.0.1',443),timeout=3) as raw:
+    with context.wrap_socket(raw,server_hostname='panel.test'):
+        pass
+context.check_hostname=False
+try:
+    with socket.create_connection(('127.0.0.1',443),timeout=3) as raw:
+        with context.wrap_socket(raw,server_hostname='unauthorized.example.com'):
+            raise AssertionError('Non-panel SNI bypassed the Smart gateway')
+except (OSError,ssl.SSLError):
+    pass
+""",
+            capture=True,
+        )
         self.doctor(first)
         assert client.get("/api/dns/accounts").json()[0]["id"] == dns_account["id"]
         node = client.post(

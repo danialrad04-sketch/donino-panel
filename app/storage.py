@@ -42,6 +42,8 @@ def require_empty():
             "tunnel_bindings",
             "tunnel_checks",
             "tunnel_endpoints",
+            "smart_exits",
+            "smart_sessions",
         ):
             if (
                 table_exists(db, table)

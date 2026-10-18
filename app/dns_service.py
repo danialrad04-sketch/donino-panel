@@ -1,7 +1,6 @@
 """DNS authorization and a separate query/byte ledger. No query names are stored."""
 
 import ipaddress
-import json
 import time
 
 import dns.exception
@@ -93,12 +92,14 @@ class DNSService:
         account = reserve_request(len(wire), token=token, source_ip=source_ip)
         failed, blocked = False, False
         try:
+            from .smart_dns import route_rules
+
             response, blocked = self.resolver.resolve(
                 query,
                 {
                     "id": account["policy_id"],
                     "revision": account["revision"],
-                    "rules": json.loads(account["rules"]),
+                    "rules": route_rules(account, source_ip=source_ip),
                 },
             )
             failed = response.rcode() == dns.rcode.SERVFAIL

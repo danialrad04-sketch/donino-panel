@@ -26,6 +26,9 @@ class DNSAccountInput(BaseModel):
     enabled: bool = True
     query_limit: int = Field(default=0, ge=0, le=9_000_000_000_000_000)
     qps: int = Field(default=20, ge=1, le=100)
+    relay_enabled: bool = False
+    relay_limit: int = Field(default=0, ge=0, le=9_000_000_000_000_000)
+    relay_connections: int = Field(default=8, ge=1, le=64)
 
 
 class IPClaim(BaseModel):
@@ -36,7 +39,8 @@ def dns_accounts(db, uid=None):
     rows = db.execute(
         """SELECT a.id,a.user_id,a.policy_id,a.enabled,a.query_limit,a.qps,a.period_no,
         a.created,a.updated,u.name AS user_name,p.name AS policy_name,
-        d.queries,d.request_bytes,d.response_bytes,d.errors,d.blocked
+        d.queries,d.request_bytes,d.response_bytes,d.errors,d.blocked,
+        a.relay_enabled,a.relay_limit,a.relay_connections,d.relay_up,d.relay_down,d.relay_sessions,d.relay_errors
         FROM dns_accounts a JOIN users u ON u.id=a.user_id JOIN dns_policies p ON p.id=a.policy_id
         JOIN dns_periods d ON d.account_id=a.id AND d.period_no=a.period_no"""
         + (" WHERE a.user_id=?" if uid else "")
@@ -105,6 +109,8 @@ def mount_dns_api(app):
             int(time.time()),
         )
         with database() as db:
+            from .smart_dns import validate_routes
+            validate_routes(db, body.rules)
             db.execute(
                 "INSERT INTO dns_policies VALUES(?,?,?,?,?,?)",
                 (
@@ -124,6 +130,8 @@ def mount_dns_api(app):
         revision = str(uuid.uuid4())
         with database() as db:
             one(db, "dns_policies", policy_id)
+            from .smart_dns import validate_routes
+            validate_routes(db, body.rules)
             db.execute(
                 "UPDATE dns_policies SET name=?,revision=?,rules=?,updated=? WHERE id=?",
                 (
@@ -161,8 +169,8 @@ def mount_dns_api(app):
             one(db, "users", body.user_id)
             one(db, "dns_policies", body.policy_id)
             db.execute(
-                """INSERT INTO dns_accounts(id,user_id,policy_id,token_hash,enabled,query_limit,qps,created,updated)
-                VALUES(?,?,?,?,?,?,?,?,?)""",
+                """INSERT INTO dns_accounts(id,user_id,policy_id,token_hash,enabled,query_limit,qps,created,updated,relay_enabled,relay_limit,relay_connections)
+                VALUES(?,?,?,?,?,?,?,?,?,?,?,?)""",
                 (
                     account_id,
                     body.user_id,
@@ -173,6 +181,9 @@ def mount_dns_api(app):
                     body.qps,
                     now,
                     now,
+                    body.relay_enabled,
+                    body.relay_limit,
+                    body.relay_connections,
                 ),
             )
             db.execute(
@@ -190,13 +201,16 @@ def mount_dns_api(app):
                 raise HTTPException(409, "مالک خدمت DNS قابل انتقال نیست")
             one(db, "dns_policies", body.policy_id)
             db.execute(
-                "UPDATE dns_accounts SET policy_id=?,enabled=?,query_limit=?,qps=?,updated=? WHERE id=?",
+                "UPDATE dns_accounts SET policy_id=?,enabled=?,query_limit=?,qps=?,updated=?,relay_enabled=?,relay_limit=?,relay_connections=? WHERE id=?",
                 (
                     body.policy_id,
                     int(body.enabled),
                     body.query_limit,
                     body.qps,
                     int(time.time()),
+                    body.relay_enabled,
+                    body.relay_limit,
+                    body.relay_connections,
                     account_id,
                 ),
             )
@@ -357,7 +371,7 @@ def mount_dns_api(app):
                 raise HTTPException(415, "Use application/dns-message")
             wire = await request.body()
         try:
-            output = await run_in_threadpool(service.answer, wire, token=auth[7:])
+            output = await run_in_threadpool(service.answer, wire, token=auth[7:], source_ip=request.client.host if request.client else None)
         except ValueError as exc:
             raise HTTPException(400, str(exc)) from exc
         return Response(

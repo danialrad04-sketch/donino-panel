@@ -18,6 +18,7 @@ from app.db import (
     SCHEMA_VERSION,
 )
 from test_accounts import PanelBase
+from support import strip_smart_schema
 
 
 class BindingFixture(PanelBase):
@@ -317,6 +318,7 @@ class BindingTest(BindingFixture):
 
     def test_v10_migration_preserves_nodes_and_backs_up_before_ddl(self):
         with database() as db:
+            strip_smart_schema(db)
             db.execute("DROP TABLE tunnel_endpoints")
             db.execute("DROP TABLE tunnel_checks")
             db.execute("DROP TABLE tunnel_bindings")
@@ -334,6 +336,7 @@ class BindingTest(BindingFixture):
 
     def test_migration_backup_failure_leaves_v10_intact(self):
         with database() as db:
+            strip_smart_schema(db)
             db.execute("DROP TABLE tunnel_endpoints")
             db.execute("DROP TABLE tunnel_checks")
             db.execute("DROP TABLE tunnel_bindings")

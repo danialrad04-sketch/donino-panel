@@ -8,6 +8,7 @@ from unittest.mock import patch
 
 from app import ops, tunnel_probe
 from app.db import (
+    SCHEMA_VERSION,
     database,
     initialize,
     schema_version,
@@ -15,6 +16,7 @@ from app.db import (
     table_exists,
 )
 import test_tunnel_bindings as fixtures
+from support import strip_smart_schema
 
 
 class EndpointTest(fixtures.BindingFixture):
@@ -316,6 +318,7 @@ class EndpointTest(fixtures.BindingFixture):
     def test_schema11_upgrade_backup_and_failure_before_ddl(self):
         # Empty acceptance tables are the only difference from schema 11.
         with database() as db:
+            strip_smart_schema(db)
             db.execute("DROP TABLE tunnel_endpoints")
             db.execute("DROP TABLE tunnel_checks")
             set_schema_version(db, 11)
@@ -327,8 +330,8 @@ class EndpointTest(fixtures.BindingFixture):
             self.assertFalse(table_exists(db, "tunnel_checks"))
         initialize()
         with database() as db:
-            self.assertEqual(schema_version(db), 12)
+            self.assertEqual(schema_version(db), SCHEMA_VERSION)
             self.assertEqual(
                 db.execute("SELECT COUNT(*) FROM tunnel_bindings").fetchone()[0], 1
             )
-        self.assertTrue(list(Path(self.tmp.name).glob("*.pre-v12-*")))
+        self.assertTrue(list(Path(self.tmp.name).glob(f"*.pre-v{SCHEMA_VERSION}-*")))

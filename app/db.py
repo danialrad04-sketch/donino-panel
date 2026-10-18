@@ -16,7 +16,7 @@ try:  # PostgreSQL is optional; SQLite stays the default backend.
 except ImportError:  # pragma: no cover - exercised only without the postgres extra
     psycopg = None
 
-SCHEMA_VERSION = 12
+SCHEMA_VERSION = 13
 MAX_DEVICES_PER_USER = 20
 # Arbitrary constant key for the PostgreSQL writer lock (serializes writers, like BEGIN IMMEDIATE).
 _PG_WRITER_LOCK = 4541776
@@ -495,6 +495,32 @@ def initialize():
                 check_id TEXT NOT NULL REFERENCES tunnel_checks(id),
                 created INTEGER NOT NULL, expires INTEGER NOT NULL)""")
             set_schema_version(db, 12)
+        if version < 13:
+            db.execute("""CREATE TABLE smart_exits (
+                id TEXT PRIMARY KEY, name TEXT NOT NULL, host TEXT NOT NULL,
+                port INTEGER NOT NULL, sni TEXT NOT NULL, username TEXT NOT NULL,
+                password TEXT NOT NULL, mode TEXT NOT NULL DEFAULT 'disabled',
+                checked INTEGER, healthy INTEGER, latency INTEGER, error_code TEXT,
+                revision TEXT NOT NULL, created INTEGER NOT NULL, updated INTEGER NOT NULL)""")
+            for column, definition in (
+                ("relay_enabled", "INTEGER NOT NULL DEFAULT 0"),
+                ("relay_limit", "INTEGER NOT NULL DEFAULT 0"),
+                ("relay_connections", "INTEGER NOT NULL DEFAULT 8"),
+            ):
+                db.execute(f"ALTER TABLE dns_accounts ADD COLUMN {column} {definition}")
+            for column in ("relay_up", "relay_down", "relay_sessions", "relay_errors"):
+                db.execute(f"ALTER TABLE dns_periods ADD COLUMN {column} INTEGER NOT NULL DEFAULT 0")
+            db.execute("""CREATE TABLE smart_sessions (
+                id TEXT PRIMARY KEY, account_id TEXT NOT NULL REFERENCES dns_accounts(id) ON DELETE CASCADE,
+                period_no INTEGER NOT NULL, exit_id TEXT,
+                created INTEGER NOT NULL, updated INTEGER NOT NULL, lease_until INTEGER NOT NULL,
+                closed INTEGER, error_code TEXT,
+                uploaded INTEGER NOT NULL DEFAULT 0, downloaded INTEGER NOT NULL DEFAULT 0)""")
+            db.execute("CREATE INDEX smart_sessions_active ON smart_sessions(account_id,closed,lease_until)")
+            db.execute("""CREATE TABLE smart_gateway (
+                id INTEGER PRIMARY KEY, instance_id TEXT NOT NULL,
+                addresses TEXT NOT NULL, lease_until INTEGER NOT NULL)""")
+            set_schema_version(db, 13)
 
 
 def encrypt_legacy_mfa(db):

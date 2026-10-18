@@ -98,6 +98,9 @@ app = FastAPI(
 )
 STATIC = Path(__file__).parent / "static"
 app.mount("/static", StaticFiles(directory=STATIC), name="static")
+from .smart_api import mount_smart_api
+
+mount_smart_api(app)
 mount_bootstrap(app)
 mount_network_api(app)
 mount_node_api(app)
