@@ -1,11 +1,11 @@
 {
   "format": "donino-source-v1",
   "version": "1.0.0a8",
-  "source_sha256": "afce451a6666306d86dbd62f617dcb651ca452fb2bbdb1592acc737c620d4e71",
+  "source_sha256": "8ca0f969a269521c1e07f7860bfc3a9107576320df906836a79aa65c1dd8fd70",
   "files": {
     "AGENTS.md": "ea2366a0a24cf044d5c8dfb8fa1b4eb5cd3763b7ec70ea1694c4ca33ba4383c8",
     "CHANGELOG.md": "567df2aa26226e88fafc03b8a4d5da8c7cc6dc3df51cf6fb8d3a5498c1ff8551",
-    "CLAUDE.md": "6709044590eaf3eee941f5c05ea602bd153284a5b62e0098efbff610eda31de0",
+    "CLAUDE.md": "0052a1e7bfe4fa8162872aed5f3b0ad4db4c359b38946c4bc6ee91b541ff221a",
     "LICENSE": "d8a6cc31abc16b6748c7a21f21611f5a1ec33f67d22ca23d7da1c19b95496bee",
     "README.md": "403fb9769ad307208fc504b587f5debc04b127bff30c5e09111a581b5aea2162",
     "SECURITY.md": "50b583cec01643ba8e9f8f45b0bb6ee411a5d58557bcff8116d075157529ca76",
@@ -91,9 +91,9 @@
     "docs/VALIDATION.md": "7ddcfc5063123ad4cc9b8c4a80ebe3b9c7b469ec47a713668f2478cd61c6076a",
     "docs/XRAY-TRANSPORT-ACCEPTANCE.md": "ece5b42894aa26a96a57061a0afda5866d27b998de5ebaf181d05dcaf307c5b2",
     "docs/coordination/CODEX-STATUS.fa.md": "223c7d1b482a08eee66f5587b4733e8e27690cc1e4a4603c13bd08eca0b70dc9",
-    "docs/coordination/README.fa.md": "037819bfc84150364e196f6c0eb0a0acb1ae055c1870fc9c816c87e825f8cf13",
+    "docs/coordination/README.fa.md": "3a197d3dbc8fc201c9bf1efd1992bf33e52f8afab82b676f21457f8ee052feb7",
     "docs/coordination/assignments.json": "a49ea8f8e5b04e3fe757e75ebc187eb95a7b8e8518ce41e9bc7aa949e8889980",
-    "docs/coordination/checkpoints/claude.json": "7cf77fe6a9039d19a2f29c6e92da1acf70637ac671740b7c3abf68abc236c6fb",
+    "docs/coordination/checkpoints/claude.json": "066e8834399b612b24199a2ccc13792be976f43a9ab8f1a045f2ceaf48563807",
     "docs/coordination/reviews/xray-transports-v1.fa.md": "75722908436e63b312ced42cd574d61eacf45640a2cb192f78ac03cc51e50219",
     "docs/coordination/tasks/xray-acceptance-v1.fa.md": "2747f3aa2854cc6273643daf6b9cf102c055983c6e7ed30cb61c9728fe8ffc27",
     "docs/coordination/tasks/xray-transports-v1.fa.md": "280db6495171b28a94f7784c99197c3f0622d0b0a59cfeb462220d8f59f14c21",
@@ -117,7 +117,7 @@
     "requirements-postgres.txt": "3be437aac1c5d0d1796572ba24709da6cc181d68c32925a05ddd0805094737be",
     "requirements.lock": "1440a021760631670d1262d04c1b441a971337dabac4069ae3f06e1467fd0dc5",
     "requirements.txt": "1f65f0d6af836e6facf9a839893725f957ae970f750c7950cc605f6d039f1143",
-    "scripts/coordination.py": "8a5a18a0573f87a4deaa5df1e1a25eff68ec63bfaabd2fabb6de84b8c794b80d",
+    "scripts/coordination.py": "7886566bb797173d9574da2c17987a41ea73234372a57bb1f75663a5edb815c6",
     "scripts/fetch_xray.py": "61d9eda815b2aa75e5cdb1d91bae8922de7b663a98b95bc31d48d9a301ab0608",
     "scripts/release_manifest.py": "08f3b518b69fc6cf679c15e9f312fb9d5bf8c9262f949d3918b9cf1008bcd078"
   }

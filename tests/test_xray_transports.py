@@ -23,7 +23,6 @@ import time
 import unittest
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from types import SimpleNamespace
 from urllib.parse import parse_qsl, unquote, urlsplit
 
 from cryptography import x509
@@ -78,7 +77,9 @@ def _inbound(protocol, transport, **settings):
 
 class TransportUnitTest(unittest.TestCase):
     def test_vision_flow_is_reality_tcp_only(self):
-        reality = _inbound("vless", "tcp", private_key="k", public_key="p", short_id="s")
+        reality = _inbound(
+            "vless", "tcp", private_key="k", public_key="p", short_id="s"
+        )
         ws = _inbound("vless", "ws")
         grpc = _inbound("vless", "grpc")
         config = compile_config(
@@ -369,13 +370,21 @@ def _client_config(link, socks_port, ca_path, server_name=None, loglevel="warnin
     if protocol == "vmess":
         settings = {
             "vnext": [
-                {"address": host, "port": port, "users": [{"id": secret, "security": "auto"}]}
+                {
+                    "address": host,
+                    "port": port,
+                    "users": [{"id": secret, "security": "auto"}],
+                }
             ]
         }
     elif protocol == "vless":
         settings = {
             "vnext": [
-                {"address": host, "port": port, "users": [{"id": secret, "encryption": "none"}]}
+                {
+                    "address": host,
+                    "port": port,
+                    "users": [{"id": secret, "encryption": "none"}],
+                }
             ]
         }
     else:
@@ -400,18 +409,39 @@ def _client_config(link, socks_port, ca_path, server_name=None, loglevel="warnin
                 "settings": {"auth": "noauth"},
             }
         ],
-        "outbounds": [{"protocol": protocol, "settings": settings, "streamSettings": stream}],
+        "outbounds": [
+            {"protocol": protocol, "settings": settings, "streamSettings": stream}
+        ],
     }
+
+
+def _recv_exact(sock, length):
+    data = bytearray()
+    while len(data) < length:
+        chunk = sock.recv(length - len(data))
+        if not chunk:
+            raise OSError("Connection closed before the expected reply")
+        data.extend(chunk)
+    return bytes(data)
 
 
 def _socks_connect(sock, target_port):
     sock.sendall(b"\x05\x01\x00")
-    if sock.recv(2) != b"\x05\x00":
+    if _recv_exact(sock, 2) != b"\x05\x00":
         raise OSError("SOCKS auth refused")
     sock.sendall(b"\x05\x01\x00\x01\x7f\x00\x00\x01" + target_port.to_bytes(2, "big"))
-    reply = sock.recv(10)
-    if len(reply) < 2 or reply[1] != 0:
+    reply = _recv_exact(sock, 4)
+    if reply[:2] != b"\x05\x00":
         raise OSError("SOCKS connect refused")
+    if reply[3] == 1:
+        size = 4
+    elif reply[3] == 4:
+        size = 16
+    elif reply[3] == 3:
+        size = _recv_exact(sock, 1)[0]
+    else:
+        raise OSError("Invalid SOCKS reply address type")
+    _recv_exact(sock, size + 2)
 
 
 class Lab:
@@ -434,7 +464,9 @@ class Lab:
 
     def token(self, uid):
         with database() as db:
-            return db.execute("SELECT token FROM users WHERE id=?", (uid,)).fetchone()[0]
+            return db.execute("SELECT token FROM users WHERE id=?", (uid,)).fetchone()[
+                0
+            ]
 
     def devices(self, uid):
         return self.panel.get(f"/api/users/{uid}/devices").json()
@@ -474,7 +506,9 @@ class Lab:
                 matches = link.startswith(protocol + "://")
                 label = unquote(link.rsplit("#", 1)[1])
                 if matches:
-                    matches = dict(parse_qsl(urlsplit(link).query)).get("type") == transport
+                    matches = (
+                        dict(parse_qsl(urlsplit(link).query)).get("type") == transport
+                    )
             if matches and f" · {protocol}-{transport} · {device} · " in label:
                 return link
         raise AssertionError(f"no {protocol}/{transport} link for device {device}")
@@ -497,7 +531,10 @@ class Lab:
         path.write_text(json.dumps(config))
         log = self.folder / f"client-{self.clients}.log"
         checked = subprocess.run(
-            [self.binary, "run", "-test", "-c", str(path)], capture_output=True, text=True
+            [self.binary, "run", "-test", "-c", str(path)],
+            capture_output=True,
+            text=True,
+            timeout=20,
         )
         if checked.returncode != 0:
             raise AssertionError(checked.stdout + checked.stderr)
@@ -577,12 +614,17 @@ def _lab(binary, folder):
                     ("admin", hash_password("test-password-long"), "owner"),
                 )
             panel.headers["X-Donino"] = "1"
-            if panel.post(
-                "/api/login",
-                json={"username": "admin", "password": "test-password-long"},
-            ).status_code != 200:
+            if (
+                panel.post(
+                    "/api/login",
+                    json={"username": "admin", "password": "test-password-long"},
+                ).status_code
+                != 200
+            ):
                 raise AssertionError("owner login failed")
-            node = panel.post("/api/nodes", json={"name": "edge", "host": "127.0.0.1"}).json()
+            node = panel.post(
+                "/api/nodes", json={"name": "edge", "host": "127.0.0.1"}
+            ).json()
             os.environ["DONINO_NODE_TOKEN"] = node["token"]
             for protocol, transport in NEW_TRANSPORTS:
                 response = panel.post(
@@ -611,6 +653,7 @@ def _lab(binary, folder):
                 [binary, "run", "-test", "-c", str(folder / "node/config.json")],
                 capture_output=True,
                 text=True,
+                timeout=20,
             )
             if checked.returncode != 0:
                 raise AssertionError(checked.stdout + checked.stderr)
@@ -656,16 +699,26 @@ class RealTransportTest(unittest.TestCase):
 
             for protocol, transport in NEW_TRANSPORTS:
                 self.assertGreater(
-                    lab.expect(lab.find(links, protocol, transport, default), True, "default"), 0
+                    lab.expect(
+                        lab.find(links, protocol, transport, default), True, "default"
+                    ),
+                    0,
                 )
                 self.assertGreater(
-                    lab.expect(lab.find(links, protocol, transport, "second-phone"), True, "second"), 0
+                    lab.expect(
+                        lab.find(links, protocol, transport, "second-phone"),
+                        True,
+                        "second",
+                    ),
+                    0,
                 )
             lab.tick()
             rows = {d["name"]: d for d in lab.devices(user["id"])}
             self.assertGreater(rows[default]["downloaded"], 0)
             self.assertGreater(rows["second-phone"]["downloaded"], 0)
-            print("  Transfers passed on all four transports for two devices; device counters increased")
+            print(
+                "  Transfers passed on all four transports for two devices; device counters increased"
+            )
 
             # Untrusted certificate: a client without the test CA must be refused.
             link = lab.find(links, "vless", "ws", default)
@@ -675,17 +728,31 @@ class RealTransportTest(unittest.TestCase):
             lab.set_device(second, "second-phone", enabled=False)
             lab.tick()
             for protocol, transport in NEW_TRANSPORTS:
-                lab.expect(lab.find(links, protocol, transport, "second-phone"), False, "device-off")
-                lab.expect(lab.find(links, protocol, transport, default), True, "device-off-default")
-            print("  Disabled device was cut off on every transport; the default device kept working")
+                lab.expect(
+                    lab.find(links, protocol, transport, "second-phone"),
+                    False,
+                    "device-off",
+                )
+                lab.expect(
+                    lab.find(links, protocol, transport, default),
+                    True,
+                    "device-off-default",
+                )
+            print(
+                "  Disabled device was cut off on every transport; the default device kept working"
+            )
 
             lab.set_user(user, enabled=False)
             lab.tick()
             for inbound in lab.node_config()["inbounds"][1:]:
                 self.assertEqual(inbound["settings"]["clients"], [])
             for protocol, transport in NEW_TRANSPORTS:
-                lab.expect(lab.find(links, protocol, transport, default), False, "user-off")
-            print("  Disabled user was removed from every new inbound and its links stopped working")
+                lab.expect(
+                    lab.find(links, protocol, transport, default), False, "user-off"
+                )
+            print(
+                "  Disabled user was removed from every new inbound and its links stopped working"
+            )
 
             lab.set_user(user, enabled=True, quota=1)
             lab.tick()
@@ -700,8 +767,12 @@ class RealTransportTest(unittest.TestCase):
             self.assertNotEqual(lab.agent.epoch, epoch)
             self.assertNotEqual(lab.agent.proc.pid, pid)
             for protocol, transport in NEW_TRANSPORTS:
-                lab.expect(lab.find(links, protocol, transport, default), True, "after-reset")
-            print("  Quota exhaustion cut off all new transports; period reset restored them")
+                lab.expect(
+                    lab.find(links, protocol, transport, default), True, "after-reset"
+                )
+            print(
+                "  Quota exhaustion cut off all new transports; period reset restored them"
+            )
 
     def test_live_add_is_hot_and_keeps_an_open_stream(self):
         with _lab(self.binary, self.folder) as lab:
@@ -726,18 +797,25 @@ class RealTransportTest(unittest.TestCase):
             try:
                 for _ in range(60):
                     try:
-                        socket.create_connection(("127.0.0.1", stream_socks), timeout=0.1).close()
+                        socket.create_connection(
+                            ("127.0.0.1", stream_socks), timeout=0.1
+                        ).close()
                         break
                     except OSError:
                         time.sleep(0.1)
-                stream = socket.create_connection(("127.0.0.1", stream_socks), timeout=15)
+                stream = socket.create_connection(
+                    ("127.0.0.1", stream_socks), timeout=15
+                )
                 _socks_connect(stream, lab.http.server_port)
                 stream.sendall(b"GET /echo HTTP/1.0\r\nHost: localhost\r\n\r\n")
                 header = b""
+                deadline = time.monotonic() + 15
                 while not header.endswith(b"\r\n\r\n"):
-                    header += stream.recv(1)
+                    if len(header) >= 16384 or time.monotonic() > deadline:
+                        raise OSError("Echo response headers exceeded the test limit")
+                    header += _recv_exact(stream, 1)
                 stream.sendall(b"PING")
-                self.assertEqual(stream.recv(4), b"PING")
+                self.assertEqual(_recv_exact(stream, 4), b"PING")
 
                 pid, epoch = lab.agent.proc.pid, lab.agent.epoch
                 newcomer = lab.new_user("live-newcomer")
@@ -748,8 +826,10 @@ class RealTransportTest(unittest.TestCase):
                 self.assertEqual(lab.agent.apply_mode, "hot")
 
                 stream.sendall(b"PONG")
-                self.assertEqual(stream.recv(4), b"PONG")
-                print("  Live add applied hot: Xray PID and epoch unchanged; open stream intact")
+                self.assertEqual(_recv_exact(stream, 4), b"PONG")
+                print(
+                    "  Live add applied hot: Xray PID and epoch unchanged; open stream intact"
+                )
 
                 newcomer_links = lab.links(lab.token(newcomer["id"]))
                 owner_links = lab.links(lab.token(owner["id"]))
@@ -769,19 +849,23 @@ class RealTransportTest(unittest.TestCase):
 
                 counters = {d["name"]: d for d in lab.devices(newcomer["id"])}
                 self.assertGreater(
-                    counters[newcomer_default]["uploaded"] + counters[newcomer_default]["downloaded"],
+                    counters[newcomer_default]["uploaded"]
+                    + counters[newcomer_default]["downloaded"],
                     0,
                 )
                 device_rows = {d["id"]: d for d in lab.devices(owner["id"])}
                 self.assertGreater(
-                    device_rows[newdevice["id"]]["uploaded"] + device_rows[newdevice["id"]]["downloaded"],
+                    device_rows[newdevice["id"]]["uploaded"]
+                    + device_rows[newdevice["id"]]["downloaded"],
                     0,
                     "new device bytes were not attributed to its device id",
                 )
                 periods = lab.panel.get(f"/api/users/{newcomer['id']}/periods").json()
                 total = sum(p["uploaded"] + p["downloaded"] for p in periods)
                 self.assertGreater(total, 0, "newcomer period did not accumulate bytes")
-                print("  Live-added user and device bytes reached their device ids and the current period")
+                print(
+                    "  Live-added user and device bytes reached their device ids and the current period"
+                )
             finally:
                 if stream is not None:
                     stream.close()
@@ -794,21 +878,33 @@ class RealTransportTest(unittest.TestCase):
             links = lab.links(lab.token(user["id"]))
             default = lab.default_device(user["id"])
             for protocol, transport in NEW_TRANSPORTS:
-                lab.expect(lab.find(links, protocol, transport, default), True, "before-expiry")
-            print("  Transfers passed on all four transports before the real expiry time")
+                lab.expect(
+                    lab.find(links, protocol, transport, default), True, "before-expiry"
+                )
+            print(
+                "  Transfers passed on all four transports before the real expiry time"
+            )
 
             pid = lab.agent.proc.pid
             time.sleep(max(0.0, expires + 1 - time.time()))
             lab.tick()
             self.assertEqual(lab.agent.apply_mode, "restart")
-            self.assertNotEqual(lab.agent.proc.pid, pid, "expiry removal should restart Xray")
+            self.assertNotEqual(
+                lab.agent.proc.pid, pid, "expiry removal should restart Xray"
+            )
             for inbound in lab.node_config()["inbounds"][1:]:
                 self.assertEqual(inbound["settings"]["clients"], [])
             for protocol, transport in NEW_TRANSPORTS:
-                lab.expect(lab.find(links, protocol, transport, default), False, "after-expiry")
+                lab.expect(
+                    lab.find(links, protocol, transport, default), False, "after-expiry"
+                )
             self.assertEqual(lab.subscription(lab.token(user["id"])).status_code, 404)
-            self.assertEqual(lab.subscription(lab.token(user["id"]), "clash").status_code, 404)
-            print("  Real expiry removed the credential from Xray; stored links and new subscriptions stopped")
+            self.assertEqual(
+                lab.subscription(lab.token(user["id"]), "clash").status_code, 404
+            )
+            print(
+                "  Real expiry removed the credential from Xray; stored links and new subscriptions stopped"
+            )
 
     def test_expiry_set_to_past_via_api_revokes_on_tick(self):
         with _lab(self.binary, self.folder) as lab:
@@ -817,15 +913,21 @@ class RealTransportTest(unittest.TestCase):
             links = lab.links(lab.token(user["id"]))
             default = lab.default_device(user["id"])
             for protocol, transport in NEW_TRANSPORTS:
-                lab.expect(lab.find(links, protocol, transport, default), True, "before-change")
+                lab.expect(
+                    lab.find(links, protocol, transport, default), True, "before-change"
+                )
 
             lab.set_user(user, expires=int(time.time()) - 60)
             lab.tick()
             self.assertEqual(lab.agent.apply_mode, "restart")
             for protocol, transport in NEW_TRANSPORTS:
-                lab.expect(lab.find(links, protocol, transport, default), False, "after-change")
+                lab.expect(
+                    lab.find(links, protocol, transport, default), False, "after-change"
+                )
             self.assertEqual(lab.subscription(lab.token(user["id"])).status_code, 404)
-            print("  Expiry moved to the past through the API revoked the user on the next tick")
+            print(
+                "  Expiry moved to the past through the API revoked the user on the next tick"
+            )
 
     def test_tls_controls_for_each_transport(self):
         """Valid CA and correct hostname succeed; wrong CA and wrong hostname are refused."""
@@ -839,15 +941,37 @@ class RealTransportTest(unittest.TestCase):
                 link = lab.find(links, protocol, transport, default)
                 lab.expect(link, True, "valid-ca-and-hostname")
                 wrong_ca = lab.fetch(link, ca=other_ca, loglevel="info")
-                self.assertNotIn(MARKER, wrong_ca, f"{protocol}/{transport} accepted an untrusted CA")
-                self.assertIn("certificate", lab.last_log.lower(), f"{protocol}/{transport}: TLS error not logged")
+                self.assertNotIn(
+                    MARKER, wrong_ca, f"{protocol}/{transport} accepted an untrusted CA"
+                )
+                self.assertIn(
+                    "certificate",
+                    lab.last_log.lower(),
+                    f"{protocol}/{transport}: TLS error not logged",
+                )
                 if protocol == "vless" and transport == "ws":
-                    line = next(l for l in lab.last_log.splitlines() if "certificate" in l.lower())
+                    line = next(
+                        l
+                        for l in lab.last_log.splitlines()
+                        if "certificate" in l.lower()
+                    )
                     print("  Client log (wrong CA):", line.strip()[:200])
-                wrong_host = lab.fetch(link, server_name="wrong.example", loglevel="info")
-                self.assertNotIn(MARKER, wrong_host, f"{protocol}/{transport} accepted a wrong hostname")
-                self.assertIn("certificate", lab.last_log.lower(), f"{protocol}/{transport}: hostname error not logged")
-            print("  TLS: valid CA with localhost succeeded on all four; wrong CA and wrong hostname were refused")
+                wrong_host = lab.fetch(
+                    link, server_name="wrong.example", loglevel="info"
+                )
+                self.assertNotIn(
+                    MARKER,
+                    wrong_host,
+                    f"{protocol}/{transport} accepted a wrong hostname",
+                )
+                self.assertIn(
+                    "certificate",
+                    lab.last_log.lower(),
+                    f"{protocol}/{transport}: hostname error not logged",
+                )
+            print(
+                "  TLS: valid CA with localhost succeeded on all four; wrong CA and wrong hostname were refused"
+            )
 
 
 if __name__ == "__main__":
