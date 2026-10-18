@@ -194,6 +194,24 @@ def exercise_tunnel_ui(page):
             exact=True,
         ).wait_for()
         assert requests[-1] == ("publication", None)
+        page.get_by_role("button", name="آزمون و انتشار", exact=True).click()
+        page.locator("#tunnel-verify-form [name=device_id] option").first.wait_for(
+            state="attached"
+        )
+        page.evaluate("""() => {
+            const form = document.querySelector('#tunnel-verify-form');
+            form.requestSubmit();
+            const input = form.querySelector('[name=inbound]');
+            input.checked = false;
+            input.dispatchEvent(new Event('change', {bubbles:true}));
+        }""")
+        page.get_by_text(
+            "انتخاب‌ها هنگام آزمون تغییر کردند؛ نتیجه در تاریخچه است. برای انتشار، انتخاب‌ها را دوباره آزمون کنید.",
+            exact=True,
+        ).wait_for()
+        assert page.locator("#tunnel-publish").count() == 0, (
+            "Changed selection cannot publish an in-flight result"
+        )
 
     finally:
         page.unroute("**/api/tunnels/**", worker)

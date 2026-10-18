@@ -83,19 +83,22 @@ def _exact(sock, size):
 def _response(port, target, ca, deadline, auth=None):
     # SOCKS remote-name resolution ensures the target is reached through the
     # selected VPN proxy. There is no DIRECT rule or automatic HTTP redirect.
-    timeout = min(SOCKET_SECONDS, deadline - time.monotonic())
+    response_deadline = min(deadline, time.monotonic() + SOCKET_SECONDS)
+    timeout = response_deadline - time.monotonic()
     if timeout <= 0:
         raise ProbeError("probe_deadline")
     sock = socket.create_connection(("127.0.0.1", port), timeout=timeout)
     current = [sock]
+    interrupted = threading.Event()
 
     def interrupt():
+        interrupted.set()
         try:
             current[0].shutdown(socket.SHUT_RDWR)
         except OSError:
             pass
 
-    watchdog = threading.Timer(timeout, interrupt)
+    watchdog = threading.Timer(max(0, response_deadline - time.monotonic()), interrupt)
     watchdog.daemon = True
     watchdog.start()
     try:
@@ -133,6 +136,7 @@ def _response(port, target, ca, deadline, auth=None):
             raise ProbeError("probe_socks_rejected")
         _exact(sock, size + 2)
         context = ssl.create_default_context(cafile=ca or None)
+        sock.settimeout(max(0.01, response_deadline - time.monotonic()))
         sock = context.wrap_socket(sock, server_hostname=target.hostname)
         current[0] = sock
         connection = http.client.HTTPConnection(target.hostname, target.port or 443)
@@ -152,6 +156,10 @@ def _response(port, target, ca, deadline, auth=None):
             if response.status != 200:
                 raise ProbeError("probe_http_rejected")
             body = response.read(MAX_BODY + 1)
+            if interrupted.is_set() or time.monotonic() >= response_deadline:
+                raise ProbeError("probe_deadline")
+            if response.length not in (None, 0):
+                raise ProbeError("probe_incomplete_response")
             if not body:
                 raise ProbeError("probe_empty_response")
             if len(body) > MAX_BODY:

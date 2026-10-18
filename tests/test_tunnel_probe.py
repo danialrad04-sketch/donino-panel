@@ -98,6 +98,11 @@ class ProbeTransportTest(unittest.TestCase):
                 b"HTTP/1.1 200 OK\r\nContent-Length: 65537\r\n\r\n" + b"x" * 65537,
                 "probe_response_too_large",
             ),
+            (
+                b"HTTP/1.1 200 OK\r\nContent-Length: 20\r\n\r\nshort",
+                "probe_incomplete_response",
+            ),
+            (b"HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n", "probe_empty_response"),
         ):
             with self.socks(response) as (port, seen):
                 with self.assertRaisesRegex(tunnel_probe.ProbeError, code):
@@ -183,9 +188,14 @@ class ProbeTransportTest(unittest.TestCase):
                 time.sleep(0.02)
             worker.kill()
             worker.wait(timeout=3)
+            deadline = time.monotonic() + 3
             while True:
                 status = Path(f"/proc/{child}/stat")
-                if not status.exists() or status.read_text().split()[2] == "Z":
+                try:
+                    state = status.read_text().split()[2]
+                except (FileNotFoundError, ProcessLookupError):
+                    break
+                if state == "Z":
                     break
                 self.assertLess(time.monotonic(), deadline)
                 time.sleep(0.02)
