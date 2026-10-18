@@ -8,18 +8,20 @@
     "schema 14، رضایت محدود پایش، fencing نتیجهٔ دیررس، heartbeat، تمدید/قطع انتشار/backoff و رابط فارسی پیاده شد.",
     "پذیرش واقعی شش TLS از WSS/QUIC، قطع هر دو و بازگشت QUIC موفق؛ Chromium/موبایل موفق.",
     "پذیرش نصب بومی Debian و Ubuntu: verifier/CA خوانا، رد تنظیمات خراب پیش از توقف پنل، heartbeat، opt-out پایدار، restart، backup/restore و uninstall موفق.",
-    "زمان‌بندی proof قدیمیِ هنوز تازه اصلاح شد؛ انتظار نام backup آزمون Smart DNS با schema جاری هماهنگ شد."
+    "زمان‌بندی proof قدیمیِ هنوز تازه اصلاح شد؛ انتظار نام backup آزمون Smart DNS با schema جاری هماهنگ شد.",
+    "لغو worker slot کلاینتِ هنوز در حال اجرا را آزاد نمی‌کند؛ guard ثبت نهایی جلوی positive دیررس بین مشاهده و commit را می‌گیرد."
   ],
   "remaining": [
     "اجرای کامل نهایی و CI روی head نهایی PR ۲۲؛ سپس ادغام و prerelease alpha.13 با latest=false.",
     "دیگر gateهای v1 و پذیرش دو VPS واقعی باقی‌اند."
   ],
-  "next_action": "نتیجهٔ /tmp/donino-alpha13-final-full.log و همهٔ ۱۲ job متمایز CI روی head نهایی PR ۲۲ را بررسی کن؛ با SHA منطبق ادغام و v1.0.0-alpha.13 را prerelease/latest=false منتشر کن. کلاد متوقف است.",
+  "next_action": "روی head نهایی PR ۲۲ نتیجهٔ اجرای کامل محلی و ۱۲ job متمایز CI را بررسی کن؛ سپس با SHA منطبق ادغام و alpha.13 را prerelease/latest=false منتشر کن. کلاد متوقف است.",
   "tests": [
     "19 آزمون متمرکز پایش، 11 endpoint، 2 preflight نصب موفق؛ opt-out خراب‌بودن config را نیز دور می‌زند تا سرویس امن خاموش شود.",
     "real tunnel شش TLS: WSS/QUIC loss + recovery موفق؛ Chromium/390px نهایی موفق.",
     "نصب بومی Debian و Ubuntu موفق با heartbeat/opt-out و حفظ DNS/Smart DNS/mTLS/backup/restore.",
-    "اجرای کامل نخست: 256 آزمون، یک failure انتظار pre-v13 در آزمون قدیمی، 2 skip؛ نام backup واقعاً v14 است. اصلاح شد و اجرای نهایی در جریان است."
+    "اجرای کامل نخست: 256 آزمون، یک failure انتظار pre-v13 در آزمون قدیمی، 2 skip؛ نام backup واقعاً v14 است. اصلاح شد و اجرای نهایی در جریان است.",
+    "13 آزمون endpoint نهایی شامل هر دو race لغو/ثبت موفق؛ اجرای کامل/CI نهایی باید روی head جدید بررسی شود."
   ],
   "blockers": [],
   "pr_url": "https://github.com/danialrad04-sketch/donino-panel/pull/22"

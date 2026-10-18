@@ -71,8 +71,11 @@ def invalidate_all(db):
         db.execute("DELETE FROM tunnel_monitor_runtime")
     # Every worker start replaces the whole managed set, including manual plans.
     db.execute("DELETE FROM tunnel_endpoints")
+    # Cancellation revokes publication immediately but keeps the global slot
+    # until the actual client exits (or its bounded crash deadline elapses).
+    db.execute("UPDATE tunnel_checks SET phase='invalidated' WHERE phase='succeeded'")
     db.execute(
-        "UPDATE tunnel_checks SET phase='invalidated' WHERE phase IN ('running','succeeded')"
+        "UPDATE tunnel_checks SET error_code='worker_changed' WHERE phase='running'"
     )
 
 
@@ -91,7 +94,11 @@ def synchronize(db, state):
             db.execute("DELETE FROM tunnel_endpoints WHERE binding_id=?", (row["id"],))
             db.execute(
                 "UPDATE tunnel_checks SET phase='invalidated',error_code='worker_changed' "
-                "WHERE binding_id=? AND phase IN ('running','succeeded')",
+                "WHERE binding_id=? AND phase='succeeded'",
+                (row["id"],),
+            )
+            db.execute(
+                "UPDATE tunnel_checks SET error_code='worker_changed' WHERE binding_id=? AND phase='running'",
                 (row["id"],),
             )
     # Failed probes have no positive receipt; their grants still need fencing.
@@ -236,7 +243,8 @@ def verify(binding_id, body, account, controller, *, monitor_claim=None):
                 monitor.guard_claim(db, monitor_claim, current)
             if _client(db, current, body.device_id)[1] != device_revision:
                 raise HTTPException(409, "هویت دستگاه در حین آزمون تغییر کرد")
-            if one(db, "tunnel_checks", check_id)["phase"] != "running":
+            receipt = one(db, "tunnel_checks", check_id)
+            if receipt["phase"] != "running" or receipt["error_code"]:
                 raise HTTPException(409, "آزمون با شروع نصب دیگری باطل شد")
     except tunnel_probe.ProbeError as failure:
         error = str(failure)
@@ -247,6 +255,8 @@ def verify(binding_id, body, account, controller, *, monitor_claim=None):
         error = "probe_internal_error"
     finished = int(time.time())
     with database() as db:
+        if not error and one(db, "tunnel_checks", check_id)["error_code"]:
+            error = "probe_origin_changed"
         if monitor_claim and not error:
             try:
                 monitor.guard_claim(
