@@ -26,6 +26,16 @@ jobs:
       - run: node --check app/static/dns.js
       - run: node --check app/static/smart-dns.js
       - run: node --check app/static/tunnels.js
+      - run: node --check app/static/wireguard.js
+  wireguard-network:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+      - name: Build isolated real WireGuard client fixture
+        run: docker build --secret id=system_ca,src=/etc/ssl/certs/ca-certificates.crt -f tests/wireguard/Dockerfile -t donino-wireguard-test .
+      - name: Real full-tunnel clients, accounting, revocation and expiry
+        run: docker run --rm --privileged donino-wireguard-test
   tunnel-contract:
     runs-on: ubuntu-24.04
     steps:

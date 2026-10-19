@@ -323,6 +323,26 @@ def mount(app):
             audit(db, account["username"], "wireguard.endpoint.toggle", eid)
             return endpoint_public(one(db, "wg_endpoints", eid))
 
+    @router.delete("/api/wireguard/endpoints/{eid}", status_code=204)
+    def delete_endpoint(eid: str, account=Depends(owner)):
+        with database() as db:
+            endpoint = one(db, "wg_endpoints", eid)
+            if endpoint["enabled"]:
+                raise HTTPException(409, "ابتدا رابط را غیرفعال کنید")
+            db.execute("DELETE FROM wg_endpoints WHERE id=?", (eid,))
+            audit(db, account["username"], "wireguard.endpoint.delete", eid)
+        return Response(status_code=204)
+
+    @router.delete("/api/wireguard/peers/{pid}", status_code=204)
+    def delete_peer(pid: str, account=Depends(owner)):
+        with database() as db:
+            peer = one(db, "wg_peers", pid)
+            if peer["enabled"]:
+                raise HTTPException(409, "ابتدا دسترسی دستگاه را لغو کنید")
+            db.execute("DELETE FROM wg_peers WHERE id=?", (pid,))
+            audit(db, account["username"], "wireguard.peer.delete", pid)
+        return Response(status_code=204)
+
     @router.get("/api/wireguard/endpoints/{eid}/peers")
     def peers(eid: str, account=Depends(owner)):
         with database() as db:

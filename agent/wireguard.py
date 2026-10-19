@@ -4,6 +4,7 @@ Owns only recorded dnw* links. Forwarding/NAT are operator provisioned; no
 global routes, sysctls or firewall rules are modified by this process.
 """
 
+import argparse
 import base64
 import fcntl
 import ipaddress
@@ -20,6 +21,8 @@ import time
 import uuid
 from collections import defaultdict
 from pathlib import Path
+
+import httpx
 
 from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey
 
@@ -589,6 +592,37 @@ class WireGuardAgent:
         self.client.close()
         self.lock.close()
 
+    @classmethod
+    def cleanup(cls, directory=None, *, kernel=None):
+        """Offline ExecStopPost: revoke owned links even if identity has expired.
+
+        The lock excludes the live supervisor. Never enroll, contact the panel,
+        or trust a link name without checking its saved public key.
+        """
+        directory = Path(
+            directory or os.environ.get("DONINO_WG_STATE", "/var/lib/donino-wireguard")
+        )
+        if not directory.exists():
+            return
+        with open(directory / "agent.lock", "a") as lock:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            state = directory / "active.json"
+            if not state.exists():
+                return
+            saved = json.loads(private_bytes(state))
+            validate_interfaces(saved["interfaces"])
+            agent = cls.__new__(cls)
+            agent.directory = directory
+            agent.guard = threading.RLock()
+            agent.kernel = kernel or Kernel()
+            agent.interfaces = saved["interfaces"]
+            agent.owned = {i["name"]: i["public_key"] for i in agent.interfaces}
+            agent.epoch = saved["epoch"]
+            agent.offsets = saved["offsets"]
+            agent.last_raw = saved.get("last_raw", {})
+            agent.journal = UsageJournal(directory / "wireguard-usage.db")
+            agent.stop_core()
+
     def run(self):
         signal.signal(signal.SIGTERM, lambda *_: self.stop.set())
         signal.signal(signal.SIGINT, lambda *_: self.stop.set())
@@ -596,6 +630,10 @@ class WireGuardAgent:
             while not self.stop.is_set():
                 try:
                     self.tick()
+                except httpx.HTTPStatusError as exc:
+                    if exc.response.status_code in (401, 403):
+                        self.stop_core()
+                    log.warning("WireGuard authorization or synchronization failed")
                 except Exception:
                     log.warning(
                         "WireGuard synchronization failed; signed deadline remains enforced"
@@ -607,4 +645,14 @@ class WireGuardAgent:
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
-    WireGuardAgent().run()
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--cleanup",
+        action="store_true",
+        help="Offline cleanup of saved owned interfaces",
+    )
+    args = parser.parse_args()
+    if args.cleanup:
+        WireGuardAgent.cleanup()
+    else:
+        WireGuardAgent().run()

@@ -357,7 +357,7 @@ async function enter(user) {
   clearInterval(timer);
   timer = setInterval(() => {
     if (!$("#modal").open && !$("#search-users")?.value) {
-      refresh(page !== "tunnels");
+      refresh(!["tunnels", "wireguard"].includes(page));
       if (page === "tunnels") loadTunnelJobs();
     }
   }, 15000);

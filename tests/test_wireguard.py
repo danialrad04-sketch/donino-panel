@@ -51,6 +51,31 @@ class WireGuardFixture(PanelBase):
 
 
 class WireGuardAPITest(WireGuardFixture):
+    def test_delete_requires_disabled_state_and_preserves_accounting(self):
+        path = "/api/wireguard/peers/" + self.peer["id"]
+        self.assertEqual(
+            self.client.delete(path, headers=self.headers).status_code, 409
+        )
+        self.client.put(path, headers=self.headers, json={"enabled": False})
+        self.assertEqual(
+            self.client.delete(path, headers=self.headers).status_code, 204
+        )
+        endpoint = "/api/wireguard/endpoints/" + self.endpoint["id"]
+        self.assertEqual(
+            self.client.delete(endpoint, headers=self.headers).status_code, 409
+        )
+        self.client.put(endpoint, headers=self.headers, json={"enabled": False})
+        self.assertEqual(
+            self.client.delete(endpoint, headers=self.headers).status_code, 204
+        )
+        with database() as db:
+            self.assertIsNotNone(
+                db.execute(
+                    "SELECT id FROM devices WHERE id=?", (self.user["id"],)
+                ).fetchone()
+            )
+            self.assertFalse(list(db.execute("SELECT * FROM wg_peers")))
+
     def test_independent_encrypted_keys_scoped_profile_and_signed_config(self):
         response = self.profile()
         self.assertEqual(response.status_code, 200)
@@ -301,6 +326,37 @@ class WireGuardAgentTest(WireGuardFixture):
         with self.assertRaises(RuntimeError):
             self.agent.tick()
         self.assertEqual(set(self.kernel.links), {"foreign"})
+
+    def test_offline_cleanup_does_not_require_valid_identity_and_journals_bytes(self):
+        self.agent.tick()
+        name = next(iter(self.kernel.links))
+        self.kernel.links[name]["counters"][self.peer["public_key"]] = (123, 456)
+        # Simulate process death with surviving kernel link and persisted state.
+        self.agent.stop.set()
+        self.agent.watchdog.join(timeout=2)
+        self.agent.lock.close()
+        WireGuardAgent.cleanup(self.agent.directory, kernel=self.kernel)
+        self.assertFalse(self.kernel.links)
+        self.assertIsNotNone(self.agent.journal.pending())
+        # Let fixture teardown use the already-cleaned state.
+        self.agent.interfaces, self.agent.owned = [], {}
+
+    def test_offline_cleanup_refuses_foreign_link_and_live_agent(self):
+        self.agent.tick()
+        with self.assertRaises(BlockingIOError):
+            WireGuardAgent.cleanup(self.agent.directory, kernel=self.kernel)
+        name = next(iter(self.kernel.links))
+        public = self.kernel.links[name]["public_key"]
+        self.agent.stop.set()
+        self.agent.watchdog.join(timeout=2)
+        self.agent.lock.close()
+        self.kernel.links[name]["public_key"] = "foreign"
+        try:
+            with self.assertRaises(ValueError):
+                WireGuardAgent.cleanup(self.agent.directory, kernel=self.kernel)
+            self.assertIn(name, self.kernel.links)
+        finally:
+            self.kernel.links[name]["public_key"] = public
 
     def test_counter_reset_preserves_observed_usage(self):
         self.agent.tick()

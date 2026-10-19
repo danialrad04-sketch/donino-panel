@@ -84,6 +84,7 @@ socketserver.ThreadingTCPServer(('198.18.0.2',8081),Echo).serve_forever()
                 stderr=subprocess.DEVNULL,
             )
         )
+        origin_log = open(root / "origin.log", "w+")
         process = subprocess.Popen(
             [
                 "ip",
@@ -99,8 +100,8 @@ socketserver.ThreadingTCPServer(('198.18.0.2',8081),Echo).serve_forever()
                 "--directory",
                 str(root / "origin"),
             ],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
+            stdout=origin_log,
+            stderr=origin_log,
         )
         processes.append(process)
         with TestClient(app) as panel:
@@ -130,6 +131,11 @@ socketserver.ThreadingTCPServer(('198.18.0.2',8081),Echo).serve_forever()
                     "node_id": node["id"],
                     "name": "WireGuard lab",
                     "host": "10.200.0.1",
+                    # Explicit split-route acceptance for kernels without IPv6 ct-mark.
+                    # Default CI still imports the unchanged full-tunnel profile.
+                    "routes": ["198.18.0.0/30"]
+                    if os.environ.get("DONINO_TEST_WG_SPLIT") == "1"
+                    else ["0.0.0.0/0"],
                 },
             ).json()
             assert (
@@ -201,9 +207,31 @@ socketserver.ThreadingTCPServer(('198.18.0.2',8081),Echo).serve_forever()
                             "Revoked WireGuard traffic still passed"
                         )
                     else:
-                        assert result.returncode == 0 and result.stdout == BODY, (
-                            "Real WireGuard payload transfer failed"
-                        )
+                        if result.returncode != 0 or result.stdout != BODY:
+                            print(
+                                "Transfer failure",
+                                namespace,
+                                result.returncode,
+                                len(result.stdout),
+                                flush=True,
+                            )
+                            for cmd in (
+                                ["ip", "-n", namespace, "route"],
+                                ["wg", "show", "all", "transfer"],
+                                ["ip", "-s", "link", "show"],
+                                ["nft", "list", "table", "ip", "donino_wg_test"],
+                            ):
+                                print(
+                                    re.sub(
+                                        r"[A-Za-z0-9+/]{43}=",
+                                        "[redacted-key]",
+                                        command(cmd),
+                                    ),
+                                    flush=True,
+                                )
+                            raise AssertionError(
+                                "Real WireGuard payload transfer failed"
+                            )
 
                 # Wait only for the origin listener, never retry the VPN transfer.
                 for _ in range(100):
@@ -225,6 +253,17 @@ socketserver.ThreadingTCPServer(('198.18.0.2',8081),Echo).serve_forever()
                     if check.returncode == 0:
                         break
                     time.sleep(0.05)
+                if check.returncode != 0:
+                    origin_log.seek(0)
+                    raise AssertionError(
+                        (
+                            "Origin listener failed",
+                            process.poll(),
+                            check.returncode,
+                            check.stderr.decode(),
+                            origin_log.read(),
+                        )
+                    )
                 transfer("clienta")
                 transfer("clientb")
                 agent.tick()
@@ -249,7 +288,13 @@ socketserver.ThreadingTCPServer(('198.18.0.2',8081),Echo).serve_forever()
                         == used
                     )
                 print(
-                    "PASS: two real wg-quick profiles, encrypted routing/NAT and per-device accounting/dedup",
+                    "PASS: two real wg-quick profiles, encrypted routing/NAT and per-device accounting/dedup ("
+                    + (
+                        "explicit split routes"
+                        if os.environ.get("DONINO_TEST_WG_SPLIT") == "1"
+                        else "full tunnel with IPv6 blocked"
+                    )
+                    + ")",
                     flush=True,
                 )
 
@@ -426,5 +471,7 @@ if __name__ == "__main__":
     try:
         run()
     except OperationError as failure:
-        print(re.sub(r"[A-Za-z0-9+/]{43}=", "[redacted-key]", failure.stderr), flush=True)
+        print(
+            re.sub(r"[A-Za-z0-9+/]{43}=", "[redacted-key]", failure.stderr), flush=True
+        )
         raise
