@@ -132,6 +132,22 @@ class ShadowsocksAPITest(ShadowsocksFixture):
                     self.assertEqual(
                         len(base64.b64decode(key)), 16 if "128" in p["cipher"] else 32
                     )
+        intent = self.client.get(
+            "/api/agent/config",
+            headers={"Authorization": "Bearer " + self.node["token"]},
+        ).json()
+        with database() as db:
+            payload = db.execute(
+                "SELECT payload FROM deployments WHERE id=?", (intent["job_id"],)
+            ).fetchone()[0]
+            self.assertTrue(
+                payload.startswith("fernet:"),
+                "Queued config must not persist cleartext Shadowsocks keys",
+            )
+            self.assertTrue(
+                json.loads(unseal(payload))["config"] == intent["config"],
+                "Sealed job lost config",
+            )
         self.assertEqual(compile_config(stored, [])["inbounds"][1:], [])
         base = self.endpoints[0]
         for changes in (

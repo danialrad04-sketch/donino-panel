@@ -1,7 +1,8 @@
 """Persist desired config jobs and acknowledge only the matching node/revision.
 
 This is a typed apply-config queue. It never accepts remote shell commands.
-Payloads contain credentials and stay in the private database, outside list APIs.
+New payloads contain credentials and are sealed in the private database, outside
+list APIs. Historical plaintext payloads are not rewritten by this change.
 """
 
 import json
@@ -9,6 +10,7 @@ import time
 import uuid
 
 from .core import revision
+from .secrets import seal
 
 
 def desired_job(db, node_id, config, periods):
@@ -36,12 +38,15 @@ def desired_job(db, node_id, config, periods):
             job_id,
             node_id,
             checksum,
-            json.dumps(payload, separators=(",", ":")),
+            seal(json.dumps(payload, separators=(",", ":"))),
             now,
             now,
         ),
     )
-    db.execute("UPDATE nodes SET desired_job=?,config_sequence=config_sequence+1 WHERE id=?", (job_id, node_id))
+    db.execute(
+        "UPDATE nodes SET desired_job=?,config_sequence=config_sequence+1 WHERE id=?",
+        (job_id, node_id),
+    )
     return job_id, checksum
 
 

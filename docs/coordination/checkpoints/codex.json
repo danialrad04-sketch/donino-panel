@@ -10,7 +10,8 @@
     "سه آزمون API وکلاینت واقعی موفق: پنج روش × دو دستگاه، TCP/UDP، مصرف/dedup، رد رمز غلط/کلید سرور تنها، قطع جریان باز، rotation، quota، period وexpiry واقعی؛ Mihomo TCP وbrowser موفق.",
     "CI قبلی خطای fixture dedup درOpenVPN TCP نشان داد: snapshot تازه شامل بایت کنترل تازه است و replay نیست. آزمون به بازپخش همان heartbeat تأییدشده اصلاح شد؛ چرخه کامل native UDP/TCP دوباره موفق شد.",
     "Regression محلی280 آزمون:278موفق و2skip؛ head51c89d3 درCI31از32موفق، تنهاخطای teardown آزمونSmartDNS به علت workerDB پس ازلغوawaiter بود؛ fixtureاکنون executorراپیش ازحذفDB تخلیه می‌کند.",
-    "به درخواست تازه کاربر PR27 کلاد/installer-plain-http درhead1d024687 بررسی شد: خرابی repair HTTP وپسرفت upgrade نصبHTTPS قدیمی باگواهی موجود بازتولیدشد؛ مستندبازبینی ثبتشد واین featureواردalpha16نمی‌شود."
+    "به درخواست تازه کاربر PR27 کلاد/installer-plain-http درhead1d024687 بررسی شد: خرابی repair HTTP وپسرفت upgrade نصبHTTPS قدیمی باگواهی موجود بازتولیدشد؛ مستندبازبینی ثبتشد واین featureواردalpha16نمی‌شود.",
+    "بازبینی نگهداری کلیدها: payload صف deployment جدید نیزباFernetرمزمی‌شودتا کلیدSS/2022 درکپی صف متن‌روشن نماند؛ checksum/id/ACKبدون تغییرمعنا وschema16حفظ شد."
   ],
   "remaining": [
     "regression سراسری، CI روی head نهایی SQLite/PostgreSQL وOS؛ self-review، PR وalpha16 prerelease.",
@@ -24,7 +25,8 @@
     "OpenVPN2.6.14 native UDP/TCP پس از اصلاح replay fixture: هر دو چرخه کامل و negative cert/serial/quota/period/restore موفق؛ شکست CI قبلی ثبت شد وhead تازه باید همه CI را پاس کند.",
     "Local full:280 tests/278passed/2skip (Unbound انتخاب‌نشده وevent-trigger اختصاصیPG).",
     "SmartDNS network:9آزمون موفق پس از drainکردن workerهای DB پیش ازپاک‌سازیfixture؛ retry/نادیده‌گرفتن خطایcleanup اضافه نشد.",
-    "PR27: دوایراد رفتاری باstateآزمایشگاهی وبدونrunفرمان میزبان بازتولیدشد؛ review درdocs/coordination/reviews/installer-plain-http-v1.fa.md."
+    "PR27: دوایراد رفتاری باstateآزمایشگاهی وبدونrunفرمان میزبان بازتولیدشد؛ review درdocs/coordination/reviews/installer-plain-http-v1.fa.md.",
+    "پس ازرمزگذاریdeployment: دوآزمونصفSQLiteوPostgreSQL16 موفق؛ SS APIدرهر دوDB موفق؛ سهآزمونواقعیSS/Xray/Mihomo دوبارهدر65ثانیه موفق. regressionوCIرویheadجدیدلازم است."
   ],
   "blockers": [],
   "pr_url": null

@@ -5,7 +5,7 @@
 - Native TCP/UDP for AES-128-GCM, AES-256-GCM, ChaCha20-IETF-Poly1305
   and 2022 BLAKE3 AES-128/256-GCM on the pinned Xray engine.
 - HKDF device credentials scoped to protocol/inbound/method, sealed independent
-  2022 server keys, SIP002 URI and Mihomo exports, Persian cipher selector and
+  2022 server keys and sealed new deployment payloads, SIP002 URI and Mihomo exports, Persian cipher selector and
   existing private portal/QR integration. Metadata edits preserve server keys.
 - Withdraw listeners with no eligible devices to prevent Xray 2022's empty-user
   single-user fallback. No plaintext ciphers, unsupported 2022 ChaCha multi-user,
