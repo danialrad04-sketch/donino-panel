@@ -9,7 +9,7 @@ from app.db import database, initialize, schema_version, set_schema_version
 from app.node_identity import public_material, verify_desired
 from app.secrets import unseal
 from agent.wireguard import WireGuardAgent
-from support import sqlite_only, strip_wireguard_schema
+from support import strip_wireguard_schema
 from test_accounts import PanelBase
 
 
@@ -181,7 +181,6 @@ class WireGuardAPITest(WireGuardFixture):
         self.assertEqual(self.desired()["interfaces"][0]["peers"], [])
         self.assertEqual(self.profile().status_code, 409)
 
-    @sqlite_only
     def test_upgrade_backup_failure_restore_disables_endpoint(self):
         archive = Path(self.tmp.name) / "wg-backup"
         ops.backup(archive)
