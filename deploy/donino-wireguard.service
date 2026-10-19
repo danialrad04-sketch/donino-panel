@@ -1,0 +1,31 @@
+[Unit]
+Description=Donino WireGuard node supervisor
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=root
+Group=root
+WorkingDirectory=/opt/donino-panel
+EnvironmentFile=/etc/donino/wireguard.env
+ExecStart=/opt/donino-panel/.venv/bin/python -m agent.wireguard
+ExecStopPost=/opt/donino-panel/.venv/bin/python -m agent.wireguard --cleanup
+Restart=on-failure
+RestartSec=5
+StateDirectory=donino-wireguard
+UMask=0077
+NoNewPrivileges=true
+CapabilityBoundingSet=CAP_NET_ADMIN
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/donino-wireguard /run/wireguard
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+TimeoutStopSec=30
+KillMode=control-group
+
+[Install]
+WantedBy=multi-user.target

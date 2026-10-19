@@ -17,7 +17,7 @@ continue work already assigned by the user.
   unrelated development branch to resolve concurrency.
   After review, the coordinator may archive a completed handoff intact under
   `docs/coordination/history/` and initialize the checkpoint for a new assignment.
-- Schema 14 is the current database baseline. Do not import the incompatible
+- Schema 15 is the current database baseline. Do not import the incompatible
   Alembic model from the old `development/1.0` branch.
 - Keep private keys, pairing codes, DB snapshots, tokens and private plans out of
   Git, PR bodies, checkpoints and screenshots. Report redacted evidence only.

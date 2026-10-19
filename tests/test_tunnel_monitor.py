@@ -8,6 +8,7 @@ from unittest.mock import patch
 
 from app import ops, tunnel_monitor as monitor, tunnel_probe
 from app.db import (
+    SCHEMA_VERSION,
     database,
     initialize,
     schema_version,
@@ -329,7 +330,7 @@ class MonitorTest(EndpointFixture):
             self.assertFalse(table_exists(db, "tunnel_monitors"))
         initialize()
         with database() as db:
-            self.assertEqual(schema_version(db), 14)
+            self.assertEqual(schema_version(db), SCHEMA_VERSION)
             self.assertEqual(
                 db.execute("SELECT COUNT(*) FROM tunnel_monitors").fetchone()[0], 0
             )

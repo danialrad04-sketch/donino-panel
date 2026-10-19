@@ -1,0 +1,33 @@
+{
+  "task_id": "codex-v1-progress",
+  "status": "in_progress",
+  "branch": "development/tunnel-monitor",
+  "last_verified_commit": "e5c48bddc72467015beb4481600575f93def2739",
+  "completed": [
+    "PR ۲۱ و alpha.12 بدون تغییر آرشیو شدند؛ ادامه از main انجام شد و کلاد متوقف ماند.",
+    "schema 14: رضایت محدود پایش، singleton/heartbeat، claim دارای revision و نگهداری محدود proof با backup پیش از migration.",
+    "کلاینت واقعی فقط همان source/job/device/دوره/ورودی‌ها را دوباره می‌سنجد؛ تمدید، قطع انتشار و بازیابی با backoff بدون نصب دوبارهٔ carrier.",
+    "لغو/انتشار دستی، تغییر scope و restore نتیجهٔ دیررس را fence می‌کنند؛ لغو آزمون slot سراسری را تا خروج کلاینت نگه می‌دارد و guard ثبت نهایی از positive دیررس جلوگیری می‌کند.",
+    "رابط فارسی رضایت/وضعیت/خاموش‌کردن و سرویس بومی unprivileged با opt-in/opt-out پایدار، preflight، restart/repair و uninstall اضافه شد.",
+    "پاک‌سازی محیط fixture پیش از teardown پایه اصلاح و رگرسیون isolation افزوده شد؛ PostgreSQL نهایی موفق است.",
+    "هر ۱۲ job متمایز CI روی e5c48bd موفق شد؛ PR ۲۲ در 7a617a55e9eff757f15149e34eaf20bb2d20f49d با درخت یکسان ادغام شد.",
+    "v1.0.0-alpha.13 روی همان e5c48bd به‌صورت prerelease/latest=false منتشر و tag تأیید شد؛ stable latest همچنان v0.2.0 است."
+  ],
+  "remaining": [
+    "WireGuard/AWG: credential مستقل device، peer/profile، اعمال واقعی، حسابداری دوره/حجم، quota/expiry/revoke جریان باز و پذیرش کلاینت واقعی.",
+    "OpenVPN، دیگر موتورهای هدف، ظرفیت/retention/offsite/DR و gateهای انتشار کامل v1.",
+    "تانل: نصب اولیهٔ نقش‌ها هنوز صریح است؛ چند جفت/chain/balancing و پذیرش دو VPS/ISP واقعی باقی‌اند.",
+    "پذیرش عمومی ACME و بازی/UDP/WAN؛ فقط محیط آزمایشی فعلی در دسترس است."
+  ],
+  "next_action": "alpha.13 منتشر شده؛ انتشار آن را تکرار نکن. از origin/main در 7a617a5 یا جدیدتر شاخهٔ محدود تازه بساز و WireGuard طبق MASTER-PLAN/PROTO-01 را با credential مستقل دستگاه، مرز adapter نود و مدل فعلی quota/دوره/expiry/revoke جلو ببر. پذیرش شبکه و کلاینت واقعی ایزوله لازم است؛ تولید conf به‌تنهایی پشتیبانی پروتکل نیست. کلاد همچنان متوقف است. این checkpoint پس از انتشار روی شاخهٔ task ثبت می‌شود؛ کد منتشرشده همان e5c48bd است.",
+  "tests": [
+    "اجرای کامل نهایی روی e5c48bd: 260 آزمون، 258 موفق و 2 skip (fault PostgreSQL و Unbound محلی) با Xray/Mihomo/FRP و worker واقعی. CI محیط هر دو skip را فراهم می‌کند.",
+    "20 آزمون monitor/isolation و 13 endpoint شامل رقابت لغو/انتشار و مرز مشاهده/commit؛ 2 preflight نصب موفق.",
+    "شش TLS واقعی از WSS، قطع WSS و QUIC، restart، قطع هر دو/withdraw، رد proof قدیمی و بازگشت QUIC/تمدید خودکار همان محدوده موفق؛ حسابداری و TLS rejection محفوظ.",
+    "Chromium/390px نهایی، بدون خطای JS یا درخواست ثالث موفق.",
+    "Debian و Ubuntu بومی: preflight verifier/CA، رد تنظیم خراب پیش از تغییر PID پنل، heartbeat، opt-out پایدار، restart، DNS/Smart DNS/mTLS، backup/restore و preserving uninstall موفق.",
+    "تمام ۱۲ job متمایز CI (۲۴ اجرای push/PR) روی e5c48bd موفق؛ manifest/coordination/diff check و یکسانی درخت merge تأیید شد. PR ۲۲ و release alpha.13 مرجع شواهدند."
+  ],
+  "blockers": [],
+  "pr_url": "https://github.com/danialrad04-sketch/donino-panel/pull/22"
+}

@@ -282,6 +282,10 @@ def restore(source, replace=False):
             from .smart_dns import invalidate_restored
 
             invalidate_restored(db)
+        if version >= 15:
+            from .wireguard import invalidate_restored as invalidate_wireguard
+
+            invalidate_wireguard(db)
     os.replace(staging, target)
     return {
         "restored_from": str(source),
@@ -354,6 +358,10 @@ def _restore_postgres(source, manifest, replace):
             from .smart_dns import invalidate_restored
 
             invalidate_restored(db)
+        if table_exists(db, "wg_endpoints"):
+            from .wireguard import invalidate_restored as invalidate_wireguard
+
+            invalidate_wireguard(db)
     return {
         "restored_from": str(source),
         "schema_version": version,

@@ -1,31 +1,31 @@
 {
   "task_id": "codex-v1-progress",
   "status": "in_progress",
-  "branch": "development/tunnel-monitor",
-  "last_verified_commit": null,
+  "branch": "development/wireguard",
+  "last_verified_commit": "76dde3871cb3d6010f58984abbaa47562b521cbd",
   "completed": [
-    "PR ۲۱ ادغام و alpha.12 منتشر شد؛ checkpoint نهایی بدون تغییر در history آرشیو شد.",
-    "schema 14، رضایت محدود پایش، fencing نتیجهٔ دیررس، heartbeat، تمدید/قطع انتشار/backoff و رابط فارسی پیاده شد.",
-    "پذیرش واقعی شش TLS از WSS/QUIC، قطع هر دو و بازگشت QUIC موفق؛ Chromium/موبایل موفق.",
-    "پذیرش نصب بومی Debian و Ubuntu: verifier/CA خوانا، رد تنظیمات خراب پیش از توقف پنل، heartbeat، opt-out پایدار، restart، backup/restore و uninstall موفق.",
-    "زمان‌بندی proof قدیمیِ هنوز تازه اصلاح شد؛ انتظار نام backup آزمون Smart DNS با schema جاری هماهنگ شد.",
-    "لغو worker slot کلاینتِ هنوز در حال اجرا را آزاد نمی‌کند؛ guard ثبت نهایی جلوی positive دیررس بین مشاهده و commit را می‌گیرد.",
-    "ترتیب stop کردن patch.dict قبل از teardown پایه اصلاح شد؛ رگرسیون ایزوله‌ماندن محیط جلوی انتقال PostgreSQL به fixture قدیمی Xray را می‌گیرد."
+    "تغییرات تازهٔ کلاد بررسی و با attribution ادغام شدند؛ بازطراحی PR ۲۳ و اصلاح userspace در f543a52 معتبرند، گزارش بازبینی ثبت شد.",
+    "schema 15، endpoint/peer، کلید مستقل رمزگذاری‌شده، IP، conf/QR مالک، rotation و حذف امن، scope و restore غیرفعال تکمیل شدند.",
+    "عامل جدا با intent امضاشده و TTL، دفتر دوره‌ای durable، quota/expiry، حذف peer بدون قطع دستگاه دیگر، پاک‌سازی آفلاین و سرویس محدود تکمیل شدند.",
+    "پذیرش واقعی full-tunnel و سد IPv6 در CI با kernel/userspace روی eb6be7e موفق شد؛ پذیرش userspace/split محلی و فرمان مستقل cleanup نیز موفق شدند.",
+    "رابط فارسی و پذیرش مرورگر واقعی، ۱۲ آزمون SQLite و هر ۱۲ آزمون PostgreSQL شامل restore/migration موفق شدند؛ race رزرو پورت fixture قبلی Mihomo اصلاح شد."
   ],
   "remaining": [
-    "اجرای کامل نهایی و CI روی head نهایی PR ۲۲؛ سپس ادغام و prerelease alpha.13 با latest=false.",
-    "دیگر gateهای v1 و پذیرش دو VPS واقعی باقی‌اند."
+    "پذیرش همهٔ jobهای CI روی head نهایی شامل اصلاح port fixture؛ سپس بازبینی PR ۲۴، ادغام و alpha.14 فقط prerelease.",
+    "نصب خودکار نود WireGuard، AWG و lease quota؛ OpenVPN و دیگر gateهای stable v1 طبق ماتریس.",
+    "VPS/دامنه واقعی، public ACME، شبکه ایران/خارج، بازی و بار/DR هنوز فراهم/آزموده نشده‌اند."
   ],
-  "next_action": "روی head نهایی PR ۲۲ نتیجهٔ اجرای کامل محلی و ۱۲ job متمایز CI را بررسی کن؛ سپس با SHA منطبق ادغام و alpha.13 را prerelease/latest=false منتشر کن. کلاد متوقف است.",
+  "next_action": "همهٔ checkهای head نهایی PR ۲۴ را بررسی کن. پس از سبزشدن، بازبینی، merge و alpha.14 فقط prerelease؛ سپس OpenVPN/نصب نود. stable v1 هنوز کامل نیست.",
   "tests": [
-    "19 آزمون متمرکز پایش، 11 endpoint، 2 preflight نصب موفق؛ opt-out خراب‌بودن config را نیز دور می‌زند تا سرویس امن خاموش شود.",
-    "real tunnel شش TLS: WSS/QUIC loss + recovery موفق؛ Chromium/390px نهایی موفق.",
-    "نصب بومی Debian و Ubuntu موفق با heartbeat/opt-out و حفظ DNS/Smart DNS/mTLS/backup/restore.",
-    "اجرای کامل نخست: 256 آزمون، یک failure انتظار pre-v13 در آزمون قدیمی، 2 skip؛ نام backup واقعاً v14 است. اصلاح شد و اجرای نهایی در جریان است.",
-    "13 آزمون endpoint نهایی شامل هر دو race لغو/ثبت موفق؛ اجرای کامل/CI نهایی باید روی head جدید بررسی شود.",
-    "اجرای کامل کد 5677537: 259 آزمون، 257 موفق، 2 skip محیطی؛ 13 آزمون endpoint نهایی موفق.",
-    "CI آن head: 22 از 24 موفق؛ فقط PostgreSQL به علت نشت environment fixture جدید شکست خورد. ترتیب cleanup اصلاح شد و هر 20 آزمون monitor/isolation محلی موفق‌اند؛ CI باید روی head جدید تکرار شود."
+    "SQLite WireGuard: 12 passed؛ PostgreSQL 16 با ابزار واقعی dump/restore: هر 12 passed، بدون skip.",
+    "WG CI eb6be7e: هر دو backend/full-tunnel/IPv6/usage/revoke/cleanup/restart/quota/period/expiry/restore passed.",
+    "Browser واقعی شامل WGconf/QR و 390px بدون خطای JS موفق.",
+    "Full local 272: 269 passed, 2 skipped, 1 transient tunnel probe_transfer_failed؛ focused unchanged tunnel rerun passed. این شکست حذف/پنهان نشده است.",
+    "Mihomo fixture با رزرو هم‌زمان شش socket اصلاح شد؛ ۹ آزمون واقعی Mihomo پس از اصلاح موفق شدند. CI نهایی PostgreSQL باقی است.",
+    "systemd-tmpfiles در root موقت، حالت پوشهٔ موجود را با fieldهای - حفظ کرد؛ قالب سرویس اصلاح شد تا مالکیت/مجوز پوشهٔ مشترک تغییر نکند."
   ],
-  "blockers": [],
-  "pr_url": "https://github.com/danialrad04-sketch/donino-panel/pull/22"
+  "blockers": [
+    "Stable v1 scope هنوز کامل نیست؛ OpenVPN/AWG/موتورهای بیشتر و نصب خودکار نود و gateهای خارجی/ظرفیت باقی‌اند."
+  ],
+  "pr_url": "https://github.com/danialrad04-sketch/donino-panel/pull/24"
 }
