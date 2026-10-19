@@ -9,7 +9,7 @@ from unittest.mock import patch
 from ops.common import InstallError
 from ops.install import Installer, arguments, nginx_config
 from ops.menu import run_menu
-from ops.preflight import domain_name
+from ops.preflight import domain_name, resolve_and_check
 
 
 class FakeTTY:
@@ -141,3 +141,20 @@ class InstallerMenuTest(unittest.TestCase):
                         obj.install()
             saved = json.loads(state.read_text())
             self.assertEqual(saved["tls_mode"], "existing")
+
+    def test_local_http_address_is_checked_without_an_external_ip_probe(self):
+        with (
+            patch(
+                "ops.preflight.socket.getaddrinfo",
+                return_value=[(2, 1, 6, "", ("127.0.0.1", 80))],
+            ),
+            patch("ops.preflight.local_addresses", return_value={"127.0.0.1"}),
+            patch(
+                "ops.preflight.urllib.request.urlopen",
+                side_effect=AssertionError("Local HTTP needs no public probe"),
+            ),
+        ):
+            self.assertEqual(resolve_and_check("127.0.0.1"), ["127.0.0.1"])
+        for host in ("0.0.0.0", "224.0.0.1"):
+            with self.assertRaises(InstallError):
+                domain_name(host, allow_ip=True)

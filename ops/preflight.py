@@ -18,6 +18,10 @@ def domain_name(value, *, allow_ip=False):
         except ValueError:
             pass
         else:
+            if address.is_unspecified or address.is_multicast:
+                raise InstallError(
+                    "Use an assigned IPv4 address, not a wildcard or multicast"
+                )
             if address.version != 4:
                 raise InstallError(
                     "HTTP literal address must be IPv4; a domain may have AAAA"
@@ -87,7 +91,7 @@ def resolve_and_check(domain, expected=()):
         ) from exc
     allowed = {str(ipaddress.ip_address(value)) for value in expected}
     allowed.update(local_addresses())
-    if not expected:
+    if not expected and not actual.issubset(allowed):
         try:
             with urllib.request.urlopen(
                 "https://api.ipify.org", timeout=10
@@ -151,11 +155,7 @@ def inspect(
     addresses = []
     if network:
         try:
-            addresses = resolve_and_check(
-                domain,
-                expected
-                or ([domain] if plain and re.fullmatch(r"[0-9.]+", domain) else ()),
-            )
+            addresses = resolve_and_check(domain, expected)
             if not ipv6 and any(":" in address for address in addresses):
                 errors.append("Domain has AAAA but this host cannot listen on IPv6")
         except InstallError as exc:

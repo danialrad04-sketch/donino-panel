@@ -1242,6 +1242,7 @@ def main(argv=None):
                 "installed": bool(state),
                 "stage": state.get("last_stage"),
                 "domain": state.get("domain"),
+                "tls_mode": state.get("tls_mode", "legacy-https" if state else None),
                 "app_version": state.get("app_version"),
                 "installation_complete": state.get("last_stage") == "complete",
                 "dns": state.get("dns"),

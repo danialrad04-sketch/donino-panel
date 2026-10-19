@@ -37,7 +37,8 @@ class Screen:
         if self.color:
             title = "\033[1;36m" + title + "\033[0m"
         # State is local root-owned metadata, still strip terminal control codes.
-        host = re.sub(r"[^a-zA-Z0-9.:-]", "", str(state.get("domain", "Not installed")))
+        host = re.sub(r"[^a-zA-Z0-9.:-]", "", str(state.get("domain", "")))
+        host = host or "Not installed"
         self.write("\n  " + title + "\n  " + "─" * 58 + "\n")
         self.write(f"  Version {__version__}     Host: {host}\n")
         self.write("  " + "─" * 58 + "\n\n")
@@ -161,7 +162,7 @@ def run_menu(tty, *, execute, read_state, upgrade):
                     f"\n  Operation finished: {'OK' if result == 0 else 'failed (code ' + str(result) + ')'}.\n"
                 )
                 screen.ask("Press Enter to return to menu")
-            except (InstallError, OSError, ValueError) as exc:
+            except (RuntimeError, OSError, ValueError) as exc:
                 # Never echo arbitrary exception/command data containing credentials.
                 screen.write(
                     "\n  Setup failed ("
