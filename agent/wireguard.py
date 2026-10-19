@@ -32,12 +32,18 @@ from ops.common import atomic_write
 log = logging.getLogger("donino-wireguard")
 
 
+class OperationError(RuntimeError):
+    def __init__(self, stderr):
+        super().__init__("WireGuard operation failed; private diagnostics withheld")
+        self.stderr = stderr
+
+
 def command(args, *, input=None, timeout=10):
     result = subprocess.run(
         args, input=input, text=True, capture_output=True, timeout=timeout
     )
     if result.returncode:
-        raise RuntimeError("WireGuard operation failed; private diagnostics withheld")
+        raise OperationError(result.stderr)
     return result.stdout
 
 

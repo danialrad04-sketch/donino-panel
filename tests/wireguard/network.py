@@ -5,6 +5,7 @@ network, user VPS, public-domain or kernel-WireGuard claim is inferred.
 """
 
 import os
+import re
 import subprocess
 import stat
 import tempfile
@@ -16,7 +17,7 @@ from fastapi.testclient import TestClient
 from app.db import database, hash_password
 from app.main import app
 from app.node_identity import public_material
-from agent.wireguard import WireGuardAgent, command
+from agent.wireguard import WireGuardAgent, command, OperationError
 
 BODY = b"donino-real-wireguard-transfer-" * 4096
 
@@ -417,4 +418,8 @@ for line in sys.stdin:
 
 
 if __name__ == "__main__":
-    run()
+    try:
+        run()
+    except OperationError as failure:
+        print(re.sub(r"[A-Za-z0-9+/]{43}=", "[redacted-key]", failure.stderr), flush=True)
+        raise
