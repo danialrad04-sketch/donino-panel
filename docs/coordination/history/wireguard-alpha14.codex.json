@@ -1,0 +1,33 @@
+{
+  "task_id": "codex-v1-progress",
+  "status": "in_progress",
+  "branch": "development/wireguard",
+  "last_verified_commit": "354709df3c93ce54ed833466cbffd4a3910ae661",
+  "completed": [
+    "تغییرات تازهٔ کلاد بررسی و با attribution ادغام شدند؛ بازطراحی PR ۲۳ و اصلاح userspace در f543a52 معتبرند، گزارش بازبینی ثبت شد.",
+    "schema 15، endpoint/peer، کلید مستقل رمزگذاری‌شده، IP، conf/QR مالک، rotation و حذف امن، scope و restore غیرفعال تکمیل شدند.",
+    "عامل جدا با intent امضاشده و TTL، دفتر دوره‌ای durable، quota/expiry، حذف peer بدون قطع دستگاه دیگر، پاک‌سازی آفلاین و سرویس محدود تکمیل شدند.",
+    "پذیرش واقعی full-tunnel و سد IPv6 در CI با kernel/userspace روی eb6be7e موفق شد؛ پذیرش userspace/split محلی و فرمان مستقل cleanup نیز موفق شدند.",
+    "رابط فارسی و پذیرش مرورگر واقعی، ۱۲ آزمون SQLite و هر ۱۲ آزمون PostgreSQL شامل restore/migration موفق شدند؛ race رزرو پورت fixture قبلی Mihomo اصلاح شد.",
+    "همهٔ ۲۸ check روی 354709d موفق شدند؛ PR ۲۴ در main با bb19146 ادغام شد و tree یکسان تأیید شد. v1.0.0-alpha.14 روی همان SHA آزموده‌شده به‌صورت prerelease/latest=false منتشر شد؛ stable latest هنوز v0.2.0 است."
+  ],
+  "remaining": [
+    "OpenVPN: CA/گواهی مستقل دستگاه، conf ovpn، عامل مدیریت نشست با مصرف دوره‌ای و revoke واقعی، نصب و پذیرش UDP/TCP.",
+    "نصب خودکار نود WireGuard، AWG و lease quota؛ موتورهای دیگر، مدیریت حرفه‌ای و gateهای stable طبق ماتریس هنوز باقی‌اند.",
+    "VPS/دامنه واقعی، public ACME، شبکه ایران/خارج، بازی و بار/DR هنوز فراهم/آزموده نشده‌اند."
+  ],
+  "next_action": "WireGuard alpha.14 تحویل شد. از origin/main (bb19146417191336ba9946ab2ff9cd153e761f53 یا main تازه پس از بررسی) شاخهٔ development/openvpn بساز؛ این checkpoint نهایی را intact در history آرشیو، assignment Codex و گام ۷ را به‌روز کن، سپس CA/credential مستقل، مدیریت OpenVPN UDP/TCP و آزمون کلاینت واقعی را پیاده کن. Claude بدون مأموریت تازه باقی است. stable v1 هنوز کامل نیست.",
+  "tests": [
+    "SQLite WireGuard: 12 passed؛ PostgreSQL 16 با ابزار واقعی dump/restore: هر 12 passed، بدون skip.",
+    "WG CI eb6be7e: هر دو backend/full-tunnel/IPv6/usage/revoke/cleanup/restart/quota/period/expiry/restore passed.",
+    "Browser واقعی شامل WGconf/QR و 390px بدون خطای JS موفق.",
+    "Full local 272: 269 passed, 2 skipped, 1 transient tunnel probe_transfer_failed؛ focused unchanged tunnel rerun passed. این شکست حذف/پنهان نشده است.",
+    "Mihomo fixture با رزرو هم‌زمان شش socket اصلاح شد؛ ۹ آزمون واقعی Mihomo پس از اصلاح موفق شدند. CI نهایی PostgreSQL باقی است.",
+    "systemd-tmpfiles در root موقت، حالت پوشهٔ موجود را با fieldهای - حفظ کرد؛ قالب سرویس اصلاح شد تا مالکیت/مجوز پوشهٔ مشترک تغییر نکند.",
+    "Final exact-head CI 354709d: 28/28 success (14 distinct jobs, push + PR). Kernel/userspace full-tunnel/IPv6, API/Xray, PostgreSQL، Mihomo، tunnel و browser و native Debian12/Ubuntu24 همگی موفق."
+  ],
+  "blockers": [
+    "Stable v1 scope هنوز کامل نیست؛ OpenVPN/AWG/موتورهای بیشتر و نصب خودکار نود و gateهای خارجی/ظرفیت باقی‌اند."
+  ],
+  "pr_url": "https://github.com/danialrad04-sketch/donino-panel/pull/24"
+}

@@ -1,31 +1,17 @@
 {
   "task_id": "codex-v1-progress",
   "status": "in_progress",
-  "branch": "development/wireguard",
-  "last_verified_commit": "76dde3871cb3d6010f58984abbaa47562b521cbd",
+  "branch": "development/openvpn",
+  "last_verified_commit": null,
   "completed": [
-    "تغییرات تازهٔ کلاد بررسی و با attribution ادغام شدند؛ بازطراحی PR ۲۳ و اصلاح userspace در f543a52 معتبرند، گزارش بازبینی ثبت شد.",
-    "schema 15، endpoint/peer، کلید مستقل رمزگذاری‌شده، IP، conf/QR مالک، rotation و حذف امن، scope و restore غیرفعال تکمیل شدند.",
-    "عامل جدا با intent امضاشده و TTL، دفتر دوره‌ای durable، quota/expiry، حذف peer بدون قطع دستگاه دیگر، پاک‌سازی آفلاین و سرویس محدود تکمیل شدند.",
-    "پذیرش واقعی full-tunnel و سد IPv6 در CI با kernel/userspace روی eb6be7e موفق شد؛ پذیرش userspace/split محلی و فرمان مستقل cleanup نیز موفق شدند.",
-    "رابط فارسی و پذیرش مرورگر واقعی، ۱۲ آزمون SQLite و هر ۱۲ آزمون PostgreSQL شامل restore/migration موفق شدند؛ race رزرو پورت fixture قبلی Mihomo اصلاح شد."
+    "alpha.14 با WireGuard واقعی تحویل و checkpoint نهایی بدون تغییر آرشیو شد."
   ],
   "remaining": [
-    "پذیرش همهٔ jobهای CI روی head نهایی شامل اصلاح port fixture؛ سپس بازبینی PR ۲۴، ادغام و alpha.14 فقط prerelease.",
-    "نصب خودکار نود WireGuard، AWG و lease quota؛ OpenVPN و دیگر gateهای stable v1 طبق ماتریس.",
-    "VPS/دامنه واقعی، public ACME، شبکه ایران/خارج، بازی و بار/DR هنوز فراهم/آزموده نشده‌اند."
+    "OpenVPN UDP/TCP: PKI/پروفایل، مدیریت نشست، مصرف/ابطال و پذیرش واقعی",
+    "نصب حرفه‌ای چندنودی و روتینگ دامنه/سرویس و UDP پس از تکمیل پروتکل‌ها"
   ],
-  "next_action": "همهٔ checkهای head نهایی PR ۲۴ را بررسی کن. پس از سبزشدن، بازبینی، merge و alpha.14 فقط prerelease؛ سپس OpenVPN/نصب نود. stable v1 هنوز کامل نیست.",
-  "tests": [
-    "SQLite WireGuard: 12 passed؛ PostgreSQL 16 با ابزار واقعی dump/restore: هر 12 passed، بدون skip.",
-    "WG CI eb6be7e: هر دو backend/full-tunnel/IPv6/usage/revoke/cleanup/restart/quota/period/expiry/restore passed.",
-    "Browser واقعی شامل WGconf/QR و 390px بدون خطای JS موفق.",
-    "Full local 272: 269 passed, 2 skipped, 1 transient tunnel probe_transfer_failed؛ focused unchanged tunnel rerun passed. این شکست حذف/پنهان نشده است.",
-    "Mihomo fixture با رزرو هم‌زمان شش socket اصلاح شد؛ ۹ آزمون واقعی Mihomo پس از اصلاح موفق شدند. CI نهایی PostgreSQL باقی است.",
-    "systemd-tmpfiles در root موقت، حالت پوشهٔ موجود را با fieldهای - حفظ کرد؛ قالب سرویس اصلاح شد تا مالکیت/مجوز پوشهٔ مشترک تغییر نکند."
-  ],
-  "blockers": [
-    "Stable v1 scope هنوز کامل نیست؛ OpenVPN/AWG/موتورهای بیشتر و نصب خودکار نود و gateهای خارجی/ظرفیت باقی‌اند."
-  ],
-  "pr_url": "https://github.com/danialrad04-sketch/donino-panel/pull/24"
+  "next_action": "پیاده‌سازی OpenVPN مستقل دستگاه با mTLS کنترلی، TLS دیتاپلین و حسابداری دوره‌ای؛ ابتدا CA/مدل و قرارداد عامل.",
+  "tests": [],
+  "blockers": [],
+  "pr_url": null
 }
