@@ -1,5 +1,21 @@
 # Donino releases
 
+## 1.0.0-alpha.15 — managed OpenVPN UDP/TCP preview, 2026-10-19
+
+- Separate endpoint CA and device certificates, sealed private keys, owner-only
+  `.ovpn` export with TLS verification/name pinning and tls-crypt; certificate
+  rotation, node scope and restore-disabled endpoints (schema 16).
+- Signed OpenVPN 2.6 supervisor with private Unix management, serial allowlist,
+  durable per-device/session/period usage and local quota/expiry/revocation.
+  Live removal preserves other devices; offline cleanup retains observed usage.
+- Persian UI, independent systemd role and manual node setup guide. Real UDP/TCP
+  client fixtures cover inner UDP, active-tunnel IPv6 bypass blocking, rejected
+  CA/name/old serial, live stream withdrawal, restart/quota/period/expiry/restore.
+- Preview limits: IPv4 data plane, manual forwarding/NAT and enrollment, ordinary
+  quotas only, four interfaces/128 peers per node. Structural changes can require
+  all clients to reconnect. No host kill switch, public WAN/game/load acceptance
+  or claim of stable v1; further protocols and automatic multi-node setup remain.
+
 ## 1.0.0-alpha.14 — managed WireGuard preview, 2026-10-19
 
 - Add independent encrypted per-device WireGuard keys/PSKs, stable private IPv4 allocation, owner-only conf/QR export, rotation, disable/delete and node scope checks.

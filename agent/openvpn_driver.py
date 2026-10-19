@@ -51,6 +51,7 @@ class Channel:
         self.send_lock, self.query_lock = threading.Lock(), threading.Lock()
         self.finished = threading.Event()
         self.closed = threading.Event()
+        self.expected_shutdown = False
         self.clients = {}
         self.kill_replies = deque()
         self.event = None
@@ -197,7 +198,7 @@ class Channel:
                         self.last_live = set(self.status_clients)
                         self.finished.set()
         except Exception as exc:
-            if not self.closed.is_set():
+            if not self.closed.is_set() and not self.expected_shutdown:
                 log.warning(
                     "OpenVPN management broker stopped (%s)", type(exc).__name__
                 )
@@ -521,6 +522,9 @@ class OpenVPNDriver:
                     "Refusing to delete a link without private process ownership"
                 )
             return
+        channel = self.channels.get(name)
+        if channel:
+            channel.expected_shutdown = True
         if self.same_process(meta):
             os.kill(meta["pid"], signal.SIGTERM)
             until = time.monotonic() + 3

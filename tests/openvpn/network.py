@@ -402,6 +402,7 @@ Server(('fd42:200:2::2',8082),handler).serve_forever()
                     command(["ip", "link", "delete", marker])
                 agent.tick()
                 client_processes = {}
+                profile_texts = {}
 
                 def connect_client(index):
                     namespace = ("clienta", "clientb")[index]
@@ -469,6 +470,7 @@ Server(('fd42:200:2::2',8082),handler).serve_forever()
                     assert response.status_code == 200
                     path = root / ("ovpc" + str(index) + ".ovpn")
                     path.write_text(response.text)
+                    profile_texts[index] = response.text
                     path.chmod(0o600)
                     connect_client(index)
 
@@ -478,6 +480,52 @@ Server(('fd42:200:2::2',8082),handler).serve_forever()
                         child.terminate()
                         child.wait(timeout=5)
                     connect_client(index)
+
+                def reject_profile(text, marker):
+                    path, log = root / "rejected.ovpn", root / "rejected.log"
+                    path.write_text(text)
+                    path.chmod(0o600)
+                    log.write_text("")
+                    log.chmod(0o600)
+                    child = subprocess.Popen(
+                        [
+                            "ip",
+                            "netns",
+                            "exec",
+                            "clienta",
+                            "/usr/sbin/openvpn",
+                            "--config",
+                            str(path),
+                            "--dev",
+                            "bad0",
+                            "--dev-type",
+                            "tun",
+                            "--log",
+                            str(log),
+                            "--verb",
+                            "3",
+                        ],
+                        stdout=subprocess.DEVNULL,
+                        stderr=subprocess.DEVNULL,
+                    )
+                    try:
+                        until = time.monotonic() + 6
+                        while True:
+                            content = log.read_text()
+                            assert "Initialization Sequence Completed" not in content, (
+                                "Invalid client credentials unexpectedly connected"
+                            )
+                            if marker in content:
+                                break
+                            if child.poll() is not None or time.monotonic() > until:
+                                raise AssertionError(
+                                    "Negative TLS/auth control did not fail for the expected reason"
+                                )
+                            time.sleep(0.03)
+                    finally:
+                        if child.poll() is None:
+                            child.terminate()
+                        child.wait(timeout=4)
 
                 def transfer(namespace, *, fail=False):
                     result = subprocess.run(
@@ -618,6 +666,31 @@ Server(('fd42:200:2::2',8082),handler).serve_forever()
                     flush=True,
                 )
 
+                from app import openvpn_pki
+
+                _, wrong_ca = openvpn_pki.authority("f" * 32)
+                reject_profile(
+                    re.sub(
+                        r"<ca>[\s\S]*?</ca>",
+                        "<ca>\n" + wrong_ca + "</ca>",
+                        profile_texts[0],
+                    ),
+                    "VERIFY ERROR",
+                )
+                reject_profile(
+                    profile_texts[0].replace(
+                        "verify-x509-name donino-" + ep["id"] + " name",
+                        "verify-x509-name wrong.example name",
+                    ),
+                    "VERIFY X509NAME ERROR",
+                )
+                transfer("clienta")
+                transfer("clientb")
+                print(
+                    "PASS: incorrect CA and server identity refused; correct exported profiles stayed usable",
+                    flush=True,
+                )
+
                 # Request/response on an existing socket avoids confusing bytes
                 # buffered before revocation with new network traffic.
                 script = """import socket,sys
@@ -677,6 +750,36 @@ for line in sys.stdin:
                 transfer("clientb")
                 print(
                     "PASS: peer revocation stopped an open stream; other device retained access",
+                    flush=True,
+                )
+
+                # Old leaf remains signed by the correct CA, so only the serial
+                # allowlist can reject it after rotation. No CA swap hides this.
+                panel.put(
+                    "/api/openvpn/peers/" + peers[0]["id"], json={"enabled": True}
+                )
+                rotated = panel.post("/api/openvpn/peers/" + peers[0]["id"] + "/rotate")
+                assert (
+                    rotated.status_code == 200
+                    and rotated.json()["serial"] != peers[0]["serial"]
+                )
+                agent.tick()
+                reconnect(1)
+                reject_profile(profile_texts[0], "AUTH_FAILED")
+                fresh = panel.get("/api/openvpn/peers/" + peers[0]["id"] + "/profile")
+                assert fresh.status_code == 200
+                (root / "ovpc0.ovpn").write_text(fresh.text)
+                reconnect(0)
+                transfer("clienta")
+                transfer("clientb")
+                panel.put(
+                    "/api/openvpn/peers/" + peers[0]["id"], json={"enabled": False}
+                )
+                agent.tick()
+                transfer("clienta", fail=True)
+                transfer("clientb")
+                print(
+                    "PASS: rotated serial rejected the old valid-CA certificate; replacement certificate transferred",
                     flush=True,
                 )
 

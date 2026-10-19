@@ -8,18 +8,21 @@
     "schema 16 و CA مستقل endpoint/گواهی دستگاه، ovpn خصوصی، rotation، scope نود و restore غیرفعال پیاده شدند.",
     "عامل مشترک امضاشده با Driver OpenVPN 2.6، سوکت Unix خصوصی و احراز سریال گواهی، CID و دفتر پایدار شمارندهٔ نشست/دوره پیاده شد.",
     "رابط فارسی UDP/TCP، فرم محافظت‌شده از refresh و دریافت خصوصی/rotation/revoke در مرورگر واقعی موفق شد.",
-    "رفع پاسخ UDP از IP اشتباه روی میزبان چندرابطی با multihome؛ انتقال دو دستگاه و حسابداری و قطع جریان باز بدون قطع دستگاه دیگر در شبکهٔ واقعی موفق شد."
+    "رفع پاسخ UDP از IP اشتباه روی میزبان چندرابطی با multihome؛ انتقال دو دستگاه و حسابداری و قطع جریان باز بدون قطع دستگاه دیگر در شبکهٔ واقعی موفق شد.",
+    "پذیرش کامل دو کلاینت واقعی OpenVPN 2.6.14 روی UDP و TCP: UDP داخلی، full-tunnel و مسدودسازی IPv6، رد CA/نام اشتباه و سریال قدیمی پس از rotation موفق شد.",
+    "سرویس مستقل systemd با CAP_NET_ADMIN، cleanup آفلاین و راهنمای نصب دستی نقش نود اضافه شد؛ CI مستقل UDP/TCP تعریف شد.",
+    "مهاجرت backup-first از schema15 به16 و restore غیرفعال با PostgreSQL16 واقعی موفق شد."
   ],
   "remaining": [
-    "پذیرش واقعی کامل OpenVPN UDP/TCP و IPv6 و CA/hostname/serial ردشده، service و نصب/مستندات و CI.",
-    "PostgreSQL schema16/restore و regression موتورهای واقعی/installer و انتشار برش قابل استفاده.",
-    "نصب حرفه‌ای چندنودی، DNS/service/domain routing و UDP بازی؛ AWG و موتورهای باقی طبق ماتریس."
+    "تکمیل regression سراسری و WireGuard واقعی، آزمون نصب دو OS و CI روی head نهایی؛ سپس PR/پیش‌انتشار alpha.15.",
+    "نصب خودکار حرفه‌ای چندنودی و انتخاب خروجی DNS/service/domain و UDP بازی؛ AWG و موتورهای باقی طبق ماتریس؛ پذیرش VPS/WAN و بار برای stable v1."
   ],
-  "next_action": "نتیجهٔ /tmp/donino-ovpn-network.log و harness tests/openvpn_acceptance.py را بررسی کن. با --no-build فقط base OS استفاده می‌شود و source allowlisted فعلی همیشه docker cp می‌شود، پس تصویر قدیمی کد تست نیست. چرخهٔ UDP/TCP/full-tunnel و IPv6، منفی CA/hostname/serial، final counters/period/restart/restore را تکمیل کن؛ سپس service/docs/CI و alpha.15. نصب نود/روتینگ چندلوکیشن/UDP هدف بعدی است؛ هنوز v1 stable نیست.",
+  "next_action": "نتیجهٔ /tmp/donino-ovpn-fullsuite.log و /tmp/donino-ovpn-wg-native-split.log را بخوان. تست‌های native installer دو OS و browser و manifest را اجرا/بررسی کن؛ PR development/openvpn را با head دقیق و تمام CI سبز ادغام و alpha.15 prerelease/latest=false منتشر کن. UDP/TCP native و منفی cert موفق؛ این انتشار stable v1 نیست. کلاد همچنان متوقف است.",
   "tests": [
-    "5 آزمون OpenVPN API/عامل و 12 آزمون WireGuard موفق؛ Browser جدید OpenVPN کنار جریان‌های قبلی بدون خطای JS موفق.",
-    "Native UDP/split: انتقال، حسابداری، ابطال جریان باز و حفظ دستگاه دیگر موفق شدند؛ چرخهٔ کامل پس از اصلاح fixture expiry در حال اجراست.",
-    "دیسک آزمایش با cache Docker پر شد؛ نوشتن UI متوقف شد. cache بلااستفاده پاک و حدود 19GB آزاد شد؛ فایل خالی UI بازسازی و syntax/browser مجدد بررسی شد. داده/volume/worktree کاربر حذف نشد."
+    "SQLite: 5 OpenVPN و12 WireGuard موفق؛ Browser OpenVPN کنار قابلیت‌های قبلی بدون خطای JS موفق.",
+    "PostgreSQL16: 5 OpenVPN شامل backup/migration/restore موفق.",
+    "Native OpenVPN2.6.14 UDP وTCP: چرخه کامل مثبت و منفی CA/نام/serial، UDPpayload، IPv6block، streamrevoke با حفظ دستگاه دیگر، cleanup، restart، quota، period، expiry وrestore موفق.",
+    "Regression سراسری و شبکه WireGuard در حال اجرا؛ full-tunnel محلی WG به دلیل نبود ct-mark کرنل رد شد و split جدا اجرا می‌شود؛ CI باید kernel/userspace کامل را تأیید کند."
   ],
   "blockers": [],
   "pr_url": null

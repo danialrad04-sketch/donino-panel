@@ -427,6 +427,8 @@ class WireGuardAgent:
                     self.kernel, "retained_counters", False
                 ):
                     self.kernel.delete(name)
+            if hasattr(self.kernel, "flush_journal"):
+                self.kernel.flush_journal()
             self.interfaces, self.owned, self.offsets = [], {}, {}
             self.last_raw = {}
             self.revision = ""
