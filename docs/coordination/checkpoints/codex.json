@@ -8,7 +8,8 @@
     "علت رابط گوشی: تمام 10 مقصد دسکتاپ در نوار پایین بدون drawer یا سلسله‌مراتب فشرده شده‌اند.",
     "ناوبری جدید با چهار مقصد پایین گوشی و drawer سه‌گروهی، جدول کارتی، sheet فرم، هدف لمس و asset cache نسخه18 پیاده شد.",
     "فوکوس/Tab معکوس/Escape/backdrop، حفظ اسکرول، همان مسیر/تاریخچه، نقش viewer و API403، resize و لمس فرم در Chromium واقعی موفق شدند.",
-    "تصاویر روشن/تیره و دسکتاپ بازبینی شدند؛ node grid در عرض320 و فوکوس لینک هنگام تبدیل دسکتاپ به گوشی اصلاح شد."
+    "تصاویر روشن/تیره و دسکتاپ بازبینی شدند؛ node grid در عرض320 و فوکوس لینک هنگام تبدیل دسکتاپ به گوشی اصلاح شد.",
+    "CI head5b6666b یک شکست fixture Shadowsocks نشان داد: free-port بلافاصله بسته می‌شد و OS می‌توانست همان پورت inventory را برگرداند. پنج socket تا تکمیل fixture رزرو شدند؛ محدودیت واقعی API409 حفظ شد."
   ],
   "remaining": [
     "Exact-head final CI (18 distinct jobs / 36 checks), PR integration and alpha18 prerelease/latest=false.",
@@ -19,7 +20,8 @@
     "Full local browser acceptance passed: real API admin/inbounds/DNS/Smart DNS/tunnel/WireGuard/OpenVPN/portal/QR/theme/logout; no original-page JS errors or third-party requests.",
     "Dedicated final navigation acceptance passed on Chromium: 320/390/430/768/844 landscape, focus cycle both directions, escape/backdrop, same-page/history, page scroll restore and last pager clearance, resize focus, touch context, viewer navigation and real API403.",
     "Local unit regression: 285 tests, 266 passed, 19 explicit skips requiring real engine binaries or privileged PostgreSQL fixture; final CI supplies those separate environments.",
-    "Ruff F, JS syntax checks and diff whitespace passed."
+    "Ruff F, JS syntax checks and diff whitespace passed.",
+    "Shadowsocks API acceptance repeated 10 times after reservation fix: 10/10 passed. Deliberately reused port deterministically returns409; no product validation was relaxed. Final CI must run on new exact head."
   ],
   "blockers": [],
   "pr_url": null

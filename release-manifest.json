@@ -1,10 +1,10 @@
 {
   "format": "donino-source-v1",
   "version": "1.0.0a18",
-  "source_sha256": "29ab3cc69863a3d16a47f46cadeb7d28d48a2b556979fa623ac1b1fe110c9e9a",
+  "source_sha256": "139d90a0c50f7960ca783ec5d776f1bd3e521ddc08d8435a6a85973cfa725d7d",
   "files": {
     "AGENTS.md": "5e22b6c9b8728413bfa5bf094082fd7af105cfbafdc85bf105ed42999422338d",
-    "CHANGELOG.md": "de11d02fa929a7b40a9b54f1c955b4ccd6aa1d58986f09cbd2dca59060349e83",
+    "CHANGELOG.md": "ff7ee4289ca57b531770f8b70e0f4d6c21ff132c9a712065231c8ab8a3169cf0",
     "CLAUDE.md": "7ceae33fdec1ad94746db92f7e3eba672db8269d8c38e3d8cfc1515cfaf24402",
     "LICENSE": "d8a6cc31abc16b6748c7a21f21611f5a1ec33f67d22ca23d7da1c19b95496bee",
     "README.md": "b883ee96ff15ee8e6afbe5b23c8a7af050e92cabd4c274acdcc5bc521d48421d",
@@ -132,7 +132,7 @@
     "docs/coordination/README.fa.md": "c7a0dae0343dc653512ade4cf169a7becb31bd041cd913a0d9bb12b5e22dbe5e",
     "docs/coordination/assignments.json": "ce8dda6e0255a0524489f5ce2a183973d9b4d1127a7b522886fa98727d7ae6e5",
     "docs/coordination/checkpoints/claude.json": "b0cf12f259c1de00c43b4d74a69a0dde438697fd269965011385ebee20ef129f",
-    "docs/coordination/checkpoints/codex.json": "fc242a6979cf7f8a01644f7ac50c0a40771efc5c62bb6d7a070f95dbc02b5391",
+    "docs/coordination/checkpoints/codex.json": "77e229ea6f722bdda30ab53b0a75752d74347ef190bc33ddd92aa0f983aaaae5",
     "docs/coordination/history/installer-alpha17.codex.json": "d8a45e317a17d04cbfc79a5f43c80777a1a0de7777a618341e69d1e7f3a03c4d",
     "docs/coordination/history/mihomo-tls-acceptance-v1.claude.json": "b0cf12f259c1de00c43b4d74a69a0dde438697fd269965011385ebee20ef129f",
     "docs/coordination/history/openvpn-alpha15.codex.json": "21e0bff4f3d52e7c2e454bd6a5e6594f46482cb4f305b9bb232f9b185011e3eb",

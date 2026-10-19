@@ -14,6 +14,8 @@
 - Real Chromium navigation/touch/form coverage at 320/390/430/768px and landscape,
   integrated with existing full API-backed browser acceptance. No database,
   protocol or node authorization changes; not stable v1 or physical iOS proof.
+- Reserve all Shadowsocks fixture listener ports until inventory creation completes
+  to prevent OS ephemeral-port reuse from causing a correct duplicate-port API409.
 
 ## 1.0.0-alpha.17 — terminal installer and HTTP/IP setup, 2026-10-19
 
