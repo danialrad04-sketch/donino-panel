@@ -1,5 +1,14 @@
 #!/bin/sh
 set -eu
+# Minimal images may have neither Python nor a usable system CA bundle.
+if ! command -v python3 >/dev/null 2>&1 || [ ! -s /etc/ssl/certs/ca-certificates.crt ]; then
+    if [ "$(id -u)" -ne 0 ] || ! command -v apt-get >/dev/null 2>&1; then
+        echo "Donino needs root on Debian 12 / Ubuntu 24.04 to prepare Python and CA certificates." >&2
+        exit 2
+    fi
+    apt-get update
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends python3 ca-certificates
+fi
 donino_source_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 case "$0" in
   */install.sh|install.sh) donino_local_source=true ;;
