@@ -1,7 +1,7 @@
 {
   "format": "donino-source-v1",
   "version": "1.0.0a14",
-  "source_sha256": "45666dd9704ab86f790221f232fca40e94add1c8c6e0382e5aa7facc147c63a7",
+  "source_sha256": "3c2a0143f0b3c026ac80b7ee8919da12adc4a8eda8449ddc0542616931c11aab",
   "files": {
     "AGENTS.md": "fcebf7e072e2994015f9a37651cfe20423c41a7aff10b1baafb31385588cbdf7",
     "CHANGELOG.md": "e55a50eebb9f677c8edc192eadf4785145147dc54e45770e4f7c871acb532bbb",
@@ -84,7 +84,7 @@
     "deploy/donino-smart-gateway.service": "0a7cace715a83b6443dac47df9f28a321942e3ba4d09c8ea42b2e440923e297b",
     "deploy/donino-tunnel-monitor.service": "cf49fed2769e02b32c616f3868a184325a0f8ef514141cc69457a8bb45352f87",
     "deploy/donino-unbound.service": "49c0ca62aa3245e1cbec8392652c4ffa84d868bfd845cb8dfe16b62bdb065e9a",
-    "deploy/donino-wireguard-tmpfiles.conf": "6eb6cb33fb0f560a6657262e610749edc557842a58c8febe7c83974f1a275a5a",
+    "deploy/donino-wireguard-tmpfiles.conf": "7e796ec79637a75c0969742bc082e88af389735b259c96826342848d200178ac",
     "deploy/donino-wireguard.service": "48b04a74a474d3356ece558f758bd9241d580a7668f38e2ad85d2e54e49620b7",
     "deploy/nginx.conf.example": "a7674c3f22021337b5c83fb633e28afdefa636bf8f4f193b5ab663e08bbf5a54",
     "deploy/node.env.example": "7e59aea21929d6aaf78bf7debf7e8bcb61c78d47da5986691063b78a0a9f31a0",
