@@ -4,14 +4,22 @@
   "branch": "development/installer-menu",
   "last_verified_commit": null,
   "completed": [
-    "alpha16 تحویل و checkpoint نهایی آرشیو شد؛ patch نصب HTTP کلاد بدون metadata قدیمی روی main جدید منتقل شد."
+    "alpha16 تحویل و checkpoint نهایی آرشیو شد؛ patch نصب HTTP کلاد بدون metadata قدیمی روی main جدید منتقل شد.",
+    "منوی مستقل TTY باalternate-screen و/dev/tty برایcurl-pipe، فرمانsudo donino وگزینه‌هایHTTP/HTTPS/status/repair/backup/upgrade اضافه شد.",
+    "HTTP/IP بدوندامنه، حفظ mode درreinstall وrepair، رفع providerTLSقدیمی، نگهداریCAخصوصی وپیش‌نیازPython/CA حداقلی پیادهشد.",
+    "native HTTP رویDebian12وUbuntu24: bootstrap/login/cookie/API، reinstallبدونflags،repair، حفظowner/user/quota/masterkey وlauncherواقعی باstdinقطع وuninstallحافظداده موفق.",
+    "معماری3x-ui/PasarGuard درcommitهایپین‌شدهبررسیشد؛ چرخهACME باCertbotرسمی، webroot،مسیرثابت، validation وreload/renewalموجودتکمیل ومواردآزموده‌نشدهثبتشد."
   ],
   "remaining": [
-    "اصلاح repair/upgrade HTTP، نصب بدون دامنه با IP، منوی تمام‌صفحه TTY و bootstrap پیش‌نیازهای اولیه.",
-    "پذیرش واقعی نصب/reinstall/repair/upgrade و bootstrap HTTP در دو OS، حفظ HTTPS/mTLS و ACME renewal موجود، سپس CI و انتشار."
+    "بررسیregressionوnativeHTTPSدوOS،CIنهایی،self-reviewوPR/alpha17prerelease.",
+    "VPS/ACMEعمومی وremainingv1protocols/nodeinstaller/routing؛ تغییرhost/TLSmodeنصبموجودmigrationمستقل باقی است."
   ],
-  "next_action": "تکمیل نصب HTTP/IP و منوی مستقل ترمینال طبق درخواست تازه کاربر؛ پژوهش معماری 3x-ui/PasarGuard، آزمون ایزوله و بدون استقرار روی میزبان/VPS.",
-  "tests": [],
+  "next_action": "نتیجه /tmp/donino-menu-regression.log و/tmp/donino-menu-https-{debian,ubuntu}.log را بخوان؛HTTPهر دوOSموفق است. PRمنویinstaller را رویheadدقیقباهمهCI36موفقادغام وalpha17prerelease/latest=falseمنتشر کن؛ سپسPR27قدیمی راباارجاعبهتحویلاصلاح‌شدهببند. one-lineREADME بهtagalpha17 اشاره می‌کند؛ قبلانتشارکاربرنمیتواندازآنtagدانلودکند. هیچhost/VPSواقعی‌تغییرنکرده.",
+  "tests": [
+    "چهارآزمونwizard/HTTP repair/legacyHTTPS upgrade موفق؛ مجموعهواحدinstaller/backup و10آزمونnativeinstaller نیزموفق.",
+    "HTTPNative: lifecycleکامل وPTYواقعی رویهر دوDebian12/Ubuntu24موفق؛ fixtureها فقطDockerایزوله‌اند.",
+    "Regressionsراسری وnativeHTTPSدوOSرویsourceفعلی درحالاجرا؛ پس ازآنCIجدیدبا18jobمستقل(36checkpush+PR) لازم است."
+  ],
   "blockers": [],
   "pr_url": null
 }

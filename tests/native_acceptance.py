@@ -44,6 +44,8 @@ IMAGES = {
 
 
 class NativeFixture:
+    http_only = False
+
     def __init__(self, os_name, folder):
         self.folder = Path(folder)
         self.containers = []
@@ -203,7 +205,7 @@ class NativeFixture:
             "--env",
             "PIP_CERT=/run/donino-system-ca.pem",
             "--publish",
-            "127.0.0.1::443",
+            "127.0.0.1::80" if self.http_only else "127.0.0.1::443",
             self.image,
             capture=True,
         )
@@ -224,10 +226,16 @@ class NativeFixture:
         self.docker("cp", str(self.folder / "certificates"), name + ":/testcerts")
         self.install(name)
         port = (
-            self.docker("port", name, "443/tcp", capture=True).strip().rsplit(":", 1)[1]
+            self.docker(
+                "port", name, "80/tcp" if self.http_only else "443/tcp", capture=True
+            )
+            .strip()
+            .rsplit(":", 1)[1]
         )
         client = httpx.Client(
-            base_url="https://127.0.0.1:" + port,
+            base_url=("http://" if self.http_only else "https://")
+            + "127.0.0.1:"
+            + port,
             verify=self.context,
             trust_env=False,
             headers={"X-Donino": "1"},

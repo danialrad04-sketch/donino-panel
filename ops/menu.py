@@ -14,9 +14,8 @@ from .preflight import domain_name
 class Screen:
     def __init__(self, tty):
         self.tty = tty
-        self.color = (
-            os.environ.get("TERM", "dumb") != "dumb" and "NO_COLOR" not in os.environ
-        )
+        self.screen = os.environ.get("TERM", "dumb") != "dumb"
+        self.color = self.screen and "NO_COLOR" not in os.environ
 
     def write(self, text):
         self.tty.write(text)
@@ -33,7 +32,7 @@ class Screen:
         return value or default
 
     def draw(self, state):
-        self.write("\033[2J\033[H" if self.color else "\n")
+        self.write("\033[2J\033[H" if self.screen else "\n")
         title = "DONINO PANEL  /  SETUP & MANAGEMENT"
         if self.color:
             title = "\033[1;36m" + title + "\033[0m"
@@ -120,7 +119,7 @@ def release_ref(version):
 def run_menu(tty, *, execute, read_state, upgrade):
     screen = Screen(tty)
     try:
-        if screen.color:
+        if screen.screen:
             screen.write("\033[?1049h")
         while True:
             state = read_state()
@@ -173,7 +172,7 @@ def run_menu(tty, *, execute, read_state, upgrade):
     except (EOFError, KeyboardInterrupt):
         return 0
     finally:
-        if screen.color:
+        if screen.screen:
             screen.write("\033[?1049l")
 
 
@@ -206,9 +205,9 @@ def main():
             return run_menu(
                 Terminal(), execute=install.main, read_state=state, upgrade=upgrade
             )
-    except OSError:
+    except (OSError, ValueError):
         print(
-            "Interactive menu needs a terminal. Use explicit install --domain HOST --tls none|acme|existing for automation.",
+            "Menu needs a terminal and readable installer state. Use explicit install --domain HOST --tls none|acme|existing for automation.",
             file=sys.stderr,
         )
         return 2

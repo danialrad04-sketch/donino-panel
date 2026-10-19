@@ -159,6 +159,22 @@ class Installer:
         if name not in self.state["completed"]:
             self.state["completed"].append(name)
         save_state(STATE, self.state)
+        labels = {
+            "preflight": "Host and options checked",
+            "packages": "System prerequisites ready",
+            "code-ready": "Verified application and dependencies ready",
+            "environment": "Private configuration ready",
+            "database": "PostgreSQL database ready",
+            "candidate-selected": "Release selected",
+            "tls": "HTTP configured"
+            if self.args.tls == "none"
+            else "Verified certificate configured",
+            "services": "Services and schema ready",
+            "health": "Application readiness passed",
+            "complete": "Setup complete",
+            "uninstalled": "Services removed; data preserved",
+        }
+        print("[Donino] " + labels.get(name, name), flush=True)
 
     def managed_write(self, path, content, mode=0o644):
         atomic_write(path, content, mode)
@@ -930,6 +946,11 @@ for attempt in range(20):
         )
         if report["errors"]:
             raise InstallError("; ".join(report["errors"]))
+        if self.state.get("domain") and report["domain"] != self.state["domain"]:
+            raise InstallError(
+                "Changing the installed host needs a separate URL/certificate migration",
+                5,
+            )
         if not STATE.exists() and (
             Path("/etc/systemd/system/donino-panel.service").exists()
             or (CONFIG / "panel.env").exists()
