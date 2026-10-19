@@ -2,7 +2,7 @@
   "task_id": "codex-v1-progress",
   "status": "in_progress",
   "branch": "development/openvpn",
-  "last_verified_commit": null,
+  "last_verified_commit": "f7aac198ce3aa020f8e308a833dc464d79f1d6bb",
   "completed": [
     "alpha.14 با WireGuard واقعی تحویل و checkpoint نهایی بدون تغییر آرشیو شد.",
     "schema 16 و CA مستقل endpoint/گواهی دستگاه، ovpn خصوصی، rotation، scope نود و restore غیرفعال پیاده شدند.",
@@ -11,19 +11,27 @@
     "رفع پاسخ UDP از IP اشتباه روی میزبان چندرابطی با multihome؛ انتقال دو دستگاه و حسابداری و قطع جریان باز بدون قطع دستگاه دیگر در شبکهٔ واقعی موفق شد.",
     "پذیرش کامل دو کلاینت واقعی OpenVPN 2.6.14 روی UDP و TCP: UDP داخلی، full-tunnel و مسدودسازی IPv6، رد CA/نام اشتباه و سریال قدیمی پس از rotation موفق شد.",
     "سرویس مستقل systemd با CAP_NET_ADMIN، cleanup آفلاین و راهنمای نصب دستی نقش نود اضافه شد؛ CI مستقل UDP/TCP تعریف شد.",
-    "مهاجرت backup-first از schema15 به16 و restore غیرفعال با PostgreSQL16 واقعی موفق شد."
+    "مهاجرت backup-first از schema15 به16 و restore غیرفعال با PostgreSQL16 واقعی موفق شد.",
+    "PR25 با 32/32 بررسی موفق (16 job مستقل) ادغام شد؛ main f41596815460627009c40456ab7ccd01a8429fe8 همان tree کد آزموده‌شده است.",
+    "v1.0.0-alpha.15 از head آزموده‌شده f7aac198ce3aa020f8e308a833dc464d79f1d6bb به‌صورت prerelease/latest=false منتشر شد؛ stable همچنان v0.2.0 است."
   ],
   "remaining": [
-    "تکمیل regression سراسری و WireGuard واقعی، آزمون نصب دو OS و CI روی head نهایی؛ سپس PR/پیش‌انتشار alpha.15.",
-    "نصب خودکار حرفه‌ای چندنودی و انتخاب خروجی DNS/service/domain و UDP بازی؛ AWG و موتورهای باقی طبق ماتریس؛ پذیرش VPS/WAN و بار برای stable v1."
+    "پروتکل‌های باقی طبق ماتریس: Shadowsocks/2022، AWG، Hysteria2/TUIC/AnyTLS و خانواده‌های OS؛ هر کدام نیازمند خروجی واقعی، حجم/دوره و قطع نشست اثبات‌شده است.",
+    "نصب خودکار حرفه‌ای نقش نود Xray/WireGuard/OpenVPN، enrollment/renewal/reinstall و نمایش وضعیت مستقل هر نقش؛ اکنون دو نقش اخیر نصب دستی دارند و وضعیت Xray نمایندهٔ سلامت آن‌ها نیست.",
+    "انتخاب خروجی بر اساس سرویس/دامنه و چندلوکیشن DNS، مسیر واقعی UDP بازی و failover؛ DNS پاسخ‌دهنده به‌تنهایی UDP بازی را حمل نمی‌کند.",
+    "پذیرش VPS عمومی، ACME روی دامنه کاربر، ایران/خارج و بار برای stable v1؛ فعلاً فقط محیط آزمایشگاهی مجاز/موجود است."
   ],
-  "next_action": "نتیجهٔ /tmp/donino-ovpn-fullsuite.log و /tmp/donino-ovpn-wg-native-split.log را بخوان. تست‌های native installer دو OS و browser و manifest را اجرا/بررسی کن؛ PR development/openvpn را با head دقیق و تمام CI سبز ادغام و alpha.15 prerelease/latest=false منتشر کن. UDP/TCP native و منفی cert موفق؛ این انتشار stable v1 نیست. کلاد همچنان متوقف است.",
+  "next_action": "ابتدا origin/main، شاخه‌ها و PRهای تازه را بررسی کن؛ alpha15 و PR25 تمام شده‌اند و آزمون‌های موفق را بی‌دلیل تکرار نکن. مطابق اولویت کاربر، برش بعدی پروتکل (Shadowsocks با بررسی قابلیت واقعی Xray و حسابداری/ابطال، سپس AWG/موتورهای QUIC) را از شاخه تازه بر پایه main جلو ببر و assignment را هم‌زمان به‌روز کن. نصب نقش نود خودکار، سلامت مستقل نقش‌ها و routing سرویس/دامنه/UDP هنوز بازند. داده کاربران و WAN/شبکه میزبان را تغییر نده. کلاد تا دستور تازه کاربر متوقف می‌ماند.",
   "tests": [
-    "SQLite: 5 OpenVPN و12 WireGuard موفق؛ Browser OpenVPN کنار قابلیت‌های قبلی بدون خطای JS موفق.",
-    "PostgreSQL16: 5 OpenVPN شامل backup/migration/restore موفق.",
-    "Native OpenVPN2.6.14 UDP وTCP: چرخه کامل مثبت و منفی CA/نام/serial، UDPpayload، IPv6block، streamrevoke با حفظ دستگاه دیگر، cleanup، restart، quota، period، expiry وrestore موفق.",
-    "Regression سراسری و شبکه WireGuard در حال اجرا؛ full-tunnel محلی WG به دلیل نبود ct-mark کرنل رد شد و split جدا اجرا می‌شود؛ CI باید kernel/userspace کامل را تأیید کند."
+    "Local regression: 277 آزمون، 275 موفق و2skip؛ skipها Unbound انتخاب‌نشده و آزمون event-trigger اختصاصی PostgreSQL بودند. Xray/Mihomo/FRP واقعی انتخاب شده بودند.",
+    "SQLite: 5 آزمون OpenVPN و12 WireGuard موفق؛ PostgreSQL16 مستقل: 5 OpenVPN شامل backup-first schema15→16 وrestore موفق.",
+    "OpenVPN2.6.14 UDP/TCP واقعی: دو دستگاه، payload UDP، full-tunnel/IPv6block، رد CA/نام اشتباه وserial قدیمی، قطع جریان باز با حفظ دیگری، cleanup/restart/quota/period/expiry/restore موفق.",
+    "WireGuard userspace split-route محلی موفق؛ full-tunnel محلی به‌دلیل نبود IPv6 ct-mark کرنل رد شد. CI کامل kernel وuserspace هر دو موفق.",
+    "Browser نهایی بدون خطای JS موفق؛ native Debian12 با سورس فعلی: install/reinstall/restart، NGINX mTLS enrollment/renewal، DNS، encrypted backup وrestore روی میزبان دوم وuninstall حافظ داده موفق.",
+    "CI روی f7aac198ce3aa020f8e308a833dc464d79f1d6bb: 32/32 موفق، شامل دو OS نصب اصلی وSmart exit، SQLite/PostgreSQL، Xray/Mihomo، tunnel، browser وOpenVPN UDP/TCP وWireGuard kernel/userspace."
   ],
-  "blockers": [],
-  "pr_url": null
+  "blockers": [
+    "VPS/دامنه واقعی برای تأیید WAN وACME عمومی در اختیار نیست؛ مانع توسعه آزمایشگاهی نیست."
+  ],
+  "pr_url": "https://github.com/danialrad04-sketch/donino-panel/pull/25"
 }

@@ -1,7 +1,7 @@
 {
   "format": "donino-source-v1",
   "version": "1.0.0a15",
-  "source_sha256": "777fb412aa8c2979d027bea8cb03f01949659f132e3acc9cc77febf67bc7d1e1",
+  "source_sha256": "28b7fa67738dcf70eb2b9c1b473935ce7bb275521bde5ec59981db5eba2f4f64",
   "files": {
     "AGENTS.md": "5e22b6c9b8728413bfa5bf094082fd7af105cfbafdc85bf105ed42999422338d",
     "CHANGELOG.md": "3b6baed3699ae59071a66f8ccd473a9b35689e0388a5e1dc0d42f78b4441dd10",
@@ -127,7 +127,7 @@
     "docs/coordination/README.fa.md": "c7a0dae0343dc653512ade4cf169a7becb31bd041cd913a0d9bb12b5e22dbe5e",
     "docs/coordination/assignments.json": "9345c8e9fd680e16947fab80becaced4b396ee4ee2b9cc0f0a5306f63c2ff8fe",
     "docs/coordination/checkpoints/claude.json": "b0cf12f259c1de00c43b4d74a69a0dde438697fd269965011385ebee20ef129f",
-    "docs/coordination/checkpoints/codex.json": "e7620cba61fc8c43e75c0fb9e361698701e7ffa88e3072ab0f384a694eedf788",
+    "docs/coordination/checkpoints/codex.json": "21e0bff4f3d52e7c2e454bd6a5e6594f46482cb4f305b9bb232f9b185011e3eb",
     "docs/coordination/history/mihomo-tls-acceptance-v1.claude.json": "b0cf12f259c1de00c43b4d74a69a0dde438697fd269965011385ebee20ef129f",
     "docs/coordination/history/smart-dns-alpha11.codex.json": "19cbb48fc211c69e50eaee0d614a19eae5bb5786e45e1f8118b5a04ab90b823a",
     "docs/coordination/history/smart-exit-alpha12.codex.json": "678d5ce3d7c4807053b56ec67126d3946df9cabc209ee3f2c3d729d87aaaacd5",
