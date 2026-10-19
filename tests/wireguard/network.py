@@ -236,6 +236,26 @@ socketserver.ThreadingTCPServer(('198.18.0.2',8080),handler).serve_forever()
                         ["ip", "netns", "exec", namespace, "wg-quick", "up", str(path)]
                     )
 
+                def reconnect(index=1):
+                    # A deliberate server restart/period reset closes sessions.
+                    # Reimport the unchanged exported client profile explicitly.
+                    namespace = ("clienta", "clientb")[index]
+                    path = root / ("wgc" + str(index) + ".conf")
+                    command(
+                        [
+                            "ip",
+                            "netns",
+                            "exec",
+                            namespace,
+                            "wg-quick",
+                            "down",
+                            str(path),
+                        ]
+                    )
+                    command(
+                        ["ip", "netns", "exec", namespace, "wg-quick", "up", str(path)]
+                    )
+
                 def transfer(namespace, *, fail=False):
                     result = subprocess.run(
                         [
@@ -407,6 +427,7 @@ for line in sys.stdin:
                     ).fetchone()[0]
                 agent = WireGuardAgent(client=LocalPanel(), identity=identity)
                 agent.tick()
+                reconnect()
                 transfer("clientb")
                 agent.tick()
                 with database() as db:
@@ -434,6 +455,7 @@ for line in sys.stdin:
                     == 200
                 )
                 agent.tick()
+                reconnect()
                 with database() as db:
                     row = db.execute(
                         "SELECT used,period_no FROM users WHERE id=?", (user["id"],)
@@ -479,12 +501,14 @@ for line in sys.stdin:
                         "UPDATE users SET expires=NULL WHERE id=?", (user["id"],)
                     )
                 agent.tick()
+                reconnect()
                 transfer("clientb")
                 agent.deadline = time.monotonic() - 1
                 agent.enforce()
                 transfer("clientb", fail=True)
                 print("PASS: expired signed authority removed owned links", flush=True)
                 agent.tick()
+                reconnect()
                 transfer("clientb")
                 from app import ops
 

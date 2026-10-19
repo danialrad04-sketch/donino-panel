@@ -446,6 +446,54 @@ class WireGuardAgent:
         self.journal.prune(epoch)
         return values
 
+    def remove_only(self, interfaces):
+        """Withdraw peers without restarting unrelated live WireGuard sessions."""
+        if not self.interfaces or len(interfaces) != len(self.interfaces):
+            return False
+        old = {i["id"]: i for i in self.interfaces}
+        for new in interfaces:
+            prior = old.get(new["id"])
+            if prior is None or {k: v for k, v in prior.items() if k != "peers"} != {
+                k: v for k, v in new.items() if k != "peers"
+            }:
+                return False
+            peers = {
+                p["public_key"]: {
+                    k: v for k, v in p.items() if k not in ("remaining", "expires")
+                }
+                for p in prior["peers"]
+            }
+            if any(
+                peers.get(p["public_key"])
+                != {k: v for k, v in p.items() if k not in ("remaining", "expires")}
+                for p in new["peers"]
+            ):
+                return False
+        _, raw = self.snapshot()
+        for new in interfaces:
+            keep = {p["public_key"] for p in new["peers"]}
+            prior = old[new["id"]]
+            for peer in prior["peers"]:
+                if peer["public_key"] in keep:
+                    continue
+                up, down = raw.get((prior["name"], peer["public_key"]), (0, 0))
+                self.kernel.remove_peer(prior["name"], peer["public_key"])
+                offset = self.offsets.setdefault(
+                    peer["device_id"],
+                    {
+                        "user_id": peer["device_id"],
+                        "up": 0,
+                        "down": 0,
+                        "period_no": peer["period_no"],
+                    },
+                )
+                offset["up"] += up
+                offset["down"] += down
+                self.last_raw.pop(prior["name"] + "|" + peer["public_key"], None)
+        self.interfaces = interfaces
+        self.save()
+        return True
+
     def tick(self):
         self.renew_identity()
         confirmed = self.report()
@@ -484,9 +532,13 @@ class WireGuardAgent:
             ),
         )
         with self.guard:
-            if body["revision"] != self.revision or any(
-                not self.kernel.exists(i["name"]) for i in self.interfaces
-            ):
+            missing = any(not self.kernel.exists(i["name"]) for i in self.interfaces)
+            removed = (
+                not missing
+                and body["revision"] != self.revision
+                and self.remove_only(body["interfaces"])
+            )
+            if missing or (body["revision"] != self.revision and not removed):
                 self.stop_core()
                 for interface in body["interfaces"]:
                     self.kernel.check(interface, {})

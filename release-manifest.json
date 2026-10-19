@@ -1,7 +1,7 @@
 {
   "format": "donino-source-v1",
   "version": "1.0.0a14",
-  "source_sha256": "cfe142e4680b99217380f18adf038a1ae50617648f0f3dd7e1031e754eacdda6",
+  "source_sha256": "bf05b02222c62a5a755d6bc94b7b214f65de4b4c720f2bf82151e64fff51b4df",
   "files": {
     "AGENTS.md": "fcebf7e072e2994015f9a37651cfe20423c41a7aff10b1baafb31385588cbdf7",
     "CHANGELOG.md": "76ca7f85cd4813e30caef1b50de4d31e9716502db61e6af9e9534dfa9b435775",
@@ -23,7 +23,7 @@
     "agent/smart_exit.py": "75473ddfa23ae7bcd8ab280ea89e9bcd0c500a9ad1eadab0f6e20470b6c84f85",
     "agent/smart_gateway.py": "6ef5e30f59f56a1266874a098e89c3e69972581cba98b38a672cb49a07a2bec3",
     "agent/tunnel_monitor.py": "c7f4f818873233e6b6ae250739e2a8ed0962c7007edf32b69aea8203deff7805",
-    "agent/wireguard.py": "98c91ff0a97702e60c20105b3bcaca60fc48ddeb742b4434f7eb7323b4c867f6",
+    "agent/wireguard.py": "8f7fa9b769601f21c35a064b84cb43f44d4ab5e40933660c02ff25d5563da307",
     "app/__init__.py": "2c91906526168cc241618f4ee4440caf0594fa3c578ae7af4b91128dc622ddee",
     "app/accounting.py": "d32c5d282cf48a9a05e91688b9862e63bb0ea336c57f7b3f03155910b64b596c",
     "app/bootstrap.py": "411149b6a525deda4ac2825c305144229150e97e99f78ecde2034f631e420dc0",
