@@ -581,6 +581,23 @@ def main():
                 exercise_tunnel_ui(page)
                 exercise_wireguard_ui(page)
                 exercise_openvpn_ui(page)
+                page.locator("a[data-page=inbounds]").click()
+                page.get_by_role("button", name="اتصال جدید").click()
+                page.locator("#protocol").select_option("shadowsocks")
+                assert page.locator("#ss-fields").is_visible()
+                assert not page.locator("#sni-field").is_visible()
+                assert not page.locator("#tls-fields").is_visible()
+                page.locator("#edit-form [name=ss_method]").select_option("2022-blake3-aes-128-gcm")
+                page.locator("#edit-form [name=name]").fill("Shadowsocks آزمایشی")
+                page.locator("#edit-form [name=port]").fill("8388")
+                page.locator("#edit-form button[type=submit]").click()
+                page.locator("#modal").wait_for(state="hidden")
+                ss_row = page.locator("#main tr").filter(has_text="Shadowsocks آزمایشی")
+                ss_row.get_by_role("button", name="ویرایش", exact=True).click()
+                assert page.locator("#edit-form [name=ss_method]").input_value() == "2022-blake3-aes-128-gcm"
+                page.locator("#edit-form button[type=submit]").click()
+                page.locator("#modal").wait_for(state="hidden")
+                assert page.evaluate("data.inbounds.filter(i => i.protocol === 'shadowsocks').every(i => !('ss_server_key' in i.settings))")
                 page.locator("a[data-page=overview]").click()
                 page.locator("#main h1").filter(has_text="شبکه، در یک نگاه").wait_for()
                 page.locator("#toast").wait_for(state="hidden")
@@ -682,7 +699,7 @@ def main():
                 customer.wait_for_function(
                     '() => document.querySelector("#subscription-qr").naturalWidth > 0'
                 )
-                customer.locator(".profile-item summary").click()
+                customer.locator(".profile-item summary").first.click()
                 customer.wait_for_function(
                     '() => document.querySelector(".profile-item img").naturalWidth > 0'
                 )

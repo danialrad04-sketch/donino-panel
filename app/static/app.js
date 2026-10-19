@@ -243,13 +243,13 @@ function renderInbounds() {
       "مسیرهای امن اتصال برای تمام کاربران فعال.",
       owner() ? addButton("inbound", "اتصال جدید") : "",
     ) +
-    `<div class="notice">VLESS با REALITY/TCP یا WebSocket و gRPC با TLS، VMess با WebSocket یا gRPC با TLS، و Trojan با TCP یا WebSocket با TLS. گواهی‌های TLS باید روی سرور نود قرار داشته باشند.</div><section class="card table-card">${data.inbounds.length ? `<div class="table-scroll"><table><thead><tr><th>نام اتصال</th><th>پروتکل</th><th>نود</th><th>پورت</th><th>دامنه</th>${owner() ? "<th>عملیات</th>" : ""}</tr></thead><tbody>${data.inbounds.map((i) => `<tr><td>${esc(i.name)}</td><td><span class="mono">${esc(i.protocol.toUpperCase())}</span> <small class="muted">${esc(transportName(i.protocol, transportOf(i)))}</small> ${badge(i.enabled ? "active" : "disabled", i.enabled ? "فعال" : "خاموش")}</td><td>${esc(i.node_name)}</td><td class="mono">${i.port}</td><td><span class="mono">${esc(i.settings.sni)}</span></td>${owner() ? `<td><button data-action="edit-inbound" data-id="${i.id}">ویرایش</button> <button class="danger" data-action="delete-inbound" data-id="${i.id}">حذف</button></td>` : ""}</tr>`).join("")}</tbody></table></div>` : empty("یک مسیر تازه بساز", "ابتدا نود را اضافه کن، سپس اولین اتصال را بساز.", "inbounds")}</section>`
+    `<div class="notice">VLESS با REALITY/TCP یا WebSocket و gRPC با TLS، VMess با WebSocket یا gRPC با TLS، و Trojan با TCP یا WebSocket با TLS. Shadowsocks با AEAD و TCP/UDP بومی نیز موجود است؛ TLS و افزونه ندارد. گواهی‌های پروتکل‌های TLS باید روی سرور نود قرار داشته باشند.</div><section class="card table-card">${data.inbounds.length ? `<div class="table-scroll"><table><thead><tr><th>نام اتصال</th><th>پروتکل</th><th>نود</th><th>پورت</th><th>دامنه</th>${owner() ? "<th>عملیات</th>" : ""}</tr></thead><tbody>${data.inbounds.map((i) => `<tr><td>${esc(i.name)}</td><td><span class="mono">${esc(i.protocol.toUpperCase())}</span> <small class="muted">${esc(transportName(i.protocol, transportOf(i)))}</small> ${badge(i.enabled ? "active" : "disabled", i.enabled ? "فعال" : "خاموش")}</td><td>${esc(i.node_name)}</td><td class="mono">${i.port}</td><td><span class="mono">${esc(i.settings.sni || i.settings.ss_method || "—")}</span></td>${owner() ? `<td><button data-action="edit-inbound" data-id="${i.id}">ویرایش</button> <button class="danger" data-action="delete-inbound" data-id="${i.id}">حذف</button></td>` : ""}</tr>`).join("")}</tbody></table></div>` : empty("یک مسیر تازه بساز", "ابتدا نود را اضافه کن، سپس اولین اتصال را بساز.", "inbounds")}</section>`
   );
 }
 function renderSettings() {
   return (
     heading("تنظیمات و نگهداری", "همه‌چیز برای مدیریت یک شبکهٔ مستقل.") +
-    `<div class="settings-grid"><article class="card"><h2>پشتیبان‌گیری</h2><p>نسخهٔ پایگاه داده و حساب‌ها را دریافت کن. این فایل محرمانه است. برای بازیابی ورود دومرحله‌ای، کلید مستقل سرور نیز لازم است؛ پشتیبان کامل رمزگذاری‌شده در راهنمای نگهداری توضیح داده شده است.</p>${owner() ? `<a class="primary" href="/api/backup" download>${icon("download")}دریافت نسخهٔ پایگاه داده</a>` : "<p>دریافت پشتیبان فقط برای مالک شبکه فعال است.</p>"}</article><article class="card"><h2>ظاهر پنل</h2><p>پوستهٔ روشن یا تیره را انتخاب کن. انتخاب روی همین دستگاه ذخیره می‌شود.</p><button class="secondary" data-action="theme">${icon("theme")}تغییر حالت نمایش</button></article><article class="card"><h2>حساب مدیریت</h2><p>نام کاربری: ${esc(account.username)}<br>سطح دسترسی: ${roles[account.role]}<br>رمز، ورود دومرحله‌ای، نشست‌ها و توکن‌ها را از بخش امنیت حساب مدیریت کن. مالک می‌تواند مدیرهای دیگر را نیز همین‌جا مدیریت کند.</p></article><article class="card"><h2>Donino Panel <span class="mono">1.0.0-alpha.15</span></h2><p>نسخهٔ اولیهٔ مستقل، با رابط فارسی و مدیریت چند نود. امکانات در حال توسعه‌اند. راه‌اندازی واقعی به سرور نود، Xray و دامنهٔ مناسب نیاز دارد.</p><a class="subtle-link" href="https://github.com/danialrad04-sketch/donino-panel" target="_blank" rel="noopener">مستندات و کد منبع</a></article></div><section id="account-security" class="settings-grid"></section>`
+    `<div class="settings-grid"><article class="card"><h2>پشتیبان‌گیری</h2><p>نسخهٔ پایگاه داده و حساب‌ها را دریافت کن. این فایل محرمانه است. برای بازیابی ورود دومرحله‌ای، کلید مستقل سرور نیز لازم است؛ پشتیبان کامل رمزگذاری‌شده در راهنمای نگهداری توضیح داده شده است.</p>${owner() ? `<a class="primary" href="/api/backup" download>${icon("download")}دریافت نسخهٔ پایگاه داده</a>` : "<p>دریافت پشتیبان فقط برای مالک شبکه فعال است.</p>"}</article><article class="card"><h2>ظاهر پنل</h2><p>پوستهٔ روشن یا تیره را انتخاب کن. انتخاب روی همین دستگاه ذخیره می‌شود.</p><button class="secondary" data-action="theme">${icon("theme")}تغییر حالت نمایش</button></article><article class="card"><h2>حساب مدیریت</h2><p>نام کاربری: ${esc(account.username)}<br>سطح دسترسی: ${roles[account.role]}<br>رمز، ورود دومرحله‌ای، نشست‌ها و توکن‌ها را از بخش امنیت حساب مدیریت کن. مالک می‌تواند مدیرهای دیگر را نیز همین‌جا مدیریت کند.</p></article><article class="card"><h2>Donino Panel <span class="mono">1.0.0-alpha.16</span></h2><p>نسخهٔ اولیهٔ مستقل، با رابط فارسی و مدیریت چند نود. امکانات در حال توسعه‌اند. راه‌اندازی واقعی به سرور نود، Xray و دامنهٔ مناسب نیاز دارد.</p><a class="subtle-link" href="https://github.com/danialrad04-sketch/donino-panel" target="_blank" rel="noopener">مستندات و کد منبع</a></article></div><section id="account-security" class="settings-grid"></section>`
   );
 }
 function render() {
@@ -472,17 +472,19 @@ function showNodeToken(token) {
     `<p class="note">این کلید فقط همین یک بار نمایش داده می‌شود. آن را به‌عنوان متغیر <span class="mono">DONINO_NODE_TOKEN</span> در فایل تنظیمات عامل نود ذخیره کن. راهنمای نصب در مخزن پروژه قرار دارد.</p><label class="full">کلید محرمانه<textarea id="secret-output" readonly dir="ltr">${esc(token)}</textarea></label><div class="form-actions"><button class="primary" data-action="copy-secret">کپی کلید</button></div>`,
   );
 }
-const PROTOCOL_LABELS = { vless: "VLESS", vmess: "VMess", trojan: "Trojan" };
-const DEFAULT_TRANSPORT = { vless: "tcp", vmess: "ws", trojan: "tcp" };
+const PROTOCOL_LABELS = { vless: "VLESS", vmess: "VMess", trojan: "Trojan", shadowsocks: "Shadowsocks" };
+const DEFAULT_TRANSPORT = { vless: "tcp", vmess: "ws", trojan: "tcp", shadowsocks: "tcp" };
 const TRANSPORT_OPTIONS = {
   vless: ["tcp", "ws", "grpc"],
   vmess: ["ws", "grpc"],
   trojan: ["tcp", "ws"],
+  shadowsocks: ["tcp"],
 };
 function transportOf(inbound) {
   return inbound?.settings?.transport || DEFAULT_TRANSPORT[inbound?.protocol] || "tcp";
 }
 function transportName(protocol, transport) {
+  if (protocol === "shadowsocks") return "TCP + UDP / AEAD";
   if (protocol === "vless" && transport === "tcp") return "TCP + REALITY (Vision)";
   if (transport === "tcp") return "TCP + TLS";
   if (transport === "ws") return "WebSocket + TLS";
@@ -511,12 +513,13 @@ function editInbound(inbound) {
         extra: 'min="1" max="65535" dir="ltr"',
         hint: "پورت باید روی سرور نود باز باشد.",
       }) +
-      input("دامنهٔ SNI", "sni", {
+      `<div id="sni-field" class="full">` + input("دامنهٔ SNI", "sni", {
         value: settings.sni || "www.microsoft.com",
         full: true,
         extra: 'dir="ltr"',
         hint: "این دامنه باید با نام روی گواهی TLS یکی باشد؛ کلاینت با همین نام به نود وصل می‌شود.",
       }) +
+      `</div><label id="ss-fields" class="full" hidden>روش رمز Shadowsocks<select name="ss_method">${["aes-128-gcm", "aes-256-gcm", "chacha20-ietf-poly1305", "2022-blake3-aes-128-gcm", "2022-blake3-aes-256-gcm"].map(m => `<option value="${m}" ${m === (settings.ss_method || "chacha20-ietf-poly1305") ? "selected" : ""}>${m}</option>`).join("")}</select><small>TCP و UDP بومی، بدون TLS یا افزونه. تغییر کاربران روی نود دارای Shadowsocks هسته را دوباره اجرا می‌کند. رمز دستگاه خودکار و مستقل ساخته می‌شود؛ تغییر روش نیازمند دریافت کانفیگ جدید است.</small></label>` +
       `<div id="reality-fields" class="full">${input("مقصد REALITY", "target", { value: settings.target || "www.microsoft.com:443", extra: 'dir="ltr"' })}</div>` +
       `<div id="tls-fields" class="full"><div class="form-grid">` +
       input("مسیر گواهی روی نود", "cert_file", { value: settings.cert_file || "", required: false, extra: 'dir="ltr"', hint: "مثال: /etc/donino/tls/fullchain.pem" }) +
@@ -534,6 +537,7 @@ function editInbound(inbound) {
         method: inbound ? "PUT" : "POST",
         body: JSON.stringify({
           ...f,
+          ...(f.protocol === "shadowsocks" ? { sni: "", cert_file: "", key_file: "" } : {}),
           port: Number(f.port),
           enabled: f.enabled === "on",
           target: f.target || "www.microsoft.com:443",
@@ -557,15 +561,19 @@ function editInbound(inbound) {
     if (protocolChanged) renderTransports(protocol, DEFAULT_TRANSPORT[protocol]);
     const transport = $("#transport").value;
     const reality = protocol === "vless" && transport === "tcp";
+    const ss = protocol === "shadowsocks";
+    $("#sni-field").hidden = ss;
+    $("#sni-field input").required = !ss;
+    $("#ss-fields").hidden = !ss;
     $("#reality-fields").hidden = !reality;
-    $("#tls-fields").hidden = reality;
+    $("#tls-fields").hidden = reality || ss;
     $("#path-field").hidden = transport !== "ws";
     $("#service-field").hidden = transport !== "grpc";
     document
       .querySelectorAll(
         "#tls-fields [name=cert_file],#tls-fields [name=key_file]",
       )
-      .forEach((e) => (e.required = !reality));
+      .forEach((e) => (e.required = !reality && !ss));
   };
   renderTransports(protocol0, transport0);
   updateFields(false);

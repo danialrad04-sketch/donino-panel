@@ -42,6 +42,7 @@ from .db import (
     MAX_DEVICES_PER_USER,
 )
 from .core import DEFAULT_TRANSPORT, TRANSPORTS, eligible, status, profiles, is_reality
+from .shadowsocks import METHODS as SS_METHODS, key_size as ss_key_size
 from .secrets import seal
 from .accounting import apply_sample, next_period
 from .bootstrap import mount_bootstrap
@@ -209,10 +210,11 @@ class NodeInput(BaseModel):
 class InboundInput(BaseModel):
     node_id: str
     name: str = Field(min_length=1, max_length=80)
-    protocol: str = Field(pattern=r"^(vless|vmess|trojan)$")
+    protocol: str = Field(pattern=r"^(vless|vmess|trojan|shadowsocks)$")
     transport: str = Field(default="", pattern=r"^(|tcp|ws|grpc)$")
     port: int = Field(ge=1, le=65535)
-    sni: str = Field(min_length=1, max_length=253, pattern=r"^[A-Za-z0-9.-]+$")
+    sni: str = Field(default="", max_length=253, pattern=r"^[A-Za-z0-9.-]*$")
+    ss_method: str = Field(default="chacha20-ietf-poly1305", max_length=64)
     target: str = Field(
         default="www.microsoft.com:443",
         max_length=260,
@@ -234,6 +236,14 @@ class InboundInput(BaseModel):
         if self.transport not in TRANSPORTS[self.protocol]:
             allowed = ", ".join(TRANSPORTS[self.protocol])
             raise ValueError(f"{self.protocol} supports only: {allowed}")
+        if self.protocol == "shadowsocks":
+            if self.ss_method not in SS_METHODS:
+                raise ValueError("Unsupported Shadowsocks AEAD method")
+            if self.cert_file or self.key_file or self.sni:
+                raise ValueError("Native Shadowsocks does not use TLS/SNI fields")
+            return self
+        if not self.sni:
+            raise ValueError("TLS/REALITY needs SNI")
         if not is_reality(self.protocol, self.transport) and (
             not self.cert_file.startswith("/") or not self.key_file.startswith("/")
         ):
@@ -1166,14 +1176,33 @@ def list_inbounds(account=Depends(admin)):
             value = dict(row)
             s = json.loads(value["settings"])
             s.pop("private_key", None)
+            s.pop("ss_server_key", None)
             value["settings"] = s
             result.append(value)
         return result
 
 
 def inbound_settings(body, previous=None):
+    if body.protocol == "shadowsocks":
+        settings = {"transport": "tcp", "ss_method": body.ss_method}
+        if body.ss_method.startswith("2022-"):
+            old = (
+                json.loads(previous["settings"])
+                if previous and previous["protocol"] == "shadowsocks"
+                else {}
+            )
+            settings["ss_server_key"] = (
+                old["ss_server_key"]
+                if old.get("ss_method") == body.ss_method and old.get("ss_server_key")
+                else seal(
+                    base64.b64encode(
+                        secrets.token_bytes(ss_key_size(body.ss_method))
+                    ).decode()
+                )
+            )
+        return settings
     settings = body.model_dump(
-        exclude={"node_id", "name", "protocol", "port", "enabled"}
+        exclude={"node_id", "name", "protocol", "port", "enabled", "ss_method"}
     )
     if is_reality(body.protocol, body.transport):
         old = (

@@ -165,6 +165,11 @@ class SmartNetworkTest(fixtures.SmartFixture, unittest.IsolatedAsyncioTestCase):
             await handler.stop()
         for writer in list(self.connections):
             await close(writer)
+        # Cancelling to_thread's awaiter does not cancel a running DB worker.
+        # IsolatedAsyncioTestCase runs the synchronous PanelBase.tearDown before
+        # its runner shuts down the executor. Drain workers before deleting the
+        # temporary database, rather than racing a late SQLite write/recreation.
+        await asyncio.get_running_loop().shutdown_default_executor()
 
     def update_policy(self, rules):
         result = self.client.put(

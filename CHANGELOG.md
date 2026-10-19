@@ -1,5 +1,21 @@
 # Donino releases
 
+## 1.0.0-alpha.16 — Shadowsocks AEAD and multi-user 2022 preview, 2026-10-19
+
+- Native TCP/UDP for AES-128-GCM, AES-256-GCM, ChaCha20-IETF-Poly1305
+  and 2022 BLAKE3 AES-128/256-GCM on the pinned Xray engine.
+- HKDF device credentials scoped to protocol/inbound/method, sealed independent
+  2022 server keys and sealed new deployment payloads, SIP002 URI and Mihomo exports, Persian cipher selector and
+  existing private portal/QR integration. Metadata edits preserve server keys.
+- Withdraw listeners with no eligible devices to prevent Xray 2022's empty-user
+  single-user fallback. No plaintext ciphers, unsupported 2022 ChaCha multi-user,
+  fabricated TLS/plugin or live-add claim. User changes restart this node's Xray.
+- Real exported Xray/Mihomo clients, two-device usage/dedup, native inner UDP,
+  bad-password/server-key-only rejection, open-stream revoke, credential rotation,
+  quota, period reset and real expiry acceptance. Database schema stays 16.
+- Still a prerelease: automatic VPN node installation, per-service/domain UDP
+  routing, remaining engines and public WAN/load acceptance are unfinished.
+
 ## 1.0.0-alpha.15 — managed OpenVPN UDP/TCP preview, 2026-10-19
 
 - Separate endpoint CA and device certificates, sealed private keys, owner-only

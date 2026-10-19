@@ -1,28 +1,32 @@
 {
   "task_id": "codex-v1-progress",
   "status": "in_progress",
-  "branch": "development/openvpn",
+  "branch": "development/shadowsocks",
   "last_verified_commit": null,
   "completed": [
-    "alpha.14 با WireGuard واقعی تحویل و checkpoint نهایی بدون تغییر آرشیو شد.",
-    "schema 16 و CA مستقل endpoint/گواهی دستگاه، ovpn خصوصی، rotation، scope نود و restore غیرفعال پیاده شدند.",
-    "عامل مشترک امضاشده با Driver OpenVPN 2.6، سوکت Unix خصوصی و احراز سریال گواهی، CID و دفتر پایدار شمارندهٔ نشست/دوره پیاده شد.",
-    "رابط فارسی UDP/TCP، فرم محافظت‌شده از refresh و دریافت خصوصی/rotation/revoke در مرورگر واقعی موفق شد.",
-    "رفع پاسخ UDP از IP اشتباه روی میزبان چندرابطی با multihome؛ انتقال دو دستگاه و حسابداری و قطع جریان باز بدون قطع دستگاه دیگر در شبکهٔ واقعی موفق شد.",
-    "پذیرش کامل دو کلاینت واقعی OpenVPN 2.6.14 روی UDP و TCP: UDP داخلی، full-tunnel و مسدودسازی IPv6، رد CA/نام اشتباه و سریال قدیمی پس از rotation موفق شد.",
-    "سرویس مستقل systemd با CAP_NET_ADMIN، cleanup آفلاین و راهنمای نصب دستی نقش نود اضافه شد؛ CI مستقل UDP/TCP تعریف شد.",
-    "مهاجرت backup-first از schema15 به16 و restore غیرفعال با PostgreSQL16 واقعی موفق شد."
+    "alpha15 OpenVPN تحویل و checkpoint نهایی بدون تغییر آرشیو شد.",
+    "پنج روش Shadowsocks AEAD/2022 AES با credential مشتق‌شده مستقل دستگاه/inbound/method، کلید سرور2022 رمز‌شده، خروجی SIP002/Mihomo و فرم فارسی پیاده شد.",
+    "listener بدون دستگاه مجاز حذف می‌شود تا fallback تک‌کاربره 2022 با کلید سرور تنها ایجاد نشود؛ metadata مدیریتی کلید سرور را افشا نمی‌کند.",
+    "سه آزمون API وکلاینت واقعی موفق: پنج روش × دو دستگاه، TCP/UDP، مصرف/dedup، رد رمز غلط/کلید سرور تنها، قطع جریان باز، rotation، quota، period وexpiry واقعی؛ Mihomo TCP وbrowser موفق.",
+    "CI قبلی خطای fixture dedup درOpenVPN TCP نشان داد: snapshot تازه شامل بایت کنترل تازه است و replay نیست. آزمون به بازپخش همان heartbeat تأییدشده اصلاح شد؛ چرخه کامل native UDP/TCP دوباره موفق شد.",
+    "Regression محلی280 آزمون:278موفق و2skip؛ head51c89d3 درCI31از32موفق، تنهاخطای teardown آزمونSmartDNS به علت workerDB پس ازلغوawaiter بود؛ fixtureاکنون executorراپیش ازحذفDB تخلیه می‌کند.",
+    "به درخواست تازه کاربر PR27 کلاد/installer-plain-http درhead1d024687 بررسی شد: خرابی repair HTTP وپسرفت upgrade نصبHTTPS قدیمی باگواهی موجود بازتولیدشد؛ مستندبازبینی ثبتشد واین featureواردalpha16نمی‌شود.",
+    "بازبینی نگهداری کلیدها: payload صف deployment جدید نیزباFernetرمزمی‌شودتا کلیدSS/2022 درکپی صف متن‌روشن نماند؛ checksum/id/ACKبدون تغییرمعنا وschema16حفظ شد."
   ],
   "remaining": [
-    "تکمیل regression سراسری و WireGuard واقعی، آزمون نصب دو OS و CI روی head نهایی؛ سپس PR/پیش‌انتشار alpha.15.",
-    "نصب خودکار حرفه‌ای چندنودی و انتخاب خروجی DNS/service/domain و UDP بازی؛ AWG و موتورهای باقی طبق ماتریس؛ پذیرش VPS/WAN و بار برای stable v1."
+    "regression سراسری، CI روی head نهایی SQLite/PostgreSQL وOS؛ self-review، PR وalpha16 prerelease.",
+    "AWG و موتورهای QUIC وپروتکل‌های باقی؛ نصب نود خودکار و نمایش وضعیت مستقل نقش‌ها؛ routing چندلوکیشن DNS/service/domain/UDP وپذیرش WAN."
   ],
-  "next_action": "نتیجهٔ /tmp/donino-ovpn-fullsuite.log و /tmp/donino-ovpn-wg-native-split.log را بخوان. تست‌های native installer دو OS و browser و manifest را اجرا/بررسی کن؛ PR development/openvpn را با head دقیق و تمام CI سبز ادغام و alpha.15 prerelease/latest=false منتشر کن. UDP/TCP native و منفی cert موفق؛ این انتشار stable v1 نیست. کلاد همچنان متوقف است.",
+  "next_action": "تمامCI head تازهPR26 را بررسی، شکست واقعی را رفع وپس از32/32موفقmainرا باheadبرابریtreeادغام وalpha16prerelease/latest=falseمنتشرکن. PR27کلاد هنوزreadyنیست:repairHTTPوupgradeTLSقدیمی نیازمنداصلاح وپذیرش دوOSاند؛ راهنمایreviewثبتشده وبدونادغامحفظشود. سپسنصبنود/پروتکل‌هاطبقنظرکاربرادامهدارد.",
   "tests": [
-    "SQLite: 5 OpenVPN و12 WireGuard موفق؛ Browser OpenVPN کنار قابلیت‌های قبلی بدون خطای JS موفق.",
-    "PostgreSQL16: 5 OpenVPN شامل backup/migration/restore موفق.",
-    "Native OpenVPN2.6.14 UDP وTCP: چرخه کامل مثبت و منفی CA/نام/serial، UDPpayload، IPv6block، streamrevoke با حفظ دستگاه دیگر، cleanup، restart، quota، period، expiry وrestore موفق.",
-    "Regression سراسری و شبکه WireGuard در حال اجرا؛ full-tunnel محلی WG به دلیل نبود ct-mark کرنل رد شد و split جدا اجرا می‌شود؛ CI باید kernel/userspace کامل را تأیید کند."
+    "Shadowsocks: سه آزمون محلی با Xray26.3.27 وMihomo1.19.32 واقعی در67ثانیه موفق؛ پنج روش ودو دستگاه وچرخه حجم/دوره/انقضا/ابطال.",
+    "Browser جدیدSS/2022 create/edit/redaction وپرتال چندپروفایلی/QR وMobile موفق، بدون خطایJS.",
+    "Regression سراسری با Xray/Mihomo/FRP واقعی درحال اجرا؛ PostgreSQL کامل ودو OS را CI روی head نهایی باید تأیید کند.",
+    "OpenVPN2.6.14 native UDP/TCP پس از اصلاح replay fixture: هر دو چرخه کامل و negative cert/serial/quota/period/restore موفق؛ شکست CI قبلی ثبت شد وhead تازه باید همه CI را پاس کند.",
+    "Local full:280 tests/278passed/2skip (Unbound انتخاب‌نشده وevent-trigger اختصاصیPG).",
+    "SmartDNS network:9آزمون موفق پس از drainکردن workerهای DB پیش ازپاک‌سازیfixture؛ retry/نادیده‌گرفتن خطایcleanup اضافه نشد.",
+    "PR27: دوایراد رفتاری باstateآزمایشگاهی وبدونrunفرمان میزبان بازتولیدشد؛ review درdocs/coordination/reviews/installer-plain-http-v1.fa.md.",
+    "پس ازرمزگذاریdeployment: دوآزمونصفSQLiteوPostgreSQL16 موفق؛ SS APIدرهر دوDB موفق؛ سهآزمونواقعیSS/Xray/Mihomo دوبارهدر65ثانیه موفق. regressionوCIرویheadجدیدلازم است."
   ],
   "blockers": [],
   "pr_url": null

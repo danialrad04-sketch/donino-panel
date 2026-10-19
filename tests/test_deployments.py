@@ -1,4 +1,7 @@
+import json
+
 from test_accounts import PanelBase
+from app.secrets import unseal
 from app.db import database, initialize
 
 
@@ -8,6 +11,17 @@ class DeploymentTest(PanelBase):
         node = self.post("/nodes", {"name": "jobs", "host": "vpn.example.com"}).json()
         auth = {"Authorization": "Bearer " + node["token"]}
         first = self.client.get("/api/agent/config", headers=auth).json()
+        with database() as db:
+            payload = db.execute(
+                "SELECT payload FROM deployments WHERE id=?", (first["job_id"],)
+            ).fetchone()[0]
+            self.assertTrue(
+                payload.startswith("fernet:"), "Deployment config must be sealed"
+            )
+            self.assertTrue(
+                json.loads(unseal(payload))["config"] == first["config"],
+                "Sealed job must retain exact config",
+            )
         initialize()
         self.assertEqual(
             self.client.get("/api/agent/config", headers=auth).json()["job_id"],
