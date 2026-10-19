@@ -7,7 +7,8 @@
     "alpha15 OpenVPN تحویل و checkpoint نهایی بدون تغییر آرشیو شد.",
     "پنج روش Shadowsocks AEAD/2022 AES با credential مشتق‌شده مستقل دستگاه/inbound/method، کلید سرور2022 رمز‌شده، خروجی SIP002/Mihomo و فرم فارسی پیاده شد.",
     "listener بدون دستگاه مجاز حذف می‌شود تا fallback تک‌کاربره 2022 با کلید سرور تنها ایجاد نشود؛ metadata مدیریتی کلید سرور را افشا نمی‌کند.",
-    "سه آزمون API وکلاینت واقعی موفق: پنج روش × دو دستگاه، TCP/UDP، مصرف/dedup، رد رمز غلط/کلید سرور تنها، قطع جریان باز، rotation، quota، period وexpiry واقعی؛ Mihomo TCP وbrowser موفق."
+    "سه آزمون API وکلاینت واقعی موفق: پنج روش × دو دستگاه، TCP/UDP، مصرف/dedup، رد رمز غلط/کلید سرور تنها، قطع جریان باز، rotation، quota، period وexpiry واقعی؛ Mihomo TCP وbrowser موفق.",
+    "CI قبلی خطای fixture dedup درOpenVPN TCP نشان داد: snapshot تازه شامل بایت کنترل تازه است و replay نیست. آزمون به بازپخش همان heartbeat تأییدشده اصلاح شد؛ چرخه کامل native UDP/TCP دوباره موفق شد."
   ],
   "remaining": [
     "regression سراسری، CI روی head نهایی SQLite/PostgreSQL وOS؛ self-review، PR وalpha16 prerelease.",
@@ -17,7 +18,8 @@
   "tests": [
     "Shadowsocks: سه آزمون محلی با Xray26.3.27 وMihomo1.19.32 واقعی در67ثانیه موفق؛ پنج روش ودو دستگاه وچرخه حجم/دوره/انقضا/ابطال.",
     "Browser جدیدSS/2022 create/edit/redaction وپرتال چندپروفایلی/QR وMobile موفق، بدون خطایJS.",
-    "Regression سراسری با Xray/Mihomo/FRP واقعی درحال اجرا؛ PostgreSQL کامل ودو OS را CI روی head نهایی باید تأیید کند."
+    "Regression سراسری با Xray/Mihomo/FRP واقعی درحال اجرا؛ PostgreSQL کامل ودو OS را CI روی head نهایی باید تأیید کند.",
+    "OpenVPN2.6.14 native UDP/TCP پس از اصلاح replay fixture: هر دو چرخه کامل و negative cert/serial/quota/period/restore موفق؛ شکست CI قبلی ثبت شد وhead تازه باید همه CI را پاس کند."
   ],
   "blockers": [],
   "pr_url": null

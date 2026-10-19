@@ -358,11 +358,19 @@ Server(('fd42:200:2::2',8082),handler).serve_forever()
             headers = {"Authorization": "Bearer " + node["token"]}
 
             class LocalPanel:
+                def __init__(self):
+                    self.confirmed_reports = []
+
                 def get(self, path, **kwargs):
                     return panel.get(path, headers=headers, **kwargs)
 
                 def post(self, path, **kwargs):
-                    return panel.post(path, headers=headers, **kwargs)
+                    response = panel.post(path, headers=headers, **kwargs)
+                    if response.is_success and kwargs.get("json", {}).get("usage"):
+                        self.confirmed_reports.append(
+                            (path, json.loads(json.dumps(kwargs["json"])))
+                        )
+                    return response
 
                 def close(self):
                     pass
@@ -647,7 +655,14 @@ Server(('fd42:200:2::2',8082),handler).serve_forever()
                             (user["id"],),
                         )
                     )
-                agent.report()
+                # A fresh management snapshot can include native keepalive or
+                # handshake bytes even with idle applications. Replay the exact
+                # acknowledged reports to test dedup, never compare two different
+                # live samples and mistake legitimate new bytes for duplication.
+                confirmed = tuple(agent.client.confirmed_reports)
+                assert confirmed
+                for path, payload in confirmed:
+                    panel.post(path, headers=headers, json=payload).raise_for_status()
                 with database() as db:
                     assert (
                         db.execute(
