@@ -1,10 +1,10 @@
 {
   "format": "donino-source-v1",
   "version": "1.0.0a14",
-  "source_sha256": "06eebd46124ebc4e133891ed80a11fa795cfce308ff2f3e157550fc6ec22c327",
+  "source_sha256": "06f6949b2608c15763bfa3d9b48c1f1d819b40257ee9c6c8224ae0e4d567f503",
   "files": {
     "AGENTS.md": "fcebf7e072e2994015f9a37651cfe20423c41a7aff10b1baafb31385588cbdf7",
-    "CHANGELOG.md": "76ca7f85cd4813e30caef1b50de4d31e9716502db61e6af9e9534dfa9b435775",
+    "CHANGELOG.md": "e55a50eebb9f677c8edc192eadf4785145147dc54e45770e4f7c871acb532bbb",
     "CLAUDE.md": "7ceae33fdec1ad94746db92f7e3eba672db8269d8c38e3d8cfc1515cfaf24402",
     "LICENSE": "d8a6cc31abc16b6748c7a21f21611f5a1ec33f67d22ca23d7da1c19b95496bee",
     "README.md": "e95fb7fc5fd1acd45cd460d285232cde92c005bc26b04d162c622c8a13d8af12",

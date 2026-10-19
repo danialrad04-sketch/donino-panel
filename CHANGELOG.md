@@ -1,5 +1,13 @@
 # Donino releases
 
+## 1.0.0-alpha.14 — managed WireGuard preview, 2026-10-19
+
+- Add independent encrypted per-device WireGuard keys/PSKs, stable private IPv4 allocation, owner-only conf/QR export, rotation, disable/delete and node scope checks.
+- Add a separate signed-intent Linux supervisor with durable cumulative period accounting, local quota/expiry enforcement, bounded authority, protected link ownership and offline systemd stop cleanup. Peer withdrawal preserves unrelated live sessions.
+- Add the Persian WireGuard page, protect typed forms from background refresh and exercise private export/QR/revocation and mobile layouts in browser acceptance.
+- Integrate Claude's glass dashboard redesign and explicit fixture userspace selection; record the review and real acceptance limits.
+- WireGuard node setup remains manual; IPv4 only, ordinary quota only, four interfaces/128 peers per node. Full-tunnel exports block IPv6 rather than serve it. OpenVPN/AWG and remaining stable-v1 gates are not included. Public ACME and Iran/foreign VPS, games and load acceptance remain unverified.
+
 ## Unreleased — glass dashboard redesign, 2026-10-19
 
 - Replace the admin and customer-portal visual system with a restrained graphite and cobalt palette, translucent glass surfaces, a soft ambient backdrop and 16–18px radii in both dark and light themes. No neon accents.

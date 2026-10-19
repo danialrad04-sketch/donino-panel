@@ -59,10 +59,53 @@ def run():
             )
             command(["ip", "-n", namespace, "link", "set", peer, "up"])
             command(["ip", "-n", namespace, "link", "set", "lo", "up"])
+            if os.environ.get("DONINO_TEST_WG_SPLIT") != "1":
+                prefix = f"fd42:200:{index}"
+                command(
+                    [
+                        "ip",
+                        "-6",
+                        "address",
+                        "add",
+                        prefix + "::1/64",
+                        "dev",
+                        host,
+                        "nodad",
+                    ]
+                )
+                command(
+                    [
+                        "ip",
+                        "-n",
+                        namespace,
+                        "-6",
+                        "address",
+                        "add",
+                        prefix + "::2/64",
+                        "dev",
+                        peer,
+                        "nodad",
+                    ]
+                )
+                command(
+                    [
+                        "ip",
+                        "-n",
+                        namespace,
+                        "-6",
+                        "route",
+                        "add",
+                        "default",
+                        "via",
+                        prefix + "::1",
+                    ]
+                )
             command(
                 ["ip", "-n", namespace, "route", "add", "default", "via", subnet + ".1"]
             )
         command(["sysctl", "-w", "net.ipv4.ip_forward=1"])
+        if os.environ.get("DONINO_TEST_WG_SPLIT") != "1":
+            command(["sysctl", "-w", "net.ipv6.conf.all.forwarding=1"])
         command(
             ["nft", "-f", "-"],
             input='table ip donino_wg_test {\n chain postrouting {\n type nat hook postrouting priority srcnat; policy accept;\n ip saddr 10.66.0.0/24 oifname "lab2" masquerade;\n }\n}\n',
@@ -106,6 +149,48 @@ socketserver.ThreadingTCPServer(('198.18.0.2',8080),handler).serve_forever()
             stderr=origin_log,
         )
         processes.append(process)
+        if os.environ.get("DONINO_TEST_WG_SPLIT") != "1":
+            ipv6_source = root / "http6_origin.py"
+            ipv6_source.write_text("""import functools,http.server,socketserver,socket,sys
+class Server(socketserver.ThreadingTCPServer): address_family=socket.AF_INET6
+handler=functools.partial(http.server.SimpleHTTPRequestHandler,directory=sys.argv[1])
+Server(('fd42:200:2::2',8082),handler).serve_forever()
+""")
+            processes.append(
+                subprocess.Popen(
+                    [
+                        "ip",
+                        "netns",
+                        "exec",
+                        "origin",
+                        "/usr/bin/python3",
+                        str(ipv6_source),
+                        str(root / "origin"),
+                    ],
+                    stdout=origin_log,
+                    stderr=origin_log,
+                )
+            )
+
+        def ipv6_probe(namespace):
+            return subprocess.run(
+                [
+                    "ip",
+                    "netns",
+                    "exec",
+                    namespace,
+                    "curl",
+                    "--noproxy",
+                    "*",
+                    "--max-time",
+                    "2",
+                    "--silent",
+                    "--fail",
+                    "http://[fd42:200:2::2]:8082/data",
+                ],
+                capture_output=True,
+            )
+
         for _ in range(100):
             ready = subprocess.run(
                 [
@@ -156,6 +241,10 @@ socketserver.ThreadingTCPServer(('198.18.0.2',8080),handler).serve_forever()
                 )
             )
         print("PASS: origin listener ready before WireGuard startup", flush=True)
+        if os.environ.get("DONINO_TEST_WG_SPLIT") != "1":
+            assert ipv6_probe("clienta").stdout == BODY, (
+                "Physical IPv6 baseline unavailable"
+            )
         with TestClient(app) as panel:
             with database() as db:
                 db.execute(
@@ -338,6 +427,14 @@ socketserver.ThreadingTCPServer(('198.18.0.2',8080),handler).serve_forever()
                     )
                 transfer("clienta")
                 transfer("clientb")
+                if os.environ.get("DONINO_TEST_WG_SPLIT") != "1":
+                    assert ipv6_probe("clienta").returncode != 0, (
+                        "Full-tunnel profile leaked via physical IPv6"
+                    )
+                    print(
+                        "PASS: full-tunnel export blocked previously reachable physical IPv6",
+                        flush=True,
+                    )
                 agent.tick()
                 with database() as db:
                     used = db.execute(
