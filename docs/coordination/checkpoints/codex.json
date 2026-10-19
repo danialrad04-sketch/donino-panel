@@ -4,14 +4,23 @@
   "branch": "development/openvpn",
   "last_verified_commit": null,
   "completed": [
-    "alpha.14 با WireGuard واقعی تحویل و checkpoint نهایی بدون تغییر آرشیو شد."
+    "alpha.14 با WireGuard واقعی تحویل و checkpoint نهایی بدون تغییر آرشیو شد.",
+    "schema 16 و CA مستقل endpoint/گواهی دستگاه، ovpn خصوصی، rotation، scope نود و restore غیرفعال پیاده شدند.",
+    "عامل مشترک امضاشده با Driver OpenVPN 2.6، سوکت Unix خصوصی و احراز سریال گواهی، CID و دفتر پایدار شمارندهٔ نشست/دوره پیاده شد.",
+    "رابط فارسی UDP/TCP، فرم محافظت‌شده از refresh و دریافت خصوصی/rotation/revoke در مرورگر واقعی موفق شد.",
+    "رفع پاسخ UDP از IP اشتباه روی میزبان چندرابطی با multihome؛ انتقال دو دستگاه و حسابداری و قطع جریان باز بدون قطع دستگاه دیگر در شبکهٔ واقعی موفق شد."
   ],
   "remaining": [
-    "OpenVPN UDP/TCP: PKI/پروفایل، مدیریت نشست، مصرف/ابطال و پذیرش واقعی",
-    "نصب حرفه‌ای چندنودی و روتینگ دامنه/سرویس و UDP پس از تکمیل پروتکل‌ها"
+    "پذیرش واقعی کامل OpenVPN UDP/TCP و IPv6 و CA/hostname/serial ردشده، service و نصب/مستندات و CI.",
+    "PostgreSQL schema16/restore و regression موتورهای واقعی/installer و انتشار برش قابل استفاده.",
+    "نصب حرفه‌ای چندنودی، DNS/service/domain routing و UDP بازی؛ AWG و موتورهای باقی طبق ماتریس."
   ],
-  "next_action": "پیاده‌سازی OpenVPN مستقل دستگاه با mTLS کنترلی، TLS دیتاپلین و حسابداری دوره‌ای؛ ابتدا CA/مدل و قرارداد عامل.",
-  "tests": [],
+  "next_action": "نتیجهٔ /tmp/donino-ovpn-network.log و harness tests/openvpn_acceptance.py را بررسی کن. با --no-build فقط base OS استفاده می‌شود و source allowlisted فعلی همیشه docker cp می‌شود، پس تصویر قدیمی کد تست نیست. چرخهٔ UDP/TCP/full-tunnel و IPv6، منفی CA/hostname/serial، final counters/period/restart/restore را تکمیل کن؛ سپس service/docs/CI و alpha.15. نصب نود/روتینگ چندلوکیشن/UDP هدف بعدی است؛ هنوز v1 stable نیست.",
+  "tests": [
+    "5 آزمون OpenVPN API/عامل و 12 آزمون WireGuard موفق؛ Browser جدید OpenVPN کنار جریان‌های قبلی بدون خطای JS موفق.",
+    "Native UDP/split: انتقال، حسابداری، ابطال جریان باز و حفظ دستگاه دیگر موفق شدند؛ چرخهٔ کامل پس از اصلاح fixture expiry در حال اجراست.",
+    "دیسک آزمایش با cache Docker پر شد؛ نوشتن UI متوقف شد. cache بلااستفاده پاک و حدود 19GB آزاد شد؛ فایل خالی UI بازسازی و syntax/browser مجدد بررسی شد. داده/volume/worktree کاربر حذف نشد."
+  ],
   "blockers": [],
   "pr_url": null
 }

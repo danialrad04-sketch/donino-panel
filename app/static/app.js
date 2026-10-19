@@ -61,6 +61,7 @@ const titles = {
   dns: "DNS اختصاصی",
   tunnels: "تانل خودکار",
   wireguard: "WireGuard",
+  openvpn: "OpenVPN",
   audit: "رویدادها",
   settings: "تنظیمات",
 };
@@ -268,6 +269,7 @@ function render() {
     dns: renderDNS,
     tunnels: renderTunnels,
     wireguard: renderWireGuard,
+    openvpn: renderOpenVPN,
     settings: renderSettings,
   };
   if (page === "audit") {
@@ -292,6 +294,7 @@ function render() {
     if (page === "dns") loadDNS();
     if (page === "tunnels") loadTunnels();
     if (page === "wireguard") loadWireGuard();
+    if (page === "openvpn") loadOpenVPN();
     if (page === "users") loadUsersPage();
     if (page === "nodes" && owner()) {
       $("#main").insertAdjacentHTML(
@@ -357,7 +360,7 @@ async function enter(user) {
   clearInterval(timer);
   timer = setInterval(() => {
     if (!$("#modal").open && !$("#search-users")?.value) {
-      refresh(!["tunnels", "wireguard"].includes(page));
+      refresh(!["tunnels", "wireguard", "openvpn"].includes(page));
       if (page === "tunnels") loadTunnelJobs();
     }
   }, 15000);

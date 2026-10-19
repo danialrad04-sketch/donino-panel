@@ -297,7 +297,7 @@ class WireGuardAgent:
         self.identity = identity or load_identity(self.directory, self.base)
         if not self.identity:
             self.lock.close()
-            raise ValueError("Enroll a separate WireGuard node identity before startup")
+            raise ValueError("Enroll a separate VPN node identity before startup")
         self.client = client or panel_client(
             self.base, directory=self.directory, identity=self.identity
         )
@@ -405,6 +405,9 @@ class WireGuardAgent:
                 sample["down"] += down
                 raw[(name, peer["public_key"])] = (up, down)
         self.journal.record(self.epoch, list(values.values()))
+        if hasattr(self.kernel, "flush_journal"):
+            recorded = self.kernel.flush_journal()
+            values = recorded.get(self.epoch, values)
         self.save()
         return values, raw
 
@@ -420,7 +423,9 @@ class WireGuardAgent:
                     self.kernel.down(interface["name"])
             self.snapshot()
             for name in list(self.owned):
-                if self.kernel.exists(name):
+                if self.kernel.exists(name) or getattr(
+                    self.kernel, "retained_counters", False
+                ):
                     self.kernel.delete(name)
             self.interfaces, self.owned, self.offsets = [], {}, {}
             self.last_raw = {}
@@ -524,7 +529,7 @@ class WireGuardAgent:
             body.get("kind") != self.namespace + "-v1"
             or body.get("agent_instance") != self.agent_instance
         ):
-            raise ValueError("WireGuard intent belongs to another supervisor")
+            raise ValueError("VPN intent belongs to another supervisor")
         if body["sequence"] == previous.get("sequence") and body[
             "revision"
         ] != previous.get("revision"):
@@ -542,11 +547,15 @@ class WireGuardAgent:
         )
         with self.guard:
             missing = any(not self.kernel.exists(i["name"]) for i in self.interfaces)
-            removed = (
-                not missing
-                and body["revision"] != self.revision
-                and self.remove_only(body["interfaces"])
-            )
+            try:
+                removed = (
+                    not missing
+                    and body["revision"] != self.revision
+                    and self.remove_only(body["interfaces"])
+                )
+            except Exception:
+                self.stop_core()
+                raise
             if missing or (body["revision"] != self.revision and not removed):
                 self.stop_core()
                 for interface in body["interfaces"]:

@@ -10,6 +10,7 @@ RUN --mount=type=secret,id=system_ca,required=true \
 COPY app /source/app
 COPY agent /source/agent
 COPY ops /source/ops
+COPY tests/openvpn/network.py /source/network.py
 ENV PYTHONPATH=/source
 WORKDIR /source
-CMD ["openvpn", "--version"]
+CMD ["/venv/bin/python", "/source/network.py"]

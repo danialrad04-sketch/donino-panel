@@ -7,6 +7,7 @@ including final disconnect counters, are durably retained before aggregation.
 
 import ipaddress
 import json
+import logging
 import os
 import re
 import shutil
@@ -18,11 +19,16 @@ import sys
 import threading
 import time
 import uuid
+from collections import deque
 from pathlib import Path
 
 from agent.wireguard import Kernel, command
+from agent.journal import UsageJournal
 from app.node_identity import private_bytes
 from ops.common import atomic_write
+
+
+log = logging.getLogger("donino-openvpn")
 
 
 def quoted(value):
@@ -46,9 +52,12 @@ class Channel:
         self.finished = threading.Event()
         self.closed = threading.Event()
         self.clients = {}
+        self.kill_replies = deque()
         self.event = None
         self.environment = {}
         self.header = None
+        self.status_clients = set()
+        self.last_live = set()
         self.socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         self.socket.settimeout(3)
         self.socket.connect(str(path))
@@ -67,12 +76,13 @@ class Channel:
             raise ValueError("Invalid management counter")
         with self.driver.connect() as db:
             db.execute(
-                "UPDATE sessions SET up=MAX(up,?),down=MAX(down,?) WHERE instance=? AND cid=?",
+                "UPDATE sessions SET up=MAX(up,?),down=MAX(down,?),dirty=1 WHERE instance=? AND cid=? AND retired=0",
                 (up, down, self.metadata["instance"], cid),
             )
 
     def handle_event(self):
         kind, cid, *tail = self.event
+        log.debug("OpenVPN management event %s cid=%s", kind, cid)
         env = self.environment
         if not cid.isdecimal():
             raise ValueError("Invalid management session")
@@ -98,12 +108,23 @@ class Channel:
                 ):
                     with self.driver.connect() as db:
                         db.execute(
-                            "INSERT OR IGNORE INTO sessions VALUES(?,?,?,0,0)",
-                            (self.metadata["instance"], cid, name),
+                            "INSERT OR IGNORE INTO sessions(instance,cid,peer,epoch,device,period,up,down,dirty) VALUES(?,?,?,?,?,?,0,0,1)",
+                            (
+                                self.metadata["instance"],
+                                cid,
+                                name,
+                                self.metadata["epoch"],
+                                peer["device_id"],
+                                peer["period_no"],
+                            ),
                         )
                     self.clients[cid] = name
                     self.send(f"client-auth-nt {cid} {kid}")
                 else:
+                    log.warning(
+                        "OpenVPN certificate authorization refused (%s)",
+                        "unknown-peer" if not peer else "serial-or-expiry",
+                    )
                     self.send(f"client-deny {cid} {kid} not-authorized")
         elif kind == "DISCONNECT":
             self.record(
@@ -154,17 +175,32 @@ class Channel:
                         self.record(cid, int(up), int(down))
                     elif line.startswith("HEADER\tCLIENT_LIST\t"):
                         self.header = line.split("\t")[2:]
+                        self.status_clients = set()
                     elif line.startswith("CLIENT_LIST\t") and self.header:
                         row = dict(zip(self.header, line.split("\t")[1:]))
+                        self.status_clients.add(row["Client ID"])
                         self.record(
                             row["Client ID"],
                             int(row["Bytes Received"]),
                             int(row["Bytes Sent"]),
                         )
+                    elif line.startswith(
+                        ("SUCCESS: client-kill", "ERROR: client-kill")
+                    ):
+                        with self.lock:
+                            if not self.kill_replies:
+                                raise ValueError("Unbound management kill response")
+                            reply = self.kill_replies.popleft()
+                            reply["ok"] = line.startswith("SUCCESS:")
+                            reply["done"].set()
                     elif line == "END":
+                        self.last_live = set(self.status_clients)
                         self.finished.set()
-        except Exception:
+        except Exception as exc:
             if not self.closed.is_set():
+                log.warning(
+                    "OpenVPN management broker stopped (%s)", type(exc).__name__
+                )
                 # Losing the sole authorization/counter broker must stop traffic.
                 self.driver.fail_closed(self.metadata)
             self.finished.set()
@@ -183,17 +219,30 @@ class Channel:
         with self.lock:
             self.allowed.pop(key, None)
             targets = [cid for cid, name in self.clients.items() if name == key]
+        replies = []
+        for cid in targets:
+            reply = {"ok": False, "done": threading.Event()}
+            with self.send_lock:
+                with self.lock:
+                    self.kill_replies.append(reply)
+                self.socket.sendall(("client-kill " + cid + "\n").encode())
+            replies.append(reply)
+        for reply in replies:
+            if not reply["done"].wait(3) or not reply["ok"]:
+                raise RuntimeError("OpenVPN refused or timed out withdrawing a session")
+        # A killed client context can remain in status until its exit grace
+        # period ends. The native kill ACK is the withdrawal barrier, not the
+        # later disappearance of its status row. Snapshot its cutoff counters.
+        self.status()
+        with self.driver.connect() as db:
             for cid in targets:
-                self.send("client-kill " + cid)
-        until = time.monotonic() + 3
-        while True:
-            self.status()  # OpenVPN orders status after final disconnect events.
-            with self.lock:
-                if not any(name == key for name in self.clients.values()):
-                    break
-            if time.monotonic() >= until:
-                raise RuntimeError("OpenVPN session withdrawal timed out")
-            time.sleep(0.03)
+                db.execute(
+                    "UPDATE sessions SET retired=1 WHERE instance=? AND cid=?",
+                    (self.metadata["instance"], cid),
+                )
+        with self.lock:
+            for cid in targets:
+                self.clients.pop(cid, None)
 
     def close(self):
         self.closed.set()
@@ -228,8 +277,31 @@ class OpenVPNDriver:
         self.database = self.root / "sessions.db"
         with self.connect() as db:
             db.execute(
-                "CREATE TABLE IF NOT EXISTS sessions(instance TEXT,cid TEXT,peer TEXT,up INTEGER,down INTEGER,PRIMARY KEY(instance,cid))"
+                "CREATE TABLE IF NOT EXISTS sessions(instance TEXT,cid TEXT,peer TEXT,epoch TEXT,device TEXT,period INTEGER,up INTEGER,down INTEGER,dirty INTEGER,retired INTEGER NOT NULL DEFAULT 0,PRIMARY KEY(instance,cid))"
             )
+
+    def flush_journal(self):
+        journal = UsageJournal(self.root.parent / "openvpn-usage.db")
+        recorded = {}
+        with self.connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            epochs = [
+                r[0]
+                for r in db.execute("SELECT DISTINCT epoch FROM sessions WHERE dirty=1")
+            ]
+            for epoch in epochs:
+                values = [
+                    {"user_id": r[0], "period_no": r[1], "up": r[2], "down": r[3]}
+                    for r in db.execute(
+                        "SELECT device,period,SUM(up),SUM(down) FROM sessions WHERE epoch=? GROUP BY device,period",
+                        (epoch,),
+                    )
+                ]
+                journal.record(epoch, values)
+                recorded[epoch] = {sample["user_id"]: sample for sample in values}
+                db.execute("UPDATE sessions SET dirty=0 WHERE epoch=?", (epoch,))
+
+        return recorded
 
     def bind_epoch(self, epoch):
         uuid.UUID(epoch)
@@ -318,6 +390,7 @@ class OpenVPNDriver:
         lines = [
             f"dev {i['name']}",
             "dev-type tun",
+            "tun-mtu 1420",
             "topology subnet",
             "proto " + ("udp4" if i["protocol"] == "udp" else "tcp4-server"),
             f"port {i['port']}",
@@ -340,6 +413,8 @@ class OpenVPNDriver:
             "client-config-dir " + quoted(ccd),
             "ccd-exclusive",
         ]
+        if i["protocol"] == "udp":
+            lines.append("multihome")
         for directive, file in (
             ("ca", "ca.pem"),
             ("cert", "server.pem"),
@@ -427,14 +502,25 @@ class OpenVPNDriver:
         channel = self.channels.get(name)
         if not channel:
             raise RuntimeError("Missing management broker")
-        channel.remove(key)
+        try:
+            channel.remove(key)
+        except Exception:
+            self.fail_closed(self.metadata(name))
+            raise
         return self.counters(name).get(key, (0, 0))
 
     def down(self, name):
         command(["ip", "link", "set", "dev", name, "down"])
 
     def delete(self, name):
-        meta = self.metadata(name)
+        try:
+            meta = self.metadata(name)
+        except FileNotFoundError:
+            if self.exists(name):
+                raise ValueError(
+                    "Refusing to delete a link without private process ownership"
+                )
+            return
         if self.same_process(meta):
             os.kill(meta["pid"], signal.SIGTERM)
             until = time.monotonic() + 3

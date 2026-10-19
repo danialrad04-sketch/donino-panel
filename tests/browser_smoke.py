@@ -383,7 +383,49 @@ def exercise_wireguard_ui(page):
     )
     page.locator('[data-wg-peer][data-enabled="0"]').click()
     page.locator('[data-wg-peer][data-enabled="1"]').wait_for()
-    assert page.request.get(origin + "/api/wireguard/peers/" + pid + "/profile").status == 409
+    assert (
+        page.request.get(origin + "/api/wireguard/peers/" + pid + "/profile").status
+        == 409
+    )
+    page.set_viewport_size({"width": 390, "height": 844})
+    assert page.evaluate("document.documentElement.scrollWidth <= innerWidth + 1")
+    page.set_viewport_size({"width": 1440, "height": 1050})
+
+
+def exercise_openvpn_ui(page):
+    origin = page.evaluate("location.origin")
+    page.locator("a[data-page=openvpn]").click()
+    form = page.locator("#ovpn-create")
+    form.wait_for()
+    form.locator("[name=name]").fill("OpenVPN آزمایشی")
+    form.locator("[name=host]").fill("ovpn.example.com")
+    form.locator("[name=protocol]").select_option("tcp")
+    page.evaluate("refresh(false)")
+    assert form.locator("[name=name]").input_value() == "OpenVPN آزمایشی"
+    form.locator("button[type=submit]").click()
+    page.locator("[data-ovpn-toggle]").wait_for()
+    page.locator("[data-ovpn-toggle]").click()
+    page.locator('[data-ovpn-toggle][data-enabled="0"]').wait_for()
+    page.locator("[data-ovpn-peers]").click()
+    peer_form = page.locator(".ovpn-peer-create")
+    peer_form.locator("[name=device_id] option").first.wait_for(state="attached")
+    peer_form.locator("button[type=submit]").click()
+    page.locator("[data-ovpn-rotate]").wait_for()
+    pid = page.locator("[data-ovpn-rotate]").get_attribute("data-ovpn-rotate")
+    response = page.request.get(origin + "/api/openvpn/peers/" + pid + "/profile")
+    assert response.status == 200 and "<tls-crypt>" in response.text()
+    assert (
+        "proto tcp4-client" in response.text() and "verify-x509-name" in response.text()
+    )
+    assert response.headers["cache-control"] == "no-store"
+    page.once("dialog", lambda dialog: dialog.accept())
+    page.locator("[data-ovpn-rotate]").click()
+    page.locator('[data-ovpn-peer][data-enabled="0"]').click()
+    page.locator('[data-ovpn-peer][data-enabled="1"]').wait_for()
+    assert (
+        page.request.get(origin + "/api/openvpn/peers/" + pid + "/profile").status
+        == 409
+    )
     page.set_viewport_size({"width": 390, "height": 844})
     assert page.evaluate("document.documentElement.scrollWidth <= innerWidth + 1")
     page.set_viewport_size({"width": 1440, "height": 1050})
@@ -538,6 +580,7 @@ def main():
                 exercise_smart_dns_ui(page)
                 exercise_tunnel_ui(page)
                 exercise_wireguard_ui(page)
+                exercise_openvpn_ui(page)
                 page.locator("a[data-page=overview]").click()
                 page.locator("#main h1").filter(has_text="شبکه، در یک نگاه").wait_for()
                 page.locator("#toast").wait_for(state="hidden")

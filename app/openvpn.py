@@ -58,6 +58,8 @@ def endpoint_public(row):
         "routes": json.loads(row["routes"]),
         "ca_fingerprint": pki.fingerprint(row["ca_cert"]),
         "server_name": "donino-" + row["id"],
+        "ca_expires": pki.expires(row["ca_cert"]),
+        "server_expires": pki.expires(row["server_cert"]),
     }
 
 
@@ -94,12 +96,18 @@ def rotate_device_keys(db, device_id):
 def profile(db, peer):
     endpoint = one(db, "ovpn_endpoints", peer["endpoint_id"])
     eligible(db, endpoint, peer["device_id"])
+    if (
+        min(pki.expires(peer["certificate"]), pki.expires(endpoint["ca_cert"]))
+        <= time.time()
+    ):
+        raise HTTPException(409, "گواهی OpenVPN منقضی است؛ گواهی دستگاه را تعویض کنید")
     node = one(db, "nodes", endpoint["node_id"])
     if not peer["enabled"] or not endpoint["enabled"] or not node["enabled"]:
         raise HTTPException(409, "دستگاه یا نود OpenVPN غیرفعال است")
     lines = [
         "client",
         "dev tun",
+        "tun-mtu 1420",
         "proto " + ("udp4" if endpoint["protocol"] == "udp" else "tcp4-client"),
         f"remote {endpoint['host']} {endpoint['port']}",
         "nobind",
@@ -122,6 +130,7 @@ def profile(db, peer):
             lines += [
                 "redirect-gateway def1 ipv6",
                 "block-ipv6",
+                "route-ipv6 ::/0",
                 f"ifconfig-ipv6 {prefix}::2/64 {prefix}::1",
             ]
         else:
@@ -151,6 +160,17 @@ def desired(db, node_id, instance):
         "SELECT * FROM ovpn_endpoints WHERE node_id=? AND enabled=1 ORDER BY id",
         (node_id,),
     ):
+        if pki.expires(e["ca_cert"]) <= time.time():
+            continue
+        if pki.expires(e["server_cert"]) <= time.time() + 7 * 86400:
+            key, cert, _ = pki.issue(
+                unseal(e["ca_key"]), e["ca_cert"], "donino-" + e["id"], server=True
+            )
+            db.execute(
+                "UPDATE ovpn_endpoints SET server_key=?,server_cert=? WHERE id=?",
+                (seal(key), cert, e["id"]),
+            )
+            e = dict(e) | {"server_key": seal(key), "server_cert": cert}
         peers = []
         for p in db.execute(
             "SELECT * FROM ovpn_peers WHERE endpoint_id=? AND enabled=1 ORDER BY id",
@@ -160,6 +180,15 @@ def desired(db, node_id, instance):
             if not c:
                 continue
             user = one(db, "users", c["user_id"])
+            expiry = min(
+                pki.expires(p["certificate"]),
+                pki.expires(e["server_cert"]),
+                pki.expires(e["ca_cert"]),
+            )
+            if user["expires"] is not None:
+                expiry = min(expiry, user["expires"])
+            if expiry <= time.time():
+                continue
             peers.append(
                 {
                     "device_id": c["id"],
@@ -169,7 +198,7 @@ def desired(db, node_id, instance):
                     "public_key": p["id"],
                     "serial": p["serial"],
                     "address": p["address"],
-                    "expires": user["expires"],
+                    "expires": expiry,
                     "remaining": max(0, user["quota"] - user["used"])
                     if user["quota"]
                     else None,

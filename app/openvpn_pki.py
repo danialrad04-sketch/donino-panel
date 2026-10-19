@@ -98,3 +98,9 @@ def fingerprint(cert):
     return (
         x509.load_pem_x509_certificate(cert.encode()).fingerprint(hashes.SHA256()).hex()
     )
+
+
+def expires(cert):
+    return int(
+        x509.load_pem_x509_certificate(cert.encode()).not_valid_after_utc.timestamp()
+    )
