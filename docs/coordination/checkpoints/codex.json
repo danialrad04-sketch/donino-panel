@@ -2,23 +2,29 @@
   "task_id": "codex-v1-progress",
   "status": "in_progress",
   "branch": "development/wireguard",
-  "last_verified_commit": null,
+  "last_verified_commit": "eb6be7e43b2294c0557f0d4fbc4c02fd72182f1e",
   "completed": [
-    "alpha.13 منتشر و checkpoint نهایی آن بدون تغییر آرشیو شد.",
-    "schema 15، endpoint/peer با کلید مستقل رمزگذاری‌شده، IP پایدار، conf/QR خصوصی، rotation و scope نود پیاده شد.",
-    "عامل جدا با intent امضاشده/instance/sequence/TTL، دفتر durable، quota/expiry محلی و watchdog، حفاظت رابط نامتعلق، userspace صریح و صفحهٔ فارسی پیاده شد."
+    "تغییرات تازهٔ کلاد بررسی و با attribution ادغام شدند؛ بازطراحی PR ۲۳ و اصلاح userspace در f543a52 معتبرند، گزارش بازبینی ثبت شد.",
+    "schema 15، endpoint/peer، کلید مستقل رمزگذاری‌شده، IP، conf/QR مالک، rotation و حذف امن، scope و restore غیرفعال تکمیل شدند.",
+    "عامل جدا با intent امضاشده و TTL، دفتر دوره‌ای durable، quota/expiry، حذف peer بدون قطع دستگاه دیگر، پاک‌سازی آفلاین و سرویس محدود تکمیل شدند.",
+    "پذیرش واقعی full-tunnel و سد IPv6 در CI با kernel/userspace روی eb6be7e موفق شد؛ پذیرش userspace/split محلی و فرمان مستقل cleanup نیز موفق شدند.",
+    "رابط فارسی و پذیرش مرورگر واقعی، ۱۲ آزمون SQLite و ۱۱ آزمون PostgreSQL موفق شدند؛ race رزرو پورت fixture قبلی Mihomo اصلاح شد."
   ],
   "remaining": [
-    "WireGuard مستقل دستگاه، تخصیص IP، config امضاشده و عامل واقعی با حسابداری/انقضا/ابطال",
-    "پذیرش شبکه واقعی ایزوله، رابط و نصب، migration/restore SQLite/PostgreSQL",
-    "OpenVPN و دیگر gateهای stable v1 پس از این برش"
+    "پذیرش همهٔ jobهای CI روی head نهایی شامل اصلاح port fixture؛ سپس بازبینی PR ۲۴، ادغام و alpha.14 فقط prerelease.",
+    "نصب خودکار نود WireGuard، AWG و lease quota؛ OpenVPN و دیگر gateهای stable v1 طبق ماتریس.",
+    "VPS/دامنه واقعی، public ACME، شبکه ایران/خارج، بازی و بار/DR هنوز فراهم/آزموده نشده‌اند."
   ],
-  "next_action": "نتیجهٔ /tmp/donino-wg-network.log را بررسی کن؛ برای تغییرات agent تازه دوباره Docker build cached انجام بده. شبکهٔ واقعی wg-quick در netns، accounting/revoke/period/expiry/restore را کامل کن. سپس UI/نصب و CI. stable هنوز مجاز به اعلام نیست؛ کلاد متوقف است.",
+  "next_action": "همهٔ checkهای head نهایی PR ۲۴ را بررسی کن. پس از سبزشدن، بازبینی، merge و alpha.14 فقط prerelease؛ سپس OpenVPN/نصب نود. stable v1 هنوز کامل نیست.",
   "tests": [
-    "9 آزمون API/عامل با kernel fixture موفق؛ این شاهد انتقال واقعی نیست.",
-    "کرنل آزمایشگاه WireGuard ندارد (Unknown device type). Docker image با wireguard-go/tools رسمی آماده شد؛ تست واقعی در حال اصلاح/اجراست.",
-    "اولین fixture مشکل نبود procps/sysctl داشت؛ اضافه شد. syntax چندخطی nft fixture اصلاح شد."
+    "SQLite WireGuard: 12 passed؛ PostgreSQL: 11 passed, 1 SQLite-only skipped.",
+    "WG CI eb6be7e: هر دو backend/full-tunnel/IPv6/usage/revoke/cleanup/restart/quota/period/expiry/restore passed.",
+    "Browser واقعی شامل WGconf/QR و 390px بدون خطای JS موفق.",
+    "Full local 272: 269 passed, 2 skipped, 1 transient tunnel probe_transfer_failed؛ focused unchanged tunnel rerun passed. این شکست حذف/پنهان نشده است.",
+    "Mihomo fixture با رزرو هم‌زمان شش socket اصلاح شد؛ ۹ آزمون واقعی Mihomo پس از اصلاح موفق شدند. CI نهایی PostgreSQL باقی است."
   ],
-  "blockers": [],
-  "pr_url": null
+  "blockers": [
+    "Stable v1 scope هنوز کامل نیست؛ OpenVPN/AWG/موتورهای بیشتر و نصب خودکار نود و gateهای خارجی/ظرفیت باقی‌اند."
+  ],
+  "pr_url": "https://github.com/danialrad04-sketch/donino-panel/pull/24"
 }

@@ -276,24 +276,30 @@ def _fixture(xray, mihomo_bin, folder, processes):
                 "/api/nodes", json={"name": "edge", "host": "127.0.0.1"}
             ).json()
             os.environ["DONINO_NODE_TOKEN"] = node["token"]
-            for protocol, transport in SIX_PROFILES:
-                response = panel.post(
-                    "/api/inbounds",
-                    json={
-                        "node_id": node["id"],
-                        "name": f"{protocol}-{transport}",
-                        "protocol": protocol,
-                        "transport": transport,
-                        "port": _free_port(),
-                        "sni": "localhost",
-                        "path": "/donino-ws",
-                        "service_name": f"svc-{protocol}-{transport}",
-                        "cert_file": str(cert_path),
-                        "key_file": str(key_path),
-                    },
-                )
-                if response.status_code != 201:
-                    raise AssertionError(response.text)
+            with contextlib.ExitStack() as ports:
+                for protocol, transport in SIX_PROFILES:
+                    # Keep all six sockets reserved until the fixtures have
+                    # created every DB row. bind-and-close can recycle a port
+                    # before Xray starts and spuriously violate the DB key.
+                    reserved = ports.enter_context(socket.socket())
+                    reserved.bind(("127.0.0.1", 0))
+                    response = panel.post(
+                        "/api/inbounds",
+                        json={
+                            "node_id": node["id"],
+                            "name": f"{protocol}-{transport}",
+                            "protocol": protocol,
+                            "transport": transport,
+                            "port": reserved.getsockname()[1],
+                            "sni": "localhost",
+                            "path": "/donino-ws",
+                            "service_name": f"svc-{protocol}-{transport}",
+                            "cert_file": str(cert_path),
+                            "key_file": str(key_path),
+                        },
+                    )
+                    if response.status_code != 201:
+                        raise AssertionError(response.text)
             agent = NodeAgent()
             agent.client.close()
             agent.client = _LocalPanel(panel, node["token"])
