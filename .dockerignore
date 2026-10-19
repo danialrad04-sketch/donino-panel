@@ -8,6 +8,8 @@
 !requirements.txt
 !requirements.lock
 !tests/
+!tests/openvpn/
+!tests/openvpn/**
 !tests/wireguard/
 !tests/wireguard/Dockerfile
 !tests/wireguard/network.py

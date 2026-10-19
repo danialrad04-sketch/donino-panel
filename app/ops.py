@@ -286,6 +286,9 @@ def restore(source, replace=False):
             from .wireguard import invalidate_restored as invalidate_wireguard
 
             invalidate_wireguard(db)
+        if version >= 16:
+            from .openvpn import invalidate_restored as invalidate_openvpn
+            invalidate_openvpn(db)
     os.replace(staging, target)
     return {
         "restored_from": str(source),
@@ -362,6 +365,9 @@ def _restore_postgres(source, manifest, replace):
             from .wireguard import invalidate_restored as invalidate_wireguard
 
             invalidate_wireguard(db)
+        if table_exists(db, "ovpn_endpoints"):
+            from .openvpn import invalidate_restored as invalidate_openvpn
+            invalidate_openvpn(db)
     return {
         "restored_from": str(source),
         "schema_version": version,

@@ -1,6 +1,6 @@
 # ماتریس پروتکل، موتور و خروجی
 
-تاریخ: ۲۰۲۶-۱۰-۱۵. وضعیت «موجود» مربوط به Donino 0.2 است؛ ردیف‌های هدف، وعدهٔ پشتیبانی فعلی نیستند. تعریف آزمون مشترک در [PROTO-01](ACCEPTANCE-TESTS.fa.md) است. هیچ ترکیب دلخواهی از نام‌های این جدول معتبر فرض نمی‌شود.
+به‌روزرسانی: ۲۰۲۶-۱۰-۱۹. وضعیت «موجود» مربوط به Donino 0.2 است؛ ردیف‌های هدف، وعدهٔ پشتیبانی فعلی نیستند. تعریف آزمون مشترک در [PROTO-01](ACCEPTANCE-TESTS.fa.md) است. هیچ ترکیب دلخواهی از نام‌های این جدول معتبر فرض نمی‌شود.
 
 ## قرارداد ثبت قابلیت
 
@@ -23,9 +23,9 @@
 | P-07 | AnyTLS، server | sing-box یا موتور مستقل | هدف ۹ | کاربر/نشست؛ بررسی API موتور منتخب | خروجی کلاینت دارای پشتیبانی |
 | P-08 | Naive / ShadowTLS، server | موتور منتخب پس از تحقیق | مشروط ۹ | هویت outer/inner و مصرف نباید دوبار حساب شود؛ بدون حسابداری مستقل، «کامل» نیست | فقط قالب تأییدشده همان ترکیب |
 | P-09 | HTTP CONNECT / HTTPS / SOCKS / Mixed، server | آداپتور Xray/sing-box | هدف ۸ | کاربر احرازشده؛ UDP وابسته به نوع؛ دسترسی بدون auth پیش‌فرض ممنوع | endpoint و JSON متناسب با کلاینت |
-| P-10 | WireGuard، endpoint | ابزار رسمی Linux/WireGuard | هدف ۶ | peer و شمارنده kernel؛ حذف peer و route؛ پس از reboot/reset نسل جدید | `.conf` و QR محلی |
+| P-10 | WireGuard، endpoint | ابزار رسمی Linux/WireGuard | پیش‌نمایش alpha.14؛ پذیرش kernel/userspace در CI | peer و شمارنده kernel؛ حذف peer و route؛ پس از reboot/reset نسل جدید | `.conf` و QR محلی |
 | P-11 | AmneziaWG، endpoint | موتور سازگار Amnezia | هدف ۶ | peer؛ پارامترهای نسخه و کلاینت دقیقاً همسان | `.conf` سازگار همان نسخه و QR |
-| P-12 | OpenVPN UDP/TCP، server | OpenVPN Community | هدف ۷ | گواهی هر دستگاه، status/management؛ revoke + kill نشست فعال | `.ovpn` و bundle کلاینت |
+| P-12 | OpenVPN UDP/TCP، server | OpenVPN Community 2.6 | پیش‌نمایش alpha.15؛ کلاینت واقعی UDP/TCP | گواهی هر دستگاه، status/management؛ revoke + kill نشست فعال | `.ovpn` و bundle کلاینت |
 | P-13 | IKEv2/IPsec، server | strongSwan | هدف ۱۱ | SA/شناسه دستگاه؛ VICI و terminate با بررسی احراز هویت | پروفایل OS و گواهی لازم |
 | P-14 | OpenConnect، server | ocserv | هدف ۱۱ | کاربر/نشست؛ status و disconnect | اطلاعات اتصال/پروفایل کلاینت |
 | P-15 | SSTP/L2TP-IPsec/SSL VPN، server | SoftEther یا موتور مناسب | مشروط ۱۱ | session؛ سازگاری و محدودیت هر روش جدا | پروفایل همان سیستم‌عامل |

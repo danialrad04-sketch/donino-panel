@@ -55,6 +55,13 @@ def strip_monitor_schema(db):
 
 
 def strip_wireguard_schema(db):
+    strip_openvpn_schema(db)
     db.execute("DROP TABLE wg_peers")
     db.execute("DROP TABLE wg_endpoints")
     db.execute("DROP TABLE wg_runtime")
+
+
+def strip_openvpn_schema(db):
+    db.execute("DROP TABLE ovpn_peers")
+    db.execute("DROP TABLE ovpn_endpoints")
+    db.execute("DROP TABLE ovpn_runtime")

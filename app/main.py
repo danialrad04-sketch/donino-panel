@@ -1015,6 +1015,8 @@ def rotate_credentials(uid: str, account=Depends(writer)):
         from .wireguard import rotate_device_keys
         for device in db.execute("SELECT id FROM devices WHERE user_id=?", (uid,)).fetchall():
             rotate_device_keys(db, device[0])
+            from .openvpn import rotate_device_keys as rotate_openvpn
+            rotate_openvpn(db, device[0])
         audit(db, account["username"], "user.rotate-credentials", uid)
     return {"ok": True}
 
@@ -1089,6 +1091,8 @@ def rotate_device(did: str, account=Depends(writer)):
         db.execute("UPDATE devices SET secret=? WHERE id=?", (str(uuid.uuid4()), did))
         from .wireguard import rotate_device_keys
         rotate_device_keys(db, did)
+        from .openvpn import rotate_device_keys as rotate_openvpn
+        rotate_openvpn(db, did)
         audit(db, account["username"], "device.rotate-secret", did)
     return {"ok": True}
 
@@ -1545,3 +1549,7 @@ def qr_code(
 from .wireguard import mount as mount_wireguard
 
 mount_wireguard(app)
+
+from .openvpn import mount as mount_openvpn
+
+mount_openvpn(app)

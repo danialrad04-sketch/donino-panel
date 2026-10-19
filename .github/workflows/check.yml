@@ -27,6 +27,7 @@ jobs:
       - run: node --check app/static/smart-dns.js
       - run: node --check app/static/tunnels.js
       - run: node --check app/static/wireguard.js
+      - run: node --check app/static/openvpn.js
   wireguard-network:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
@@ -45,6 +46,23 @@ jobs:
           else
             docker run --rm --privileged donino-wireguard-test
           fi
+  openvpn-network:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        protocol: [udp, tcp]
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - name: Real exported profiles, UDP payload, certificate rejection and usage lifecycle
+        run: python tests/openvpn_acceptance.py --protocol ${{ matrix.protocol }}
+        env:
+          DOCKER_BUILDKIT: "1"
   tunnel-contract:
     runs-on: ubuntu-24.04
     steps:
