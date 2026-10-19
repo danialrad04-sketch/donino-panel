@@ -1,7 +1,7 @@
 {
   "format": "donino-source-v1",
   "version": "1.0.0a18",
-  "source_sha256": "139d90a0c50f7960ca783ec5d776f1bd3e521ddc08d8435a6a85973cfa725d7d",
+  "source_sha256": "9d98afbbf3bf6969dffd916337c7b5b93d298bd588cd2bb85fc179e66644dadb",
   "files": {
     "AGENTS.md": "5e22b6c9b8728413bfa5bf094082fd7af105cfbafdc85bf105ed42999422338d",
     "CHANGELOG.md": "ff7ee4289ca57b531770f8b70e0f4d6c21ff132c9a712065231c8ab8a3169cf0",
@@ -132,7 +132,7 @@
     "docs/coordination/README.fa.md": "c7a0dae0343dc653512ade4cf169a7becb31bd041cd913a0d9bb12b5e22dbe5e",
     "docs/coordination/assignments.json": "ce8dda6e0255a0524489f5ce2a183973d9b4d1127a7b522886fa98727d7ae6e5",
     "docs/coordination/checkpoints/claude.json": "b0cf12f259c1de00c43b4d74a69a0dde438697fd269965011385ebee20ef129f",
-    "docs/coordination/checkpoints/codex.json": "77e229ea6f722bdda30ab53b0a75752d74347ef190bc33ddd92aa0f983aaaae5",
+    "docs/coordination/checkpoints/codex.json": "1be515800f17c9c1cb32ee7a395477cda6179a65c280e82cc0ffa38f9b1dd489",
     "docs/coordination/history/installer-alpha17.codex.json": "d8a45e317a17d04cbfc79a5f43c80777a1a0de7777a618341e69d1e7f3a03c4d",
     "docs/coordination/history/mihomo-tls-acceptance-v1.claude.json": "b0cf12f259c1de00c43b4d74a69a0dde438697fd269965011385ebee20ef129f",
     "docs/coordination/history/openvpn-alpha15.codex.json": "21e0bff4f3d52e7c2e454bd6a5e6594f46482cb4f305b9bb232f9b185011e3eb",
