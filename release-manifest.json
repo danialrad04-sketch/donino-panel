@@ -1,7 +1,7 @@
 {
   "format": "donino-source-v1",
   "version": "1.0.0a16",
-  "source_sha256": "9ac29d13b0aa4c9a874c3920800e0118ad2ea8e1f7b75ac4a0e396eec2b0468f",
+  "source_sha256": "29d8e57cfc3901ec9bb1b4e385c4ba3c55b7cf71f06fc4a7054ef0f8d259a72f",
   "files": {
     "AGENTS.md": "5e22b6c9b8728413bfa5bf094082fd7af105cfbafdc85bf105ed42999422338d",
     "CHANGELOG.md": "6d4d448c3740ef8044b8850c126978c18df19ce2de702223b16be1226eeb3045",
@@ -129,7 +129,7 @@
     "docs/coordination/README.fa.md": "c7a0dae0343dc653512ade4cf169a7becb31bd041cd913a0d9bb12b5e22dbe5e",
     "docs/coordination/assignments.json": "8c2e51e91278bd0085d231707f78910be5aa0a7f91224cf39b414f849e8f1cce",
     "docs/coordination/checkpoints/claude.json": "b0cf12f259c1de00c43b4d74a69a0dde438697fd269965011385ebee20ef129f",
-    "docs/coordination/checkpoints/codex.json": "fe3b074631df68282b8cf65f094386f05832669866579fe73f4d535257906840",
+    "docs/coordination/checkpoints/codex.json": "4889d90b8b2c99a7f393ae2b05b118c79d6e4db837514eb7b6210b3dbc6a92a0",
     "docs/coordination/history/mihomo-tls-acceptance-v1.claude.json": "b0cf12f259c1de00c43b4d74a69a0dde438697fd269965011385ebee20ef129f",
     "docs/coordination/history/openvpn-alpha15.codex.json": "21e0bff4f3d52e7c2e454bd6a5e6594f46482cb4f305b9bb232f9b185011e3eb",
     "docs/coordination/history/smart-dns-alpha11.codex.json": "19cbb48fc211c69e50eaee0d614a19eae5bb5786e45e1f8118b5a04ab90b823a",
@@ -139,6 +139,7 @@
     "docs/coordination/history/wireguard-alpha14.codex.json": "11203e665419fea00ee145453310df07cff74dedf7a8efef9de4e1b096835a0c",
     "docs/coordination/history/xray-acceptance-v1.claude.json": "066e8834399b612b24199a2ccc13792be976f43a9ab8f1a045f2ceaf48563807",
     "docs/coordination/reviews/claude-wireguard-and-design.fa.md": "faae32f1773bd5eecd49a8fed1b82cf2b76ac122694576809d04543e8f523d2d",
+    "docs/coordination/reviews/installer-plain-http-v1.fa.md": "5486e7c69bec19ca1f9ddeec90b63193873739f49f8ad91505b45917f298c953",
     "docs/coordination/reviews/xray-acceptance-v1.fa.md": "bbbdc4cd9f38b9a4932785e24cc147a4971ebd358b979918dbbefe4cd015977f",
     "docs/coordination/reviews/xray-transports-v1.fa.md": "75722908436e63b312ced42cd574d61eacf45640a2cb192f78ac03cc51e50219",
     "docs/coordination/tasks/codex-v1-progress.fa.md": "cde2c02a0ae23296f9caf3103bd52a2edbb65a454012af638c49356351b81404",
