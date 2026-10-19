@@ -1,29 +1,17 @@
 {
   "task_id": "codex-v1-progress",
   "status": "in_progress",
-  "branch": "development/openvpn",
+  "branch": "development/shadowsocks",
   "last_verified_commit": null,
   "completed": [
-    "alpha.14 با WireGuard واقعی تحویل و checkpoint نهایی بدون تغییر آرشیو شد.",
-    "schema 16 و CA مستقل endpoint/گواهی دستگاه، ovpn خصوصی، rotation، scope نود و restore غیرفعال پیاده شدند.",
-    "عامل مشترک امضاشده با Driver OpenVPN 2.6، سوکت Unix خصوصی و احراز سریال گواهی، CID و دفتر پایدار شمارندهٔ نشست/دوره پیاده شد.",
-    "رابط فارسی UDP/TCP، فرم محافظت‌شده از refresh و دریافت خصوصی/rotation/revoke در مرورگر واقعی موفق شد.",
-    "رفع پاسخ UDP از IP اشتباه روی میزبان چندرابطی با multihome؛ انتقال دو دستگاه و حسابداری و قطع جریان باز بدون قطع دستگاه دیگر در شبکهٔ واقعی موفق شد.",
-    "پذیرش کامل دو کلاینت واقعی OpenVPN 2.6.14 روی UDP و TCP: UDP داخلی، full-tunnel و مسدودسازی IPv6، رد CA/نام اشتباه و سریال قدیمی پس از rotation موفق شد.",
-    "سرویس مستقل systemd با CAP_NET_ADMIN، cleanup آفلاین و راهنمای نصب دستی نقش نود اضافه شد؛ CI مستقل UDP/TCP تعریف شد.",
-    "مهاجرت backup-first از schema15 به16 و restore غیرفعال با PostgreSQL16 واقعی موفق شد."
+    "alpha15 OpenVPN تحویل و checkpoint نهایی بدون تغییر آرشیو شد."
   ],
   "remaining": [
-    "تکمیل regression سراسری و WireGuard واقعی، آزمون نصب دو OS و CI روی head نهایی؛ سپس PR/پیش‌انتشار alpha.15.",
-    "نصب خودکار حرفه‌ای چندنودی و انتخاب خروجی DNS/service/domain و UDP بازی؛ AWG و موتورهای باقی طبق ماتریس؛ پذیرش VPS/WAN و بار برای stable v1."
+    "بررسی Shadowsocks چندکاربره در Xray26.3.27، رمزهای معتبر، خروجی SS/Mihomo و مصرف مستقل دستگاه/دوره وابطال واقعی.",
+    "نصب خودکار نقش نود، routing چندلوکیشن/UDP وپروتکل‌های باقی طبق ماتریس."
   ],
-  "next_action": "نتیجهٔ /tmp/donino-ovpn-fullsuite.log و /tmp/donino-ovpn-wg-native-split.log را بخوان. تست‌های native installer دو OS و browser و manifest را اجرا/بررسی کن؛ PR development/openvpn را با head دقیق و تمام CI سبز ادغام و alpha.15 prerelease/latest=false منتشر کن. UDP/TCP native و منفی cert موفق؛ این انتشار stable v1 نیست. کلاد همچنان متوقف است.",
-  "tests": [
-    "SQLite: 5 OpenVPN و12 WireGuard موفق؛ Browser OpenVPN کنار قابلیت‌های قبلی بدون خطای JS موفق.",
-    "PostgreSQL16: 5 OpenVPN شامل backup/migration/restore موفق.",
-    "Native OpenVPN2.6.14 UDP وTCP: چرخه کامل مثبت و منفی CA/نام/serial، UDPpayload، IPv6block، streamrevoke با حفظ دستگاه دیگر، cleanup، restart، quota، period، expiry وrestore موفق.",
-    "Regression سراسری و شبکه WireGuard در حال اجرا؛ full-tunnel محلی WG به دلیل نبود ct-mark کرنل رد شد و split جدا اجرا می‌شود؛ CI باید kernel/userspace کامل را تأیید کند."
-  ],
+  "next_action": "قرارداد واقعی Shadowsocks/2022 موتور منتخب را بررسی و برش قابل پذیرش را پیاده کن؛ هیچ cipher یا چندکاربره‌ای بدون آزمون واقعی پشتیبانی نامیده نشود.",
+  "tests": [],
   "blockers": [],
   "pr_url": null
 }
