@@ -1,5 +1,22 @@
 # Donino releases
 
+## 1.0.0-alpha.18 — mobile navigation and responsive management, 2026-10-19
+
+- Replace the ten-item mobile footer with four primary destinations and a
+  right-side hamburger drawer grouped into infrastructure, services and panel
+  management. Preserve route URLs, role visibility and desktop sidebar access.
+- Accessible modal navigation: background inertness/scroll preservation,
+  keyboard focus cycle, Escape/backdrop dismissal, current route, same-route
+  close, back/forward and responsive resize cleanup.
+- Labelled table cards, wrapping actions, 44px touch controls, 16px form inputs,
+  mobile bottom-sheet dialogs, safe-area spacing and narrow-screen node grids.
+  Refresh frontend asset URLs and obsolete preview labels.
+- Real Chromium navigation/touch/form coverage at 320/390/430/768px and landscape,
+  integrated with existing full API-backed browser acceptance. No database,
+  protocol or node authorization changes; not stable v1 or physical iOS proof.
+- Reserve all Shadowsocks fixture listener ports until inventory creation completes
+  to prevent OS ephemeral-port reuse from causing a correct duplicate-port API409.
+
 ## 1.0.0-alpha.17 — terminal installer and HTTP/IP setup, 2026-10-19
 
 - Dedicated alternate-screen TTY setup/management menu, including curl-pipe

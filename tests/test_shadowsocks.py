@@ -63,17 +63,23 @@ class ShadowsocksFixture(PanelBase):
         super().setUp()
         self.node = self.post("/nodes", {"name": "ss-edge", "host": "127.0.0.1"}).json()
         self.endpoints = []
-        for method in METHODS:
-            body = {
-                "node_id": self.node["id"],
-                "name": method,
-                "protocol": "shadowsocks",
-                "ss_method": method,
-                "port": _free_port(),
-            }
-            response = self.post("/inbounds", body)
-            self.assertEqual(response.status_code, 201)
-            self.endpoints.append(body | {"id": response.json()["id"]})
+        # Keep all chosen TCP ports bound until the inventory is built. Closing
+        # each ephemeral reservation immediately lets the OS return the same
+        # number for a later cipher, which correctly causes API 409.
+        with contextlib.ExitStack() as reservations:
+            for method in METHODS:
+                reserved = reservations.enter_context(socket.socket())
+                reserved.bind(("127.0.0.1", 0))
+                body = {
+                    "node_id": self.node["id"],
+                    "name": method,
+                    "protocol": "shadowsocks",
+                    "ss_method": method,
+                    "port": reserved.getsockname()[1],
+                }
+                response = self.post("/inbounds", body)
+                self.assertEqual(response.status_code, 201)
+                self.endpoints.append(body | {"id": response.json()["id"]})
         self.user = self.post("/users", {"name": "ss-account"}).json()
         self.second = self.post(
             f"/users/{self.user['id']}/devices", {"name": "second"}
