@@ -30,6 +30,19 @@ from ops.tls import install_certificate, validate_certificate
 
 
 class InstallerTest(unittest.TestCase):
+    def test_plain_http_mode_serves_port_80_without_certificate_or_redirect(self):
+        config = nginx_config("panel.example.com", plain=True)
+        self.assertIn("listen 80;", config)
+        self.assertIn("server_name panel.example.com;", config)
+        self.assertIn("include /etc/nginx/snippets/donino-proxy.conf;", config)
+        self.assertNotIn("return 301", config)
+        self.assertNotIn("ssl", config)
+        self.assertNotIn("443", config)
+        self.assertNotIn("/etc/donino/tls", config)
+        self.assertEqual(arguments(["--tls", "none"]).tls, "none")
+        with self.assertRaises(SystemExit):
+            arguments(["--tls", "plaintext-please"])
+
     def test_smart_front_is_explicit_and_preserves_verified_panel_tls(self):
         self.assertIsNone(smart_front.options(arguments([]), {}, None))
         for flags in (

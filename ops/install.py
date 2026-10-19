@@ -28,7 +28,7 @@ DATA = Path("/var/lib/donino-panel")
 CURRENT = Path("/opt/donino-panel/current")
 
 
-def nginx_config(domain, *, tls=False, ipv6=True, smart=False):
+def nginx_config(domain, *, tls=False, ipv6=True, smart=False, plain=False):
     domain = domain_name(domain)
     common = """
     client_max_body_size 2m;
@@ -49,6 +49,17 @@ def nginx_config(domain, *, tls=False, ipv6=True, smart=False):
     server_name {domain};
     location ^~ /.well-known/acme-challenge/ {{ root /var/lib/donino-acme; }}
     location / {{ return 301 https://$host$request_uri; }}
+}}
+"""
+    if plain:
+        # Explicit HTTP-only panel: no certificate and no redirect. Cookies
+        # and passwords travel unencrypted; the installer warns the operator.
+        return f"""server {{
+    listen 80;
+    {"listen [::]:80;" if ipv6 else ""}
+    server_name {domain};
+    location ^~ /.well-known/acme-challenge/ {{ root /var/lib/donino-acme; }}
+{common}
 }}
 """
     if not tls:
@@ -349,11 +360,14 @@ WantedBy=timers.target
         self.checkpoint("code-ready")
         return release
 
+    def scheme(self):
+        return "http" if self.args.tls == "none" else "https"
+
     def environment(self, domain):
         path = CONFIG / "panel.env"
         if path.exists():
             values = read_env(path)
-            if values.get("DONINO_PUBLIC_URL") != "https://" + domain:
+            if values.get("DONINO_PUBLIC_URL") != self.scheme() + "://" + domain:
                 raise InstallError(
                     "Changing an existing domain requires a separate certificate/config migration",
                     5,
@@ -377,8 +391,8 @@ WantedBy=timers.target
             "DONINO_KEY_FILE": str(DATA / "master.key"),
             "DONINO_PKI_DIR": str(DATA / "pki"),
             "DONINO_PROXY_KEY": secrets.token_urlsafe(40),
-            "DONINO_PUBLIC_URL": "https://" + domain,
-            "DONINO_SECURE_COOKIE": "true",
+            "DONINO_PUBLIC_URL": self.scheme() + "://" + domain,
+            "DONINO_SECURE_COOKIE": "false" if self.args.tls == "none" else "true",
             "DONINO_BOOTSTRAP_TOKEN_HASH": hashlib.sha256(
                 bootstrap.encode()
             ).hexdigest(),
@@ -390,7 +404,9 @@ WantedBy=timers.target
         )
         atomic_write(
             STATE.parent / "bootstrap-access.txt",
-            "One-use setup link (expires in one hour):\nhttps://"
+            "One-use setup link (expires in one hour):\n"
+            + self.scheme()
+            + "://"
             + domain
             + "/#setup="
             + bootstrap
@@ -511,7 +527,7 @@ WantedBy=timers.target
         self.state["previous_release"] = previous
         self.checkpoint("candidate-selected")
 
-    def proxy(self, domain, *, tls):
+    def proxy(self, domain, *, tls, plain=False):
         snippets = Path("/etc/nginx/snippets")
         snippets.mkdir(exist_ok=True)
         values = read_env(CONFIG / "panel.env")
@@ -542,7 +558,11 @@ WantedBy=timers.target
             self.managed_write(
                 path,
                 nginx_config(
-                    domain, tls=tls, ipv6=self.state.get("ipv6", True), smart=smart
+                    domain,
+                    tls=tls,
+                    ipv6=self.state.get("ipv6", True),
+                    smart=smart,
+                    plain=plain,
                 ),
                 0o644,
             )
@@ -559,6 +579,10 @@ WantedBy=timers.target
             raise
 
     def certificate(self, domain):
+        if self.args.tls == "none":
+            self.proxy(domain, tls=False, plain=True)
+            self.checkpoint("tls")
+            return
         if self.args.tls == "existing":
             source_cert, source_key = self.args.cert_file, self.args.key_file
         else:
@@ -909,6 +933,30 @@ for attempt in range(20):
         settings = dns_options(self.args, self.state)
         smart = smart_front.options(self.args, self.state, settings)
         monitor = monitor_ops.options(self.args, self.state)
+        if self.args.tls == "none":
+            if (
+                self.args.cert_file
+                or self.args.key_file
+                or self.args.ca_file
+                or self.args.email
+                or self.args.acme_staging
+            ):
+                raise InstallError(
+                    "--tls none does not accept certificate, email or staging options",
+                    5,
+                )
+            if smart or settings:
+                raise InstallError(
+                    "DNS and Smart DNS (DoH) require HTTPS; use --tls acme or existing",
+                    5,
+                )
+        if self.state.get("domain") and self.state.get(
+            "tls_mode", "acme"
+        ) != self.args.tls:
+            raise InstallError(
+                "TLS mode cannot change on an existing installation; restore a backup on a fresh host instead",
+                5,
+            )
         if smart:
             inventory = self.state.get("managed_files", {})
             for target in (smart_front.FRONT, smart_front.PANEL, smart_front.UNIT):
@@ -960,6 +1008,7 @@ for attempt in range(20):
                 )
         STATE.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
         self.state["domain"] = report["domain"]
+        self.state["tls_mode"] = self.args.tls
         self.state["ipv6"] = report["ipv6"]
         if settings:
             self.state["dns"] = settings
@@ -981,7 +1030,11 @@ for attempt in range(20):
         self.backup()
         self.backup_timer()
         self.checkpoint("complete")
-        print("Donino installed: https://" + report["domain"])
+        print("Donino installed: " + self.scheme() + "://" + report["domain"])
+        if self.args.tls == "none":
+            print(
+                "WARNING: plain HTTP. The owner password and session cookies are not encrypted on the network. Use --tls acme for any real deployment."
+            )
         print(
             "Initial one-use access is in /var/lib/donino-installer/bootstrap-access.txt (if no owner exists)."
         )
@@ -1044,7 +1097,11 @@ def arguments(argv=None):
     parser.add_argument("--expected-ip", action="append", default=[])
     parser.add_argument("--email")
     parser.add_argument("--allow-existing-nginx", action="store_true")
-    parser.add_argument("--tls", choices=["acme", "existing"])
+    parser.add_argument(
+        "--tls",
+        choices=["acme", "existing", "none"],
+        help="acme: Let's Encrypt; existing: your certificate; none: plain HTTP without a certificate (cleartext)",
+    )
     parser.add_argument("--cert-file", type=Path)
     parser.add_argument("--key-file", type=Path)
     parser.add_argument("--ca-file", type=Path)
@@ -1091,7 +1148,11 @@ def main(argv=None):
             from .exit_install import main as exit_main
 
             return exit_main(args)
-        args.tls = args.tls or "acme"
+        try:
+            saved = json.loads(STATE.read_text()) if STATE.exists() else {}
+        except (OSError, ValueError):
+            saved = {}
+        args.tls = args.tls or saved.get("tls_mode", "acme")
         if (
             args.exit_allow_domain
             or args.exit_listen is not None

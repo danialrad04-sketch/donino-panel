@@ -83,6 +83,24 @@ DONINO_SECURE_COOKIE=false python -m uvicorn app.main:app --host 127.0.0.1 --por
 
 برای سرور واقعی از HTTPS و [راهنمای سرویس‌های systemd](docs/DEPLOYMENT.fa.md) استفاده کنید. GitHub محل نگهداری کد است؛ GitHub Pages نمی‌تواند این API و Xray را اجرا کند.
 
+## نصب خودکار روی سرور Linux
+
+نیازمند Ubuntu 24.04 یا Debian 12 روی amd64، دسترسی root و یک دامنهٔ واقعی که رکورد `A` آن به IP سرور اشاره کند. نصب‌کننده Nginx، PostgreSQL، systemd، گواهی Let's Encrypt و پشتیبان خودکار را راه می‌اندازد.
+
+**با HTTPS و گواهی Let's Encrypt (پیشنهادی):**
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/danialrad04-sketch/donino-panel/v1.0.0-alpha.15/install.sh | sudo sh -s -- --domain panel.example.com --email you@example.com
+```
+
+**بدون SSL و فقط HTTP (هشدار امنیتی):** گذرواژهٔ مدیر و کوکی ورود بدون رمزگذاری روی شبکه می‌روند. فقط برای آزمایش موقت یا شبکهٔ کاملاً مورد اعتماد استفاده کنید. این گزینه در نسخه‌ای منتشر می‌شود که `--tls none` را داشته باشد:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/danialrad04-sketch/donino-panel/<نسخهٔ-دارای-tls-none>/install.sh | sudo sh -s -- --domain panel.example.com --tls none
+```
+
+با `--tls existing --cert-file ... --key-file ...` می‌توانید گواهی خودتان را به‌جای Let's Encrypt بدهید. در حالت `--tls none` گزینه‌های DNS و Smart DNS پذیرفته نمی‌شوند، چون DoH به HTTPS نیاز دارد. تغییر حالت TLS روی نصب موجود مجاز نیست.
+
 ## راه‌اندازی نود
 
 ۱. در پنل یک نود با IP یا دامنهٔ واقعی سرور بسازید و کلید یک‌بارنمایش آن را ذخیره کنید.

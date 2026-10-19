@@ -1,5 +1,10 @@
 # Donino releases
 
+## Unreleased — installer HTTP-only mode, 2026-10-19
+
+- Add `--tls none` to the one-line installer: serves the panel on port 80 without a certificate or redirect, with an explicit cleartext warning. Cookies are not marked Secure in this mode and DNS/Smart DNS (DoH) options are refused.
+- Store the TLS mode in installer state so repairs and upgrades keep it; switching TLS mode on an existing installation is refused.
+
 ## 1.0.0-alpha.15 — managed OpenVPN UDP/TCP preview, 2026-10-19
 
 - Separate endpoint CA and device certificates, sealed private keys, owner-only
