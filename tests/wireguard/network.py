@@ -5,9 +5,11 @@ network, user VPS, public-domain or kernel-WireGuard claim is inferred.
 """
 
 import os
+import json
 import re
 import subprocess
 import stat
+import sys
 import tempfile
 import time
 from pathlib import Path
@@ -98,6 +100,46 @@ def run():
                         "default",
                         "via",
                         prefix + "::1",
+                    ]
+                )
+                # Deterministic fixture neighbours avoid multicast/MLD startup
+                # timing. These are only the owned namespace veth pairs.
+                host_mac = json.loads(
+                    command(["ip", "-j", "link", "show", "dev", host])
+                )[0]["address"]
+                peer_mac = json.loads(
+                    command(["ip", "-n", namespace, "-j", "link", "show", "dev", peer])
+                )[0]["address"]
+                command(
+                    [
+                        "ip",
+                        "-6",
+                        "neigh",
+                        "replace",
+                        prefix + "::2",
+                        "lladdr",
+                        peer_mac,
+                        "nud",
+                        "permanent",
+                        "dev",
+                        host,
+                    ]
+                )
+                command(
+                    [
+                        "ip",
+                        "-n",
+                        namespace,
+                        "-6",
+                        "neigh",
+                        "replace",
+                        prefix + "::1",
+                        "lladdr",
+                        host_mac,
+                        "nud",
+                        "permanent",
+                        "dev",
+                        peer,
                     ]
                 )
             command(
@@ -245,9 +287,19 @@ Server(('fd42:200:2::2',8082),handler).serve_forever()
             )
         print("PASS: origin listener ready before WireGuard startup", flush=True)
         if os.environ.get("DONINO_TEST_WG_SPLIT") != "1":
-            assert ipv6_probe("clienta").stdout == BODY, (
-                "Physical IPv6 baseline unavailable"
-            )
+            probe = ipv6_probe("clienta")
+            if probe.stdout != BODY:
+                for args in (
+                    ["ip", "-6", "route"],
+                    ["ip", "-n", "clienta", "-6", "route"],
+                    ["ip", "-n", "origin", "-6", "route"],
+                    ["ip", "-6", "neigh"],
+                    ["sysctl", "net.ipv6.conf.all.forwarding"],
+                ):
+                    print(command(args), flush=True)
+                raise AssertionError(
+                    ("Physical IPv6 baseline unavailable", probe.returncode)
+                )
         with TestClient(app) as panel:
             with database() as db:
                 db.execute(
@@ -519,8 +571,33 @@ for line in sys.stdin:
                     flush=True,
                 )
 
-                # Clean restart preserves sampled usage, identity and credentials.
+                # Exercise the actual independent ExecStopPost CLI with live
+                # owned links and no usable panel origin. The supervisor is
+                # quiesced and releases its lock, as after process termination.
+                agent.stop.set()
+                agent.watchdog.join(timeout=3)
+                agent.lock.close()
+                name = "dnw" + ep["id"][:8]
+                assert agent.kernel.exists(name)
+                origin = os.environ.pop("DONINO_PANEL_URL")
+                try:
+                    command(
+                        [sys.executable, "-m", "agent.wireguard", "--cleanup"],
+                        timeout=20,
+                    )
+                finally:
+                    os.environ["DONINO_PANEL_URL"] = origin
+                assert not agent.kernel.exists(name), (
+                    "Offline CLI left its owned interface live"
+                )
+                agent.interfaces, agent.owned, agent.offsets = [], {}, {}
+                agent.last_raw = {}
                 agent.close()
+                print(
+                    "PASS: independent offline stop CLI withdrew live owned links and journaled counters",
+                    flush=True,
+                )
+                # Restart preserves sampled usage, identity and credentials.
                 with database() as db:
                     before = db.execute(
                         "SELECT used FROM users WHERE id=?", (user["id"],)
