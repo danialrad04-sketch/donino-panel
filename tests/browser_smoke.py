@@ -130,7 +130,11 @@ def exercise_tunnel_ui(page):
     def worker(route):
         path = route.request.url.split("/api/tunnels/", 1)[-1]
         endpoint = path.rsplit("/", 1)[-1]
-        body = route.request.post_data_json if route.request.method in ("POST", "PUT") else None
+        body = (
+            route.request.post_data_json
+            if route.request.method in ("POST", "PUT")
+            else None
+        )
         if endpoint == "state":
             return route.fulfill(json=state)
         if path.startswith("bindings/") and route.request.method == "GET":
@@ -148,7 +152,11 @@ def exercise_tunnel_ui(page):
                 "job_id": None,
                 "services": body["services"],
                 "checks": [],
-                "monitor": {"enabled": False, "phase": "disabled", "service_ready": True},
+                "monitor": {
+                    "enabled": False,
+                    "phase": "disabled",
+                    "service_ready": True,
+                },
                 "summary": {
                     "iran": body["iran"],
                     "foreign": "198.51.100.20",
@@ -204,12 +212,21 @@ def exercise_tunnel_ui(page):
         if endpoint == "publication":
             binding = state["bindings"][0]
             binding["endpoint_published"] = route.request.method == "POST"
-            binding["published_inbounds"] = [{"inbound_id": inbound["id"], "check_id": "f" * 32}] if binding["endpoint_published"] else []
+            binding["published_inbounds"] = (
+                [{"inbound_id": inbound["id"], "check_id": "f" * 32}]
+                if binding["endpoint_published"]
+                else []
+            )
             return route.fulfill(json=binding)
         if endpoint == "monitor":
             binding = state["bindings"][0]
             active = route.request.method == "PUT"
-            binding["monitor"].update(enabled=active, phase="healthy" if active else "disabled", last_success=int(time.time()), next_run=int(time.time())+300)
+            binding["monitor"].update(
+                enabled=active,
+                phase="healthy" if active else "disabled",
+                last_success=int(time.time()),
+                next_run=int(time.time()) + 300,
+            )
             if not active:
                 binding.update(endpoint_published=False, published_inbounds=[])
             return route.fulfill(json=binding["monitor"])
@@ -291,8 +308,13 @@ def exercise_tunnel_ui(page):
         page.locator("#tunnel-monitor-form [name=consent]").check()
         page.locator("#tunnel-monitor-form button").click()
         page.locator("#tunnel-monitor-stop").wait_for()
-        assert requests[-1] == ("monitor", {"check_id": "f" * 32, "confirm_auto_renew": True, "interval_seconds": 300})
-        assert page.evaluate("document.documentElement.scrollWidth <= innerWidth"), "Monitor mobile overflow"
+        assert requests[-1] == (
+            "monitor",
+            {"check_id": "f" * 32, "confirm_auto_renew": True, "interval_seconds": 300},
+        )
+        assert page.evaluate("document.documentElement.scrollWidth <= innerWidth"), (
+            "Monitor mobile overflow"
+        )
         page.locator("#tunnel-monitor-stop").click()
         page.get_by_text(
             "پایش خاموش و انتشار لغو شد؛ نتیجهٔ آزمون قبلی آن را دوباره فعال نمی‌کند.",
@@ -322,6 +344,49 @@ def exercise_tunnel_ui(page):
     finally:
         page.unroute("**/api/tunnels/**", worker)
         page.set_viewport_size({"width": 1440, "height": 1050})
+
+
+def exercise_wireguard_ui(page):
+    origin = page.evaluate("location.origin")
+    page.locator("a[data-page=wireguard]").click()
+    form = page.locator("#wg-create")
+    form.wait_for()
+    form.locator("[name=name]").fill("WireGuard آزمایشی")
+    form.locator("[name=host]").fill("wg.example.com")
+    # A background refresh must preserve typed endpoint forms.
+    page.evaluate("refresh(false)")
+    assert form.locator("[name=name]").input_value() == "WireGuard آزمایشی"
+    form.locator("button[type=submit]").click()
+    button = page.locator("[data-wg-toggle]")
+    button.wait_for()
+    button.click()
+    page.locator('[data-wg-toggle][data-enabled="0"]').wait_for()
+    page.locator("[data-wg-peers]").click()
+    peer_form = page.locator(".wg-peer-create")
+    peer_form.locator("[name=device_id] option").first.wait_for(state="attached")
+    peer_form.locator("button[type=submit]").click()
+    page.locator("[data-wg-qr]").wait_for()
+    pid = page.locator("[data-wg-qr]").get_attribute("data-wg-qr")
+    response = page.request.get(origin + "/api/wireguard/peers/" + pid + "/profile")
+    assert response.status == 200 and "PrivateKey = " in response.text()
+    assert response.headers["cache-control"] == "no-store"
+    page.locator("[data-wg-qr]").click()
+    page.wait_for_function(
+        "() => document.querySelector('.wg-private-qr img')?.naturalWidth > 0"
+    )
+    # Never capture a private QR in screenshots or reports.
+    page.locator(".wg-hide-qr").click()
+    page.once("dialog", lambda dialog: dialog.accept())
+    page.locator("[data-wg-rotate]").click()
+    page.wait_for_function(
+        "id => fetch('/api/wireguard/peers/'+id+'/profile').then(r=>r.ok)", arg=pid
+    )
+    page.locator('[data-wg-peer][data-enabled="0"]').click()
+    page.locator('[data-wg-peer][data-enabled="1"]').wait_for()
+    assert page.request.get(origin + "/api/wireguard/peers/" + pid + "/profile").status == 409
+    page.set_viewport_size({"width": 390, "height": 844})
+    assert page.evaluate("document.documentElement.scrollWidth <= innerWidth + 1")
+    page.set_viewport_size({"width": 1440, "height": 1050})
 
 
 def main():
@@ -472,6 +537,7 @@ def main():
                 page.locator("#close-modal").click()
                 exercise_smart_dns_ui(page)
                 exercise_tunnel_ui(page)
+                exercise_wireguard_ui(page)
                 page.locator("a[data-page=overview]").click()
                 page.locator("#main h1").filter(has_text="شبکه، در یک نگاه").wait_for()
                 page.locator("#toast").wait_for(state="hidden")
