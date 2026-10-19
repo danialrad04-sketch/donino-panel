@@ -12,6 +12,8 @@ import json
 import time
 from urllib.parse import urlencode, quote
 
+from .shadowsocks import client_password, device_key
+
 
 # Transports per protocol. Old rows that predate the transport key keep the
 # transport they had before: VLESS REALITY/TCP, VMess WS, Trojan TCP.
@@ -19,8 +21,14 @@ TRANSPORTS = {
     "vless": ("tcp", "ws", "grpc"),
     "vmess": ("ws", "grpc"),
     "trojan": ("tcp", "ws"),
+    "shadowsocks": ("tcp",),
 }
-DEFAULT_TRANSPORT = {"vless": "tcp", "vmess": "ws", "trojan": "tcp"}
+DEFAULT_TRANSPORT = {
+    "vless": "tcp",
+    "vmess": "ws",
+    "trojan": "tcp",
+    "shadowsocks": "tcp",
+}
 
 
 def transport_of(protocol, settings):
@@ -86,6 +94,38 @@ def compile_config(inbounds, clients):
         s = json.loads(inbound["settings"])
         protocol = inbound["protocol"]
         transport = transport_of(protocol, s)
+        if protocol == "shadowsocks":
+            # In 2022 Xray switches to single-user server mode on an empty
+            # clients array, accepting the server key without device accounting.
+            # Withdraw the listener entirely when no eligible devices remain.
+            if not live:
+                continue
+            from .secrets import unseal
+
+            method = s["ss_method"]
+            users = [
+                {
+                    "email": c["id"],
+                    "level": 0,
+                    "password": device_key(c["secret"], inbound["id"], method),
+                    **({} if method.startswith("2022-") else {"method": method}),
+                }
+                for c in live
+            ]
+            settings = {"clients": users, "network": "tcp,udp"}
+            if method.startswith("2022-"):
+                settings.update(method=method, password=unseal(s["ss_server_key"]))
+            result["inbounds"].append(
+                {
+                    "tag": inbound["id"],
+                    "listen": "0.0.0.0",
+                    "port": inbound["port"],
+                    "protocol": protocol,
+                    "settings": settings,
+                    "streamSettings": {"network": "tcp", "security": "none"},
+                }
+            )
+            continue
         clients = [
             {
                 "email": c["id"],
@@ -181,6 +221,32 @@ def profiles(clients, inbounds):
                 + " · "
                 + inbound["id"][:6]
             )
+            if protocol == "shadowsocks":
+                password = client_password(secret, inbound["id"], s)
+                method = s["ss_method"]
+                # SIP002: 2022 userinfo uses percent encoding, legacy uses
+                # URL-safe base64 without padding. No implicit plugin or TLS.
+                if method.startswith("2022-"):
+                    userinfo = quote(method, safe="") + ":" + quote(password, safe="")
+                else:
+                    userinfo = (
+                        base64.urlsafe_b64encode((method + ":" + password).encode())
+                        .decode()
+                        .rstrip("=")
+                    )
+                links.append(f"ss://{userinfo}@{address}:{port}#{quote(label)}")
+                clash.append(
+                    {
+                        "name": label,
+                        "type": "ss",
+                        "server": host,
+                        "port": port,
+                        "cipher": method,
+                        "password": password,
+                        "udp": True,
+                    }
+                )
+                continue
             proxy = {
                 "name": label,
                 "type": protocol,

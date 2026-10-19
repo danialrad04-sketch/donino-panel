@@ -4,14 +4,21 @@
   "branch": "development/shadowsocks",
   "last_verified_commit": null,
   "completed": [
-    "alpha15 OpenVPN تحویل و checkpoint نهایی بدون تغییر آرشیو شد."
+    "alpha15 OpenVPN تحویل و checkpoint نهایی بدون تغییر آرشیو شد.",
+    "پنج روش Shadowsocks AEAD/2022 AES با credential مشتق‌شده مستقل دستگاه/inbound/method، کلید سرور2022 رمز‌شده، خروجی SIP002/Mihomo و فرم فارسی پیاده شد.",
+    "listener بدون دستگاه مجاز حذف می‌شود تا fallback تک‌کاربره 2022 با کلید سرور تنها ایجاد نشود؛ metadata مدیریتی کلید سرور را افشا نمی‌کند.",
+    "سه آزمون API وکلاینت واقعی موفق: پنج روش × دو دستگاه، TCP/UDP، مصرف/dedup، رد رمز غلط/کلید سرور تنها، قطع جریان باز، rotation، quota، period وexpiry واقعی؛ Mihomo TCP وbrowser موفق."
   ],
   "remaining": [
-    "بررسی Shadowsocks چندکاربره در Xray26.3.27، رمزهای معتبر، خروجی SS/Mihomo و مصرف مستقل دستگاه/دوره وابطال واقعی.",
-    "نصب خودکار نقش نود، routing چندلوکیشن/UDP وپروتکل‌های باقی طبق ماتریس."
+    "regression سراسری، CI روی head نهایی SQLite/PostgreSQL وOS؛ self-review، PR وalpha16 prerelease.",
+    "AWG و موتورهای QUIC وپروتکل‌های باقی؛ نصب نود خودکار و نمایش وضعیت مستقل نقش‌ها؛ routing چندلوکیشن DNS/service/domain/UDP وپذیرش WAN."
   ],
-  "next_action": "قرارداد واقعی Shadowsocks/2022 موتور منتخب را بررسی و برش قابل پذیرش را پیاده کن؛ هیچ cipher یا چندکاربره‌ای بدون آزمون واقعی پشتیبانی نامیده نشود.",
-  "tests": [],
+  "next_action": "نتیجه /tmp/donino-ss-regression.log را بررسی و PR development/shadowsocks را تا همه CI موفق روی head دقیق پیگیری کن. سپس main tree را با head برابر بررسی وalpha16 به صورت prerelease/latest=false منتشر کن. تغییرکاربر روی نودSS restart است، schema16 حفظ شده، WAN/stable v1 هنوز تأیید نشده. کلاد متوقف است.",
+  "tests": [
+    "Shadowsocks: سه آزمون محلی با Xray26.3.27 وMihomo1.19.32 واقعی در67ثانیه موفق؛ پنج روش ودو دستگاه وچرخه حجم/دوره/انقضا/ابطال.",
+    "Browser جدیدSS/2022 create/edit/redaction وپرتال چندپروفایلی/QR وMobile موفق، بدون خطایJS.",
+    "Regression سراسری با Xray/Mihomo/FRP واقعی درحال اجرا؛ PostgreSQL کامل ودو OS را CI روی head نهایی باید تأیید کند."
+  ],
   "blockers": [],
   "pr_url": null
 }

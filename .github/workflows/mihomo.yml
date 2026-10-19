@@ -33,3 +33,7 @@ jobs:
         run: DONINO_TEST_XRAY=/tmp/donino-xray/xray DONINO_TEST_MIHOMO=/tmp/donino-mihomo/mihomo python -m unittest discover -s tests -p test_mihomo.py -v
         env:
           DONINO_TEST_DATABASE_URL: ${{ matrix.backend == 'postgresql' && 'postgresql://postgres:postgres@localhost:5432/donino_test' || '' }}
+      - name: Real Shadowsocks AEAD and multi-user 2022, exported Xray/Mihomo clients
+        run: DONINO_TEST_XRAY=/tmp/donino-xray/xray DONINO_TEST_MIHOMO=/tmp/donino-mihomo/mihomo python -m unittest discover -s tests -p test_shadowsocks.py -v
+        env:
+          DONINO_TEST_DATABASE_URL: ${{ matrix.backend == 'postgresql' && 'postgresql://postgres:postgres@localhost:5432/donino_test' || '' }}
