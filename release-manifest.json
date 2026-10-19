@@ -1,7 +1,7 @@
 {
   "format": "donino-source-v1",
   "version": "1.0.0a14",
-  "source_sha256": "bf05b02222c62a5a755d6bc94b7b214f65de4b4c720f2bf82151e64fff51b4df",
+  "source_sha256": "06eebd46124ebc4e133891ed80a11fa795cfce308ff2f3e157550fc6ec22c327",
   "files": {
     "AGENTS.md": "fcebf7e072e2994015f9a37651cfe20423c41a7aff10b1baafb31385588cbdf7",
     "CHANGELOG.md": "76ca7f85cd4813e30caef1b50de4d31e9716502db61e6af9e9534dfa9b435775",
@@ -127,6 +127,7 @@
     "docs/coordination/history/tunnel-monitor-alpha13.codex.json": "5efc72b8a241116eed5e71646055852d4385b770960be11faa47fd94e84bd6ca",
     "docs/coordination/history/tunnel-verification-alpha10.codex.json": "424bf169d6f8c988f5e8e7a3a2f493bb30f5d3aa75af834b891c8fe3697a9a33",
     "docs/coordination/history/xray-acceptance-v1.claude.json": "066e8834399b612b24199a2ccc13792be976f43a9ab8f1a045f2ceaf48563807",
+    "docs/coordination/reviews/claude-wireguard-and-design.fa.md": "faae32f1773bd5eecd49a8fed1b82cf2b76ac122694576809d04543e8f523d2d",
     "docs/coordination/reviews/xray-acceptance-v1.fa.md": "bbbdc4cd9f38b9a4932785e24cc147a4971ebd358b979918dbbefe4cd015977f",
     "docs/coordination/reviews/xray-transports-v1.fa.md": "75722908436e63b312ced42cd574d61eacf45640a2cb192f78ac03cc51e50219",
     "docs/coordination/tasks/codex-v1-progress.fa.md": "a56b6da5a629c43905c5f4d1d8e2bcb6236c93b2dd48955d07232b65b522f21b",
