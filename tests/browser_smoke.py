@@ -14,6 +14,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from app.db import initialize, digest
 from app.security import hotp
 from playwright.sync_api import sync_playwright
+from browser_navigation import navigate, exercise_mobile_navigation, open_navigation
 
 
 def exercise_smart_dns_ui(page):
@@ -104,7 +105,7 @@ def exercise_smart_dns_ui(page):
 
 
 def exercise_tunnel_ui(page):
-    page.locator("a[data-page=tunnels]").click()
+    navigate(page, "tunnels")
     page.get_by_role("heading", name="آماده‌سازی اتصال تانل").wait_for()
     state = {
         "enabled": True,
@@ -348,7 +349,7 @@ def exercise_tunnel_ui(page):
 
 def exercise_wireguard_ui(page):
     origin = page.evaluate("location.origin")
-    page.locator("a[data-page=wireguard]").click()
+    navigate(page, "wireguard")
     form = page.locator("#wg-create")
     form.wait_for()
     form.locator("[name=name]").fill("WireGuard آزمایشی")
@@ -394,7 +395,7 @@ def exercise_wireguard_ui(page):
 
 def exercise_openvpn_ui(page):
     origin = page.evaluate("location.origin")
-    page.locator("a[data-page=openvpn]").click()
+    navigate(page, "openvpn")
     form = page.locator("#ovpn-create")
     form.wait_for()
     form.locator("[name=name]").fill("OpenVPN آزمایشی")
@@ -492,7 +493,7 @@ def main():
                 page.locator("#edit-form [name=quota]").fill("25")
                 page.locator("#edit-form button[type=submit]").click()
                 page.locator("#modal").wait_for(state="hidden")
-                page.locator("a[data-page=users]").click()
+                navigate(page, "users")
                 page.get_by_role("button", name="اشتراک", exact=True).click()
                 page.locator("#secret-output").wait_for()
                 assert "/sub/" in page.locator("#secret-output").input_value()
@@ -505,7 +506,7 @@ def main():
                 page.locator("#edit-form [name=quota]").fill("35")
                 page.locator("#edit-form button[type=submit]").click()
                 page.locator("#modal").wait_for(state="hidden")
-                page.locator("a[data-page=nodes]").click()
+                navigate(page, "nodes")
                 page.get_by_role("button", name="نود جدید").click()
                 page.locator("#edit-form [name=name]").fill("سرور اصلی")
                 page.locator("#edit-form [name=host]").fill("vpn.example.com")
@@ -513,7 +514,7 @@ def main():
                 page.locator("#secret-output").wait_for()
                 assert len(page.locator("#secret-output").input_value()) > 40
                 page.locator("#close-modal").click()
-                page.locator("a[data-page=inbounds]").click()
+                navigate(page, "inbounds")
                 page.get_by_role("button", name="اتصال جدید").click()
                 page.locator("#protocol").select_option("vless")
                 assert page.locator("#transport option").count() == 3
@@ -536,7 +537,7 @@ def main():
                 page.locator("#edit-form [name=port]").fill("8443")
                 page.locator("#edit-form button[type=submit]").click()
                 page.locator("#modal").wait_for(state="hidden")
-                page.locator("a[data-page=users]").click()
+                navigate(page, "users")
                 page.get_by_role("button", name="نودها", exact=True).click()
                 page.locator("#edit-form [name=mode]").select_option("selected")
                 page.locator("#edit-form input[type=checkbox]").check()
@@ -546,7 +547,7 @@ def main():
                 page.locator("#modal").wait_for(state="visible")
                 assert "جاری" in page.locator("#modal").inner_text()
                 page.locator("#close-modal").click()
-                page.locator("a[data-page=dns]").click()
+                navigate(page, "dns")
                 page.get_by_role("button", name="سیاست جدید", exact=True).click()
                 page.locator("#edit-form [name=name]").fill("سیاست آزمایشی DNS")
                 page.locator("#edit-form [name=rules]").fill(
@@ -581,7 +582,7 @@ def main():
                 exercise_tunnel_ui(page)
                 exercise_wireguard_ui(page)
                 exercise_openvpn_ui(page)
-                page.locator("a[data-page=inbounds]").click()
+                navigate(page, "inbounds")
                 page.get_by_role("button", name="اتصال جدید").click()
                 page.locator("#protocol").select_option("shadowsocks")
                 assert page.locator("#ss-fields").is_visible()
@@ -598,13 +599,13 @@ def main():
                 page.locator("#edit-form button[type=submit]").click()
                 page.locator("#modal").wait_for(state="hidden")
                 assert page.evaluate("data.inbounds.filter(i => i.protocol === 'shadowsocks').every(i => !('ss_server_key' in i.settings))")
-                page.locator("a[data-page=overview]").click()
+                navigate(page, "overview")
                 page.locator("#main h1").filter(has_text="شبکه، در یک نگاه").wait_for()
                 page.locator("#toast").wait_for(state="hidden")
                 page.screenshot(
                     path=str(output / "donino-dashboard.png"), full_page=True
                 )
-                page.locator("a[data-page=users]").click()
+                navigate(page, "users")
                 page.get_by_role("button", name="کاربر جدید").click()
                 page.locator("#edit-form [name=name]").fill("بودجه آزمایشی")
                 page.locator("#edit-form [name=quota]").fill("10")
@@ -616,7 +617,8 @@ def main():
                     has_text="حجم تخصیص‌یافته"
                 ).wait_for()
                 page.locator("#close-modal").click()
-                page.locator("a[data-page=overview]").click()
+                navigate(page, "overview")
+                exercise_mobile_navigation(page, output)
                 page.set_viewport_size({"width": 390, "height": 844})
                 page.screenshot(path=str(output / "donino-mobile.png"), full_page=True)
                 assert page.evaluate(
@@ -631,7 +633,7 @@ def main():
                     "audit",
                     "settings",
                 ]:
-                    page.locator("a[data-page=" + view + "]").click()
+                    navigate(page, view)
                     page.wait_for_timeout(100)
                     assert page.evaluate(
                         "document.documentElement.scrollWidth <= innerWidth"
@@ -666,6 +668,7 @@ def main():
                 )
                 page.locator("#close-modal").click()
                 page.locator("#theme").click()
+                open_navigation(page)
                 page.locator("[data-action=logout]").click()
                 page.locator("#login-view").wait_for(state="visible")
                 # The customer portal works in a separate context without admin cookies.

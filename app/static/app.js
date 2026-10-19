@@ -21,6 +21,11 @@ const ICONS = {
     '<path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6h.01M4 12h.01M4 18h.01"/>',
   settings:
     '<path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/>',
+  menu: '<path d="M4 6h16M4 12h16M4 18h16"/>',
+  shield:
+    '<path d="M12 3l8 4v6c0 4-4 7-8 9-4-2-8-5-8-9V7z"/><path d="M8 12l3 3 5-6"/>',
+  tunnel:
+    '<path d="M3 19V9a9 9 0 0 1 18 0v10M7 19V9a5 5 0 0 1 10 0v10M2 19h20"/>',
   plus: '<path d="M12 5v14M5 12h14"/>',
   refresh: '<path d="M20 12a8 8 0 1 1-2.3-5.7"/><path d="M20 4v5h-5"/>',
   theme: '<path d="M20.5 14.5A8.5 8.5 0 1 1 9.5 3.5a7 7 0 0 0 11 11z"/>',
@@ -107,6 +112,7 @@ function toast(message, error = false) {
   toastTimer = setTimeout(() => ($("#toast").hidden = true), 5000);
 }
 function showLogin() {
+  DoninoNavigation.close(false);
   clearInterval(timer);
   account = null;
   $("#app-view").hidden = true;
@@ -249,7 +255,7 @@ function renderInbounds() {
 function renderSettings() {
   return (
     heading("تنظیمات و نگهداری", "همه‌چیز برای مدیریت یک شبکهٔ مستقل.") +
-    `<div class="settings-grid"><article class="card"><h2>پشتیبان‌گیری</h2><p>نسخهٔ پایگاه داده و حساب‌ها را دریافت کن. این فایل محرمانه است. برای بازیابی ورود دومرحله‌ای، کلید مستقل سرور نیز لازم است؛ پشتیبان کامل رمزگذاری‌شده در راهنمای نگهداری توضیح داده شده است.</p>${owner() ? `<a class="primary" href="/api/backup" download>${icon("download")}دریافت نسخهٔ پایگاه داده</a>` : "<p>دریافت پشتیبان فقط برای مالک شبکه فعال است.</p>"}</article><article class="card"><h2>ظاهر پنل</h2><p>پوستهٔ روشن یا تیره را انتخاب کن. انتخاب روی همین دستگاه ذخیره می‌شود.</p><button class="secondary" data-action="theme">${icon("theme")}تغییر حالت نمایش</button></article><article class="card"><h2>حساب مدیریت</h2><p>نام کاربری: ${esc(account.username)}<br>سطح دسترسی: ${roles[account.role]}<br>رمز، ورود دومرحله‌ای، نشست‌ها و توکن‌ها را از بخش امنیت حساب مدیریت کن. مالک می‌تواند مدیرهای دیگر را نیز همین‌جا مدیریت کند.</p></article><article class="card"><h2>Donino Panel <span class="mono">1.0.0-alpha.17</span></h2><p>نسخهٔ اولیهٔ مستقل، با رابط فارسی و مدیریت چند نود. امکانات در حال توسعه‌اند. راه‌اندازی واقعی به سرور نود، Xray و دامنهٔ مناسب نیاز دارد.</p><a class="subtle-link" href="https://github.com/danialrad04-sketch/donino-panel" target="_blank" rel="noopener">مستندات و کد منبع</a></article></div><section id="account-security" class="settings-grid"></section>`
+    `<div class="settings-grid"><article class="card"><h2>پشتیبان‌گیری</h2><p>نسخهٔ پایگاه داده و حساب‌ها را دریافت کن. این فایل محرمانه است. برای بازیابی ورود دومرحله‌ای، کلید مستقل سرور نیز لازم است؛ پشتیبان کامل رمزگذاری‌شده در راهنمای نگهداری توضیح داده شده است.</p>${owner() ? `<a class="primary" href="/api/backup" download>${icon("download")}دریافت نسخهٔ پایگاه داده</a>` : "<p>دریافت پشتیبان فقط برای مالک شبکه فعال است.</p>"}</article><article class="card"><h2>ظاهر پنل</h2><p>پوستهٔ روشن یا تیره را انتخاب کن. انتخاب روی همین دستگاه ذخیره می‌شود.</p><button class="secondary" data-action="theme">${icon("theme")}تغییر حالت نمایش</button></article><article class="card"><h2>حساب مدیریت</h2><p>نام کاربری: ${esc(account.username)}<br>سطح دسترسی: ${roles[account.role]}<br>رمز، ورود دومرحله‌ای، نشست‌ها و توکن‌ها را از بخش امنیت حساب مدیریت کن. مالک می‌تواند مدیرهای دیگر را نیز همین‌جا مدیریت کند.</p></article><article class="card"><h2>Donino Panel <span class="mono">1.0.0-alpha.18</span></h2><p>نسخهٔ اولیهٔ مستقل، با رابط فارسی و مدیریت چند نود. امکانات در حال توسعه‌اند. راه‌اندازی واقعی به سرور نود، Xray و دامنهٔ مناسب نیاز دارد.</p><a class="subtle-link" href="https://github.com/danialrad04-sketch/donino-panel" target="_blank" rel="noopener">مستندات و کد منبع</a></article></div><section id="account-security" class="settings-grid"></section>`
   );
 }
 function render() {
@@ -257,9 +263,7 @@ function render() {
   document
     .querySelectorAll("[data-owner]")
     .forEach((e) => (e.hidden = !owner()));
-  document
-    .querySelectorAll("[data-page]")
-    .forEach((e) => e.classList.toggle("active", e.dataset.page === page));
+  DoninoNavigation.sync(page);
   $("#breadcrumb").textContent = titles[page];
   const views = {
     overview: renderOverview,
@@ -1051,10 +1055,12 @@ document.addEventListener("change", (e) => {
 document
   .querySelectorAll("[data-icon]")
   .forEach((el) => (el.innerHTML = icon(el.dataset.icon)));
+DoninoNavigation.init();
 $("#close-modal").onclick = () => $("#modal").close();
 $("#theme").onclick = () => handleAction("theme");
 $("#refresh").onclick = () => refresh();
 window.addEventListener("hashchange", () => {
+  DoninoNavigation.routeChanged();
   page = titles[location.hash.slice(1)] ? location.hash.slice(1) : "overview";
   render();
 });

@@ -2,17 +2,21 @@
 <html lang="fa" dir="rtl" data-theme="dark">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta
+      name="viewport"
+      content="width=device-width,initial-scale=1,viewport-fit=cover"
+    />
     <meta name="theme-color" content="#0b0f14" />
     <title>دونینو | پنل مدیریت شبکه</title>
     <link rel="icon" href="/static/logo.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="/static/style.css" />
+    <link rel="stylesheet" href="/static/style.css?v=1.0.0-alpha.18" />
     <script src="/static/dns.js" defer></script>
     <script src="/static/smart-dns.js" defer></script>
     <script src="/static/tunnels.js" defer></script>
     <script src="/static/wireguard.js" defer></script>
     <script src="/static/openvpn.js" defer></script>
-    <script src="/static/app.js" defer></script>
+    <script src="/static/navigation.js?v=1.0.0-alpha.18" defer></script>
+    <script src="/static/app.js?v=1.0.0-alpha.18" defer></script>
   </head>
   <body>
     <section id="login-view" class="login-view" hidden>
@@ -83,58 +87,137 @@
         /></label>
         <p id="login-error" role="alert" class="error"></p>
         <button class="primary" type="submit">ورود</button>
-        <small class="muted">پیش‌نمایش ۱.۰ آلفا ۷</small>
+        <small class="muted">پیش‌نمایش ۱.۰ آلفا ۱۸</small>
       </form>
     </section>
     <div id="app-view" class="shell" hidden>
-      <aside class="sidebar">
-        <a class="brand" href="#overview">
-          <img src="/static/logo.svg" alt="" />
-          <span>دونینو<small>پنل مدیریت شبکه</small></span>
-        </a>
-        <nav aria-label="منوی اصلی">
+      <button
+        id="nav-backdrop"
+        class="nav-backdrop"
+        aria-label="بستن منوی ناوبری"
+        tabindex="-1"
+        hidden
+      ></button>
+      <aside
+        id="navigation"
+        class="sidebar"
+        aria-labelledby="nav-title"
+        tabindex="-1"
+      >
+        <div class="nav-heading">
+          <a class="brand" href="#overview">
+            <img src="/static/logo.svg" alt="" />
+            <span id="nav-title"
+              >دونینو<small>مدیریت یکپارچهٔ شبکه</small></span
+            >
+          </a>
+          <button
+            id="close-navigation"
+            class="icon-button mobile-only"
+            aria-label="بستن منوی ناوبری"
+          >
+            <span data-icon="close"></span>
+          </button>
+        </div>
+        <nav class="sidebar-nav" aria-label="همهٔ بخش‌های پنل">
           <a href="#overview" data-page="overview"
             ><span data-icon="overview"></span>نمای کلی</a
           >
           <a href="#users" data-page="users"
-            ><span data-icon="users"></span>کاربران</a
+            ><span data-icon="users"></span>کاربران و اشتراک‌ها</a
           >
-          <a href="#nodes" data-page="nodes"
-            ><span data-icon="nodes"></span>نودها</a
-          >
-          <a href="#inbounds" data-page="inbounds"
-            ><span data-icon="inbounds"></span>اتصال‌ها</a
-          >
-          <a href="#dns" data-page="dns"><span data-icon="dns"></span>DNS</a>
-          <a href="#tunnels" data-page="tunnels" data-owner
-            ><span data-icon="nodes"></span>تانل خودکار</a
-          >
-          <a href="#openvpn" data-page="openvpn" data-owner><span data-icon="nodes"></span>OpenVPN</a>
-          <a href="#wireguard" data-page="wireguard" data-owner><span data-icon="nodes"></span>WireGuard</a>
-          <a href="#audit" data-page="audit" data-owner
-            ><span data-icon="events"></span>رویدادها</a
-          >
-          <a href="#settings" data-page="settings"
-            ><span data-icon="settings"></span>تنظیمات</a
-          >
+          <details class="nav-group" data-label="زیرساخت شبکه" open>
+            <summary>
+              <span data-icon="nodes"></span>زیرساخت شبکه<span
+                class="nav-chevron"
+                aria-hidden="true"
+              ></span>
+            </summary>
+            <div class="nav-children">
+              <a href="#nodes" data-page="nodes"
+                ><span data-icon="nodes"></span>نودها و لوکیشن‌ها</a
+              >
+              <a href="#inbounds" data-page="inbounds"
+                ><span data-icon="inbounds"></span>اتصال‌ها و پروتکل‌ها</a
+              >
+              <a href="#tunnels" data-page="tunnels" data-owner
+                ><span data-icon="tunnel"></span>تانل بین سرورها</a
+              >
+            </div>
+          </details>
+          <details class="nav-group" data-label="سرویس‌های شبکه" open>
+            <summary>
+              <span data-icon="dns"></span>سرویس‌های شبکه<span
+                class="nav-chevron"
+                aria-hidden="true"
+              ></span>
+            </summary>
+            <div class="nav-children">
+              <a href="#dns" data-page="dns"
+                ><span data-icon="dns"></span>DNS و رفع تحریم</a
+              >
+              <a href="#wireguard" data-page="wireguard" data-owner
+                ><span data-icon="shield"></span>WireGuard</a
+              >
+              <a href="#openvpn" data-page="openvpn" data-owner
+                ><span data-icon="shield"></span>OpenVPN</a
+              >
+            </div>
+          </details>
+          <details class="nav-group" data-label="مدیریت پنل" open>
+            <summary>
+              <span data-icon="settings"></span>مدیریت پنل<span
+                class="nav-chevron"
+                aria-hidden="true"
+              ></span>
+            </summary>
+            <div class="nav-children">
+              <a href="#settings" data-page="settings"
+                ><span data-icon="settings"></span>تنظیمات و امنیت</a
+              >
+              <a href="#audit" data-page="audit" data-owner
+                ><span data-icon="events"></span>رویدادهای مدیریت</a
+              >
+            </div>
+          </details>
         </nav>
         <div class="sidebar-bottom">
-          <div class="version-card">
-            <b>Donino</b><small>پیش‌نمایش ۱.۰ آلفا ۷</small>
-          </div>
           <div class="account">
             <span class="avatar" id="account-initial">D</span>
             <div>
               <b id="account-name"></b><small id="account-role"></small>
             </div>
+            <button
+              id="logout"
+              class="icon-button"
+              data-action="logout"
+              aria-label="خروج از حساب"
+              title="خروج"
+            >
+              <span data-icon="logout"></span>
+            </button>
+          </div>
+          <div class="version-card">
+            <b>DONINO PANEL</b><small>پیش‌نمایش ۱.۰ آلفا ۱۸</small>
           </div>
         </div>
       </aside>
       <div class="workspace">
         <header class="topbar">
-          <div class="breadcrumb">
-            <b id="breadcrumb">نمای کلی</b>
-            <span id="sync-status" class="muted">در حال دریافت…</span>
+          <div class="topbar-location">
+            <button
+              class="icon-button mobile-only"
+              data-nav-toggle
+              aria-controls="navigation"
+              aria-expanded="false"
+              aria-label="باز کردن منوی ناوبری"
+            >
+              <span data-icon="menu"></span>
+            </button>
+            <div class="breadcrumb">
+              <b id="breadcrumb">نمای کلی</b>
+              <span id="sync-status" class="muted">در حال دریافت…</span>
+            </div>
           </div>
           <div class="top-actions">
             <button
@@ -153,19 +236,33 @@
             >
               <span data-icon="theme"></span>
             </button>
-            <button
-              id="logout"
-              class="icon-button"
-              data-action="logout"
-              aria-label="خروج از حساب"
-              title="خروج"
-            >
-              <span data-icon="logout"></span>
-            </button>
           </div>
         </header>
         <main id="main" tabindex="-1"></main>
       </div>
+      <nav
+        id="mobile-navigation"
+        class="mobile-navigation"
+        aria-label="دسترسی سریع"
+      >
+        <a href="#overview" data-nav-target="overview"
+          ><span data-icon="overview"></span><span>خانه</span></a
+        >
+        <a href="#users" data-nav-target="users"
+          ><span data-icon="users"></span><span>کاربران</span></a
+        >
+        <a href="#nodes" data-nav-target="nodes"
+          ><span data-icon="nodes"></span><span>نودها</span></a
+        >
+        <button
+          data-nav-toggle
+          aria-controls="navigation"
+          aria-expanded="false"
+          aria-label="باز کردن همهٔ بخش‌ها"
+        >
+          <span data-icon="menu"></span><span>بیشتر</span>
+        </button>
+      </nav>
     </div>
     <dialog id="modal">
       <div class="modal-heading">

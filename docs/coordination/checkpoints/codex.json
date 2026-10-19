@@ -1,26 +1,26 @@
 {
   "task_id": "codex-v1-progress",
   "status": "in_progress",
-  "branch": "development/installer-menu",
+  "branch": "development/mobile-navigation",
   "last_verified_commit": null,
   "completed": [
-    "alpha16 تحویل و checkpoint نهایی آرشیو شد؛ patch نصب HTTP کلاد بدون metadata قدیمی روی main جدید منتقل شد.",
-    "منوی مستقل TTY باalternate-screen و/dev/tty برایcurl-pipe، فرمانsudo donino وگزینه‌هایHTTP/HTTPS/status/repair/backup/upgrade اضافه شد.",
-    "HTTP/IP بدوندامنه، حفظ mode درreinstall وrepair، رفع providerTLSقدیمی، نگهداریCAخصوصی وپیش‌نیازPython/CA حداقلی پیادهشد.",
-    "native HTTP رویDebian12وUbuntu24: bootstrap/login/cookie/API، reinstallبدونflags،repair، حفظowner/user/quota/masterkey وlauncherواقعی باstdinقطع وuninstallحافظداده موفق.",
-    "معماری3x-ui/PasarGuard درcommitهایپین‌شدهبررسیشد؛ چرخهACME باCertbotرسمی، webroot،مسیرثابت، validation وreload/renewalموجودتکمیل ومواردآزموده‌نشدهثبتشد.",
-    "آزمون کامل نصب HTTPS روی Debian 12 و Ubuntu 24 با mTLS واقعی، تمدید محلی، backup/restore و حذف حافظ داده موفق شد؛ HTTP نیز روی هر دو OS موفق است."
+    "بررسی main و فعالیت کلاد؛ PR باز وجود ندارد. checkpoint نهایی alpha17 بدون تغییر آرشیو شد.",
+    "علت رابط گوشی: تمام 10 مقصد دسکتاپ در نوار پایین بدون drawer یا سلسله‌مراتب فشرده شده‌اند.",
+    "ناوبری جدید با چهار مقصد پایین گوشی و drawer سه‌گروهی، جدول کارتی، sheet فرم، هدف لمس و asset cache نسخه18 پیاده شد.",
+    "فوکوس/Tab معکوس/Escape/backdrop، حفظ اسکرول، همان مسیر/تاریخچه، نقش viewer و API403، resize و لمس فرم در Chromium واقعی موفق شدند.",
+    "تصاویر روشن/تیره و دسکتاپ بازبینی شدند؛ node grid در عرض320 و فوکوس لینک هنگام تبدیل دسکتاپ به گوشی اصلاح شد."
   ],
   "remaining": [
-    "CI نهایی دقیق head جدید با 18 job مستقل/36 check، بازبینی نهایی، ادغام PR28 و انتشار alpha17.",
-    "VPS/ACMEعمومی وremainingv1protocols/nodeinstaller/routing؛ تغییرhost/TLSmodeنصبموجودmigrationمستقل باقی است."
+    "Exact-head final CI (18 distinct jobs / 36 checks), PR integration and alpha18 prerelease/latest=false.",
+    "Physical phone/Safari acceptance not performed; stable-v1 network/protocol/operation gates remain separate."
   ],
-  "next_action": "Push final installer fixes, require all 36 checks on exact PR28 head, merge only tested tree, publish v1.0.0-alpha.17 as prerelease/latest=false, close superseded PR27. No real VPS or public ACME acceptance available.",
+  "next_action": "Push mobile-navigation branch, open PR, require exact-head final CI; merge tested tree and publish v1.0.0-alpha.18 prerelease. Release source URL in README needs tag publication before user use. No VPS was modified.",
   "tests": [
-    "Full regression: 284 tests, 282 passed, 2 explicitly skipped (standalone Unbound binary and privileged PostgreSQL rollback fixture); CI has separate native coverage.",
-    "Final targeted menu/preflight: 5 passed; native installer unit suite: 10 passed. Ruff F and git diff --check passed.",
-    "Native HTTP and native HTTPS complete lifecycles passed on Debian 12 and Ubuntu 24 in isolated systemd Docker; public ACME not tested."
+    "Full local browser acceptance passed: real API admin/inbounds/DNS/Smart DNS/tunnel/WireGuard/OpenVPN/portal/QR/theme/logout; no original-page JS errors or third-party requests.",
+    "Dedicated final navigation acceptance passed on Chromium: 320/390/430/768/844 landscape, focus cycle both directions, escape/backdrop, same-page/history, page scroll restore and last pager clearance, resize focus, touch context, viewer navigation and real API403.",
+    "Local unit regression: 285 tests, 266 passed, 19 explicit skips requiring real engine binaries or privileged PostgreSQL fixture; final CI supplies those separate environments.",
+    "Ruff F, JS syntax checks and diff whitespace passed."
   ],
   "blockers": [],
-  "pr_url": "https://github.com/danialrad04-sketch/donino-panel/pull/28"
+  "pr_url": null
 }
