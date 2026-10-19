@@ -1,7 +1,7 @@
 {
   "format": "donino-source-v1",
   "version": "1.0.0a17",
-  "source_sha256": "b00fdeea1b4569b09eb8c2f5ddf6d5ce8271dca438957ba439a0cf7919f5b876",
+  "source_sha256": "81e6e509712dd445dcdd184045a3d842dbc2b756bc865abdb128ef6c026c6f0c",
   "files": {
     "AGENTS.md": "5e22b6c9b8728413bfa5bf094082fd7af105cfbafdc85bf105ed42999422338d",
     "CHANGELOG.md": "b4351afd1003de150e7432056eb70dea5294933fa171895072cb8c65f9a8c774",
@@ -130,7 +130,7 @@
     "docs/coordination/README.fa.md": "c7a0dae0343dc653512ade4cf169a7becb31bd041cd913a0d9bb12b5e22dbe5e",
     "docs/coordination/assignments.json": "d82b2321b159b1b0b7d9532c86924dd0547b754e34810e1d186b0ea34472ef3a",
     "docs/coordination/checkpoints/claude.json": "b0cf12f259c1de00c43b4d74a69a0dde438697fd269965011385ebee20ef129f",
-    "docs/coordination/checkpoints/codex.json": "c8a1fd803d0dd228b3497951fe0cadcc818c6acf3d4dd44d87b0a302172e3c59",
+    "docs/coordination/checkpoints/codex.json": "d8a45e317a17d04cbfc79a5f43c80777a1a0de7777a618341e69d1e7f3a03c4d",
     "docs/coordination/history/mihomo-tls-acceptance-v1.claude.json": "b0cf12f259c1de00c43b4d74a69a0dde438697fd269965011385ebee20ef129f",
     "docs/coordination/history/openvpn-alpha15.codex.json": "21e0bff4f3d52e7c2e454bd6a5e6594f46482cb4f305b9bb232f9b185011e3eb",
     "docs/coordination/history/shadowsocks-alpha16.codex.json": "24d9e063a3604623c38673d49abbbdc1b25416e9197f22fc87e4ece1bdb8ed4b",

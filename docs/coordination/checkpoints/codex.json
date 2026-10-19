@@ -2,24 +2,30 @@
   "task_id": "codex-v1-progress",
   "status": "in_progress",
   "branch": "development/installer-menu",
-  "last_verified_commit": null,
+  "last_verified_commit": "1ef9271be0c3864a321be6838a7a6a6e55a2e9d6",
   "completed": [
     "alpha16 تحویل و checkpoint نهایی آرشیو شد؛ patch نصب HTTP کلاد بدون metadata قدیمی روی main جدید منتقل شد.",
     "منوی مستقل TTY باalternate-screen و/dev/tty برایcurl-pipe، فرمانsudo donino وگزینه‌هایHTTP/HTTPS/status/repair/backup/upgrade اضافه شد.",
     "HTTP/IP بدوندامنه، حفظ mode درreinstall وrepair، رفع providerTLSقدیمی، نگهداریCAخصوصی وپیش‌نیازPython/CA حداقلی پیادهشد.",
     "native HTTP رویDebian12وUbuntu24: bootstrap/login/cookie/API، reinstallبدونflags،repair، حفظowner/user/quota/masterkey وlauncherواقعی باstdinقطع وuninstallحافظداده موفق.",
     "معماری3x-ui/PasarGuard درcommitهایپین‌شدهبررسیشد؛ چرخهACME باCertbotرسمی، webroot،مسیرثابت، validation وreload/renewalموجودتکمیل ومواردآزموده‌نشدهثبتشد.",
-    "آزمون کامل نصب HTTPS روی Debian 12 و Ubuntu 24 با mTLS واقعی، تمدید محلی، backup/restore و حذف حافظ داده موفق شد؛ HTTP نیز روی هر دو OS موفق است."
+    "آزمون کامل نصب HTTPS روی Debian 12 و Ubuntu 24 با mTLS واقعی، تمدید محلی، backup/restore و حذف حافظ داده موفق شد؛ HTTP نیز روی هر دو OS موفق است.",
+    "PR28 با 36/36 check موفق (18 job مستقل) ادغام شد؛ main=80e24d7899585b58718cca1fb5ffb7cde2e7b8ce دقیقاً همان tree آزموده‌شده است.",
+    "v1.0.0-alpha.17 با target آزموده‌شده منتشر شد: prerelease=true/latest=false؛ stable latest همچنان v0.2.0 است.",
+    "دستور curl از tag منتشرشده، دریافت bootstrap، manifest و archive را اعتبارسنجی کرد و --help موفق بود؛ هیچ نصب میزبان انجام نشد.",
+    "PR27 با head بدون تغییر 1d024687978d09498b4a18dc961ca9c5679e58bd پس از تحویل اصلاح‌شده در PR28 بسته شد؛ شاخه و checkpoint کلاد حفظ شده‌اند."
   ],
   "remaining": [
-    "CI نهایی دقیق head جدید با 18 job مستقل/36 check، بازبینی نهایی، ادغام PR28 و انتشار alpha17.",
-    "VPS/ACMEعمومی وremainingv1protocols/nodeinstaller/routing؛ تغییرhost/TLSmodeنصبموجودmigrationمستقل باقی است."
+    "Public ACME issuance, user VPS/VM, WAN/ISP/game and load acceptance remain unavailable in this lab; alpha17 is not stable v1.",
+    "Existing host/TLS-mode migration, automatic VPN role/node installation, remaining protocols and selective multi-location service/domain/game UDP routing remain separate v1 gates."
   ],
-  "next_action": "Push final installer fixes, require all 36 checks on exact PR28 head, merge only tested tree, publish v1.0.0-alpha.17 as prerelease/latest=false, close superseded PR27. No real VPS or public ACME acceptance available.",
+  "next_action": "alpha17 delivered: https://github.com/danialrad04-sketch/donino-panel/releases/tag/v1.0.0-alpha.17 . For next authorized development, start a new task branch from current origin/main, archive this final handoff intact, inspect remote Claude activity, and select the next v1 gate from the implementation plan. Do not republish alpha17 or claim public ACME/WAN acceptance. Claude remains suspended until the user assigns work.",
   "tests": [
     "Full regression: 284 tests, 282 passed, 2 explicitly skipped (standalone Unbound binary and privileged PostgreSQL rollback fixture); CI has separate native coverage.",
     "Final targeted menu/preflight: 5 passed; native installer unit suite: 10 passed. Ruff F and git diff --check passed.",
-    "Native HTTP and native HTTPS complete lifecycles passed on Debian 12 and Ubuntu 24 in isolated systemd Docker; public ACME not tested."
+    "Native HTTP and native HTTPS complete lifecycles passed on Debian 12 and Ubuntu 24 in isolated systemd Docker; public ACME not tested.",
+    "Exact published head: 36/36 GitHub checks successful, 18 distinct jobs; Debian12/Ubuntu24 native HTTP and HTTPS matrices passed.",
+    "Published tag curl/bootstrap/archive/manifest --help smoke test passed; latest stable API reports v0.2.0."
   ],
   "blockers": [],
   "pr_url": "https://github.com/danialrad04-sketch/donino-panel/pull/28"
