@@ -5,7 +5,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from app import ops
-from app.db import database, initialize, schema_version, set_schema_version
+from app.db import SCHEMA_VERSION, database, initialize, schema_version, set_schema_version
 from app.node_identity import public_material, verify_desired
 from app.secrets import unseal
 from agent.wireguard import WireGuardAgent
@@ -197,7 +197,7 @@ class WireGuardAPITest(WireGuardFixture):
             self.assertEqual(schema_version(db), 14)
         initialize()
         with database() as db:
-            self.assertEqual(schema_version(db), 15)
+            self.assertEqual(schema_version(db), SCHEMA_VERSION)
 
 
 class FakeKernel:

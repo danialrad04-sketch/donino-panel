@@ -16,7 +16,7 @@ try:  # PostgreSQL is optional; SQLite stays the default backend.
 except ImportError:  # pragma: no cover - exercised only without the postgres extra
     psycopg = None
 
-SCHEMA_VERSION = 15
+SCHEMA_VERSION = 16
 MAX_DEVICES_PER_USER = 20
 # Arbitrary constant key for the PostgreSQL writer lock (serializes writers, like BEGIN IMMEDIATE).
 _PG_WRITER_LOCK = 4541776
@@ -556,6 +556,24 @@ def initialize():
                 node_id TEXT PRIMARY KEY REFERENCES nodes(id) ON DELETE CASCADE,
                 seen INTEGER NOT NULL, instance_id TEXT NOT NULL, error_code TEXT)""")
             set_schema_version(db, 15)
+        if version < 16:
+            db.execute("""CREATE TABLE ovpn_endpoints (
+                id TEXT PRIMARY KEY, node_id TEXT NOT NULL REFERENCES nodes(id) ON DELETE CASCADE,
+                name TEXT NOT NULL, host TEXT NOT NULL, port INTEGER NOT NULL, protocol TEXT NOT NULL,
+                pool TEXT NOT NULL, dns TEXT NOT NULL, routes TEXT NOT NULL,
+                ca_key TEXT NOT NULL, ca_cert TEXT NOT NULL, server_key TEXT NOT NULL, server_cert TEXT NOT NULL,
+                tls_key TEXT NOT NULL, enabled INTEGER NOT NULL DEFAULT 0, created INTEGER NOT NULL,
+                UNIQUE(node_id,protocol,port), UNIQUE(node_id,pool))""")
+            db.execute("""CREATE TABLE ovpn_peers (
+                id TEXT PRIMARY KEY, endpoint_id TEXT NOT NULL REFERENCES ovpn_endpoints(id) ON DELETE CASCADE,
+                device_id TEXT NOT NULL REFERENCES devices(id) ON DELETE CASCADE, address TEXT NOT NULL,
+                private_key TEXT NOT NULL, certificate TEXT NOT NULL, serial TEXT NOT NULL,
+                generation TEXT NOT NULL, enabled INTEGER NOT NULL DEFAULT 1, created INTEGER NOT NULL,
+                UNIQUE(endpoint_id,device_id), UNIQUE(endpoint_id,address), UNIQUE(endpoint_id,serial))""")
+            db.execute("""CREATE TABLE ovpn_runtime (
+                node_id TEXT PRIMARY KEY REFERENCES nodes(id) ON DELETE CASCADE,
+                seen INTEGER NOT NULL, instance_id TEXT NOT NULL)""")
+            set_schema_version(db, 16)
 
 
 def encrypt_legacy_mfa(db):

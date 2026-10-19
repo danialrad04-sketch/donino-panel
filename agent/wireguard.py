@@ -280,14 +280,17 @@ def validate_interfaces(interfaces):
 
 
 class WireGuardAgent:
+    namespace = "wireguard"
+    state_env = "DONINO_WG_STATE"
+    default_state = "/var/lib/donino-wireguard"
+    driver_factory = Kernel
+    validate = staticmethod(validate_interfaces)
     # Reuse the enrolled-certificate renewal contract without the Xray runtime.
     renew_identity = NodeAgent.renew_identity
 
     def __init__(self, *, client=None, identity=None, kernel=None):
         self.base = validate_origin(os.environ["DONINO_PANEL_URL"].rstrip("/"))
-        self.directory = Path(
-            os.environ.get("DONINO_WG_STATE", "/var/lib/donino-wireguard")
-        )
+        self.directory = Path(os.environ.get(self.state_env, self.default_state))
         self.directory.mkdir(parents=True, exist_ok=True, mode=0o700)
         self.lock = open(self.directory / "agent.lock", "a")
         fcntl.flock(self.lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
@@ -298,7 +301,7 @@ class WireGuardAgent:
         self.client = client or panel_client(
             self.base, directory=self.directory, identity=self.identity
         )
-        self.kernel = kernel or Kernel()
+        self.kernel = kernel or self.driver_factory()
         self.agent_instance = str(uuid.uuid4())
         self.renew_at = 0
         self.guard = threading.RLock()
@@ -312,12 +315,12 @@ class WireGuardAgent:
         self.baseline = {}
         self.limits = {}
         self.epoch = str(uuid.uuid4())
-        self.journal = UsageJournal(self.directory / "wireguard-usage.db")
-        self.journal.bind(self.base, self.identity["node_id"] + "|wireguard")
+        self.journal = UsageJournal(self.directory / (self.namespace + "-usage.db"))
+        self.journal.bind(self.base, self.identity["node_id"] + "|" + self.namespace)
         state = self.directory / "active.json"
         if state.exists():
             saved = json.loads(private_bytes(state))
-            validate_interfaces(saved["interfaces"])
+            self.validate(saved["interfaces"])
             self.interfaces, self.epoch, self.offsets = (
                 saved["interfaces"],
                 saved["epoch"],
@@ -325,6 +328,8 @@ class WireGuardAgent:
             )
             self.last_raw = saved.get("last_raw", {})
             self.owned = {i["name"]: i["public_key"] for i in self.interfaces}
+            if hasattr(self.kernel, "bind_epoch"):
+                self.kernel.bind_epoch(self.epoch)
             self.stop_core()  # Snapshot surviving kernel counters before a fresh epoch.
         self.watchdog = threading.Thread(target=self.watch, daemon=True)
         self.watchdog.start()
@@ -347,9 +352,10 @@ class WireGuardAgent:
         raw = {}
         for interface in self.interfaces:
             name = interface["name"]
-            if not self.kernel.exists(name):
+            exists = self.kernel.exists(name)
+            if not exists and not getattr(self.kernel, "retained_counters", False):
                 continue
-            if self.kernel.public_key(name) != self.owned[name]:
+            if exists and self.kernel.public_key(name) != self.owned[name]:
                 raise ValueError("Owned WireGuard link identity changed")
             counters = self.kernel.counters(name)
             for peer in interface["peers"]:
@@ -431,7 +437,7 @@ class WireGuardAgent:
                 break
             eid, samples = pending
             response = self.client.post(
-                "/api/agent/wireguard/heartbeat",
+                f"/api/agent/{self.namespace}/heartbeat",
                 json={"epoch": eid, "instance": self.agent_instance, "usage": samples},
             )
             response.raise_for_status()
@@ -439,7 +445,7 @@ class WireGuardAgent:
         if self.journal.pending():
             raise RuntimeError("Drain accounting backlog before renewing intent")
         response = self.client.post(
-            "/api/agent/wireguard/heartbeat",
+            f"/api/agent/{self.namespace}/heartbeat",
             json={"epoch": epoch, "instance": self.agent_instance, "usage": []},
         )
         response.raise_for_status()
@@ -477,7 +483,9 @@ class WireGuardAgent:
                 if peer["public_key"] in keep:
                     continue
                 up, down = raw.get((prior["name"], peer["public_key"]), (0, 0))
-                self.kernel.remove_peer(prior["name"], peer["public_key"])
+                final = self.kernel.remove_peer(prior["name"], peer["public_key"])
+                if final is not None:
+                    up, down = final
                 offset = self.offsets.setdefault(
                     peer["device_id"],
                     {
@@ -498,7 +506,8 @@ class WireGuardAgent:
         self.renew_identity()
         confirmed = self.report()
         result = self.client.get(
-            "/api/agent/wireguard/config", params={"instance": self.agent_instance}
+            f"/api/agent/{self.namespace}/config",
+            params={"instance": self.agent_instance},
         )
         result.raise_for_status()
         path = self.directory / "verification.json"
@@ -512,7 +521,7 @@ class WireGuardAgent:
             sequence=previous.get("sequence", 0),
         )
         if (
-            body.get("kind") != "wireguard-v1"
+            body.get("kind") != self.namespace + "-v1"
             or body.get("agent_instance") != self.agent_instance
         ):
             raise ValueError("WireGuard intent belongs to another supervisor")
@@ -520,7 +529,7 @@ class WireGuardAgent:
             "revision"
         ] != previous.get("revision"):
             raise ValueError("A sequence cannot change revision")
-        validate_interfaces(body["interfaces"])
+        self.validate(body["interfaces"])
         atomic_write(
             path,
             json.dumps(
@@ -543,6 +552,8 @@ class WireGuardAgent:
                 for interface in body["interfaces"]:
                     self.kernel.check(interface, {})
                 self.epoch = str(uuid.uuid4())
+                if hasattr(self.kernel, "bind_epoch"):
+                    self.kernel.bind_epoch(self.epoch)
                 self.interfaces = body["interfaces"]
                 self.owned = {i["name"]: i["public_key"] for i in self.interfaces}
                 self.save()  # Own partial creations so failure/restart can safely remove them.
@@ -560,6 +571,9 @@ class WireGuardAgent:
             else:
                 # Refresh signed quota/expiry without disturbing kernel counters.
                 self.interfaces = body["interfaces"]
+            if hasattr(self.kernel, "refresh"):
+                for interface in self.interfaces:
+                    self.kernel.refresh(interface)
             self.baseline = {d: v["up"] + v["down"] for d, v in confirmed.items()}
             self.limits = {
                 p["user_id"]: p["remaining"]
@@ -615,7 +629,12 @@ class WireGuardAgent:
                         )
                         offset["up"] += up
                         offset["down"] += down
-                        self.kernel.remove_peer(interface["name"], peer["public_key"])
+                        final = self.kernel.remove_peer(
+                            interface["name"], peer["public_key"]
+                        )
+                        if final is not None:
+                            offset["up"] += final[0] - up
+                            offset["down"] += final[1] - down
                         self.last_raw.pop(
                             interface["name"] + "|" + peer["public_key"], None
                         )
@@ -634,7 +653,7 @@ class WireGuardAgent:
                     self.stop_core()
                 except Exception:
                     log.error(
-                        "WireGuard stop/accounting failed; operator intervention required"
+                        "VPN stop/accounting failed; operator intervention required"
                     )
 
     def close(self):
@@ -651,9 +670,7 @@ class WireGuardAgent:
         The lock excludes the live supervisor. Never enroll, contact the panel,
         or trust a link name without checking its saved public key.
         """
-        directory = Path(
-            directory or os.environ.get("DONINO_WG_STATE", "/var/lib/donino-wireguard")
-        )
+        directory = Path(directory or os.environ.get(cls.state_env, cls.default_state))
         if not directory.exists():
             return
         with open(directory / "agent.lock", "a") as lock:
@@ -662,17 +679,19 @@ class WireGuardAgent:
             if not state.exists():
                 return
             saved = json.loads(private_bytes(state))
-            validate_interfaces(saved["interfaces"])
+            cls.validate(saved["interfaces"])
             agent = cls.__new__(cls)
             agent.directory = directory
             agent.guard = threading.RLock()
-            agent.kernel = kernel or Kernel()
+            agent.kernel = kernel or cls.driver_factory()
             agent.interfaces = saved["interfaces"]
             agent.owned = {i["name"]: i["public_key"] for i in agent.interfaces}
             agent.epoch = saved["epoch"]
+            if hasattr(agent.kernel, "bind_epoch"):
+                agent.kernel.bind_epoch(agent.epoch)
             agent.offsets = saved["offsets"]
             agent.last_raw = saved.get("last_raw", {})
-            agent.journal = UsageJournal(directory / "wireguard-usage.db")
+            agent.journal = UsageJournal(directory / (cls.namespace + "-usage.db"))
             agent.stop_core()
 
     def run(self):
@@ -685,10 +704,10 @@ class WireGuardAgent:
                 except httpx.HTTPStatusError as exc:
                     if exc.response.status_code in (401, 403):
                         self.stop_core()
-                    log.warning("WireGuard authorization or synchronization failed")
+                    log.warning("VPN authorization or synchronization failed")
                 except Exception:
                     log.warning(
-                        "WireGuard synchronization failed; signed deadline remains enforced"
+                        "VPN synchronization failed; signed deadline remains enforced"
                     )
                 self.stop.wait(5)
         finally:
