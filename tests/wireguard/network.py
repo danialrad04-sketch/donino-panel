@@ -84,6 +84,13 @@ socketserver.ThreadingTCPServer(('198.18.0.2',8081),Echo).serve_forever()
                 stderr=subprocess.DEVNULL,
             )
         )
+        # HTTPServer performs a reverse DNS lookup during bind. The isolated
+        # origin has no Internet DNS; TCPServer serves the same handler without it.
+        http_source = root / "http_origin.py"
+        http_source.write_text("""import functools,http.server,socketserver,sys
+handler=functools.partial(http.server.SimpleHTTPRequestHandler,directory=sys.argv[1])
+socketserver.ThreadingTCPServer(('198.18.0.2',8080),handler).serve_forever()
+""")
         origin_log = open(root / "origin.log", "w+")
         process = subprocess.Popen(
             [
@@ -92,18 +99,63 @@ socketserver.ThreadingTCPServer(('198.18.0.2',8081),Echo).serve_forever()
                 "exec",
                 "origin",
                 "/usr/bin/python3",
-                "-m",
-                "http.server",
-                "8080",
-                "--bind",
-                "198.18.0.2",
-                "--directory",
+                str(http_source),
                 str(root / "origin"),
             ],
             stdout=origin_log,
             stderr=origin_log,
         )
         processes.append(process)
+        for _ in range(100):
+            ready = subprocess.run(
+                [
+                    "ip",
+                    "netns",
+                    "exec",
+                    "origin",
+                    "curl",
+                    "--noproxy",
+                    "*",
+                    "--max-time",
+                    "1",
+                    "--silent",
+                    "--fail",
+                    "http://198.18.0.2:8080/data",
+                ],
+                capture_output=True,
+            )
+            if ready.returncode == 0:
+                break
+            time.sleep(0.05)
+        if ready.returncode != 0:
+            origin_log.seek(0)
+            raise AssertionError(
+                (
+                    "Origin failed before WG startup",
+                    process.poll(),
+                    ready.returncode,
+                    origin_log.read(),
+                    Path(f"/proc/{process.pid}/wchan").read_text(),
+                    Path(f"/proc/{process.pid}/cmdline")
+                    .read_bytes()
+                    .replace(b"\0", b" ")
+                    .decode(),
+                    os.readlink(f"/proc/{process.pid}/ns/net"),
+                    command(
+                        [
+                            "ip",
+                            "netns",
+                            "exec",
+                            "origin",
+                            "readlink",
+                            "/proc/self/ns/net",
+                        ]
+                    ),
+                    command(["ip", "netns", "exec", "origin", "cat", "/proc/net/tcp"]),
+                    command(["ip", "-n", "origin", "-brief", "address"]),
+                )
+            )
+        print("PASS: origin listener ready before WireGuard startup", flush=True)
         with TestClient(app) as panel:
             with database() as db:
                 db.execute(
