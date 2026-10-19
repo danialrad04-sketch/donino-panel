@@ -1,5 +1,21 @@
 # Donino releases
 
+## 1.0.0-alpha.17 — terminal installer and HTTP/IP setup, 2026-10-19
+
+- Dedicated alternate-screen TTY setup/management menu, including curl-pipe
+  input through /dev/tty, installed `sudo donino` launcher and pinned-release
+  upgrades. Minimal Python/system CA setup precedes verified source bootstrap.
+- Explicit HTTP mode on IPv4 or domain; automatic dependencies, PostgreSQL,
+  NGINX and systemd. HTTP repair/reinstallation preserve mode, owner, data and
+  keys; no nonexistent-certificate validation. Legacy existing-certificate HTTPS
+  upgrades no longer assume ACME provider metadata. Preserve custom CA trust.
+- HTTPS remains the default CLI certificate mode with DNS/port preflight,
+  Certbot webroot, validation, deploy hook and renewal timer. HTTP requests
+  neither install Certbot nor downgrade node TLS verification. Mode/host changes
+  on managed installations require a separate migration; no silent downgrade.
+- Native HTTP lifecycle and real TTY acceptance on Debian12/Ubuntu24 added to CI;
+  this is not public ACME/VPS/ISP acceptance and not stable v1.
+
 ## 1.0.0-alpha.16 — Shadowsocks AEAD and multi-user 2022 preview, 2026-10-19
 
 - Native TCP/UDP for AES-128-GCM, AES-256-GCM, ChaCha20-IETF-Poly1305

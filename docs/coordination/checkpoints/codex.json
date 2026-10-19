@@ -1,33 +1,26 @@
 {
   "task_id": "codex-v1-progress",
   "status": "in_progress",
-  "branch": "development/shadowsocks",
+  "branch": "development/installer-menu",
   "last_verified_commit": null,
   "completed": [
-    "alpha15 OpenVPN تحویل و checkpoint نهایی بدون تغییر آرشیو شد.",
-    "پنج روش Shadowsocks AEAD/2022 AES با credential مشتق‌شده مستقل دستگاه/inbound/method، کلید سرور2022 رمز‌شده، خروجی SIP002/Mihomo و فرم فارسی پیاده شد.",
-    "listener بدون دستگاه مجاز حذف می‌شود تا fallback تک‌کاربره 2022 با کلید سرور تنها ایجاد نشود؛ metadata مدیریتی کلید سرور را افشا نمی‌کند.",
-    "سه آزمون API وکلاینت واقعی موفق: پنج روش × دو دستگاه، TCP/UDP، مصرف/dedup، رد رمز غلط/کلید سرور تنها، قطع جریان باز، rotation، quota، period وexpiry واقعی؛ Mihomo TCP وbrowser موفق.",
-    "CI قبلی خطای fixture dedup درOpenVPN TCP نشان داد: snapshot تازه شامل بایت کنترل تازه است و replay نیست. آزمون به بازپخش همان heartbeat تأییدشده اصلاح شد؛ چرخه کامل native UDP/TCP دوباره موفق شد.",
-    "Regression محلی280 آزمون:278موفق و2skip؛ head51c89d3 درCI31از32موفق، تنهاخطای teardown آزمونSmartDNS به علت workerDB پس ازلغوawaiter بود؛ fixtureاکنون executorراپیش ازحذفDB تخلیه می‌کند.",
-    "به درخواست تازه کاربر PR27 کلاد/installer-plain-http درhead1d024687 بررسی شد: خرابی repair HTTP وپسرفت upgrade نصبHTTPS قدیمی باگواهی موجود بازتولیدشد؛ مستندبازبینی ثبتشد واین featureواردalpha16نمی‌شود.",
-    "بازبینی نگهداری کلیدها: payload صف deployment جدید نیزباFernetرمزمی‌شودتا کلیدSS/2022 درکپی صف متن‌روشن نماند؛ checksum/id/ACKبدون تغییرمعنا وschema16حفظ شد."
+    "alpha16 تحویل و checkpoint نهایی آرشیو شد؛ patch نصب HTTP کلاد بدون metadata قدیمی روی main جدید منتقل شد.",
+    "منوی مستقل TTY باalternate-screen و/dev/tty برایcurl-pipe، فرمانsudo donino وگزینه‌هایHTTP/HTTPS/status/repair/backup/upgrade اضافه شد.",
+    "HTTP/IP بدوندامنه، حفظ mode درreinstall وrepair، رفع providerTLSقدیمی، نگهداریCAخصوصی وپیش‌نیازPython/CA حداقلی پیادهشد.",
+    "native HTTP رویDebian12وUbuntu24: bootstrap/login/cookie/API، reinstallبدونflags،repair، حفظowner/user/quota/masterkey وlauncherواقعی باstdinقطع وuninstallحافظداده موفق.",
+    "معماری3x-ui/PasarGuard درcommitهایپین‌شدهبررسیشد؛ چرخهACME باCertbotرسمی، webroot،مسیرثابت، validation وreload/renewalموجودتکمیل ومواردآزموده‌نشدهثبتشد.",
+    "آزمون کامل نصب HTTPS روی Debian 12 و Ubuntu 24 با mTLS واقعی، تمدید محلی، backup/restore و حذف حافظ داده موفق شد؛ HTTP نیز روی هر دو OS موفق است."
   ],
   "remaining": [
-    "regression سراسری، CI روی head نهایی SQLite/PostgreSQL وOS؛ self-review، PR وalpha16 prerelease.",
-    "AWG و موتورهای QUIC وپروتکل‌های باقی؛ نصب نود خودکار و نمایش وضعیت مستقل نقش‌ها؛ routing چندلوکیشن DNS/service/domain/UDP وپذیرش WAN."
+    "CI نهایی دقیق head جدید با 18 job مستقل/36 check، بازبینی نهایی، ادغام PR28 و انتشار alpha17.",
+    "VPS/ACMEعمومی وremainingv1protocols/nodeinstaller/routing؛ تغییرhost/TLSmodeنصبموجودmigrationمستقل باقی است."
   ],
-  "next_action": "تمامCI head تازهPR26 را بررسی، شکست واقعی را رفع وپس از32/32موفقmainرا باheadبرابریtreeادغام وalpha16prerelease/latest=falseمنتشرکن. PR27کلاد هنوزreadyنیست:repairHTTPوupgradeTLSقدیمی نیازمنداصلاح وپذیرش دوOSاند؛ راهنمایreviewثبتشده وبدونادغامحفظشود. سپسنصبنود/پروتکل‌هاطبقنظرکاربرادامهدارد.",
+  "next_action": "Push final installer fixes, require all 36 checks on exact PR28 head, merge only tested tree, publish v1.0.0-alpha.17 as prerelease/latest=false, close superseded PR27. No real VPS or public ACME acceptance available.",
   "tests": [
-    "Shadowsocks: سه آزمون محلی با Xray26.3.27 وMihomo1.19.32 واقعی در67ثانیه موفق؛ پنج روش ودو دستگاه وچرخه حجم/دوره/انقضا/ابطال.",
-    "Browser جدیدSS/2022 create/edit/redaction وپرتال چندپروفایلی/QR وMobile موفق، بدون خطایJS.",
-    "Regression سراسری با Xray/Mihomo/FRP واقعی درحال اجرا؛ PostgreSQL کامل ودو OS را CI روی head نهایی باید تأیید کند.",
-    "OpenVPN2.6.14 native UDP/TCP پس از اصلاح replay fixture: هر دو چرخه کامل و negative cert/serial/quota/period/restore موفق؛ شکست CI قبلی ثبت شد وhead تازه باید همه CI را پاس کند.",
-    "Local full:280 tests/278passed/2skip (Unbound انتخاب‌نشده وevent-trigger اختصاصیPG).",
-    "SmartDNS network:9آزمون موفق پس از drainکردن workerهای DB پیش ازپاک‌سازیfixture؛ retry/نادیده‌گرفتن خطایcleanup اضافه نشد.",
-    "PR27: دوایراد رفتاری باstateآزمایشگاهی وبدونrunفرمان میزبان بازتولیدشد؛ review درdocs/coordination/reviews/installer-plain-http-v1.fa.md.",
-    "پس ازرمزگذاریdeployment: دوآزمونصفSQLiteوPostgreSQL16 موفق؛ SS APIدرهر دوDB موفق؛ سهآزمونواقعیSS/Xray/Mihomo دوبارهدر65ثانیه موفق. regressionوCIرویheadجدیدلازم است."
+    "Full regression: 284 tests, 282 passed, 2 explicitly skipped (standalone Unbound binary and privileged PostgreSQL rollback fixture); CI has separate native coverage.",
+    "Final targeted menu/preflight: 5 passed; native installer unit suite: 10 passed. Ruff F and git diff --check passed.",
+    "Native HTTP and native HTTPS complete lifecycles passed on Debian 12 and Ubuntu 24 in isolated systemd Docker; public ACME not tested."
   ],
   "blockers": [],
-  "pr_url": null
+  "pr_url": "https://github.com/danialrad04-sketch/donino-panel/pull/28"
 }

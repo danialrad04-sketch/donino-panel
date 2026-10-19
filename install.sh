@@ -1,5 +1,14 @@
 #!/bin/sh
 set -eu
+# Minimal images may have neither Python nor a usable system CA bundle.
+if ! command -v python3 >/dev/null 2>&1 || [ ! -s /etc/ssl/certs/ca-certificates.crt ]; then
+    if [ "$(id -u)" -ne 0 ] || ! command -v apt-get >/dev/null 2>&1; then
+        echo "Donino needs root on Debian 12 / Ubuntu 24.04 to prepare Python and CA certificates." >&2
+        exit 2
+    fi
+    apt-get update
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends python3 ca-certificates
+fi
 donino_source_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 case "$0" in
   */install.sh|install.sh) donino_local_source=true ;;
@@ -10,7 +19,7 @@ if [ "$donino_local_source" = true ] && [ -f "$donino_source_dir/ops/install.py"
     exec python3 -I -c 'import sys; sys.path.insert(0,sys.argv.pop(1)); from ops.install import main; raise SystemExit(main())' "$donino_source_dir" "$@"
 fi
 # Ref and downloader hash are pinned for the published checkpoint.
-donino_release_ref=${DONINO_REF:-v1.0.0-alpha.16}
+donino_release_ref=${DONINO_REF:-v1.0.0-alpha.17}
 donino_bootstrap_sha256=e0b3ecdeba21beee53049dfb9690880b786175ff9b612f457a2bbd53d0f1db3b
 exec python3 -I - "$donino_release_ref" "$donino_bootstrap_sha256" "$@" <<'PYTHON'
 import hashlib

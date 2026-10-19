@@ -1,0 +1,42 @@
+{
+  "task_id": "codex-v1-progress",
+  "status": "in_progress",
+  "branch": "development/shadowsocks",
+  "last_verified_commit": "7e19198e273f2d884544d03f5be1d25fbc9babaf",
+  "completed": [
+    "alpha15 OpenVPN تحویل و checkpoint نهایی بدون تغییر آرشیو شد.",
+    "پنج روش Shadowsocks AEAD/2022 AES با credential مشتق‌شده مستقل دستگاه/inbound/method، کلید سرور2022 رمز‌شده، خروجی SIP002/Mihomo و فرم فارسی پیاده شد.",
+    "listener بدون دستگاه مجاز حذف می‌شود تا fallback تک‌کاربره 2022 با کلید سرور تنها ایجاد نشود؛ metadata مدیریتی کلید سرور را افشا نمی‌کند.",
+    "سه آزمون API وکلاینت واقعی موفق: پنج روش × دو دستگاه، TCP/UDP، مصرف/dedup، رد رمز غلط/کلید سرور تنها، قطع جریان باز، rotation، quota، period وexpiry واقعی؛ Mihomo TCP وbrowser موفق.",
+    "CI قبلی خطای fixture dedup درOpenVPN TCP نشان داد: snapshot تازه شامل بایت کنترل تازه است و replay نیست. آزمون به بازپخش همان heartbeat تأییدشده اصلاح شد؛ چرخه کامل native UDP/TCP دوباره موفق شد.",
+    "Regression محلی280 آزمون:278موفق و2skip؛ head51c89d3 درCI31از32موفق، تنهاخطای teardown آزمونSmartDNS به علت workerDB پس ازلغوawaiter بود؛ fixtureاکنون executorراپیش ازحذفDB تخلیه می‌کند.",
+    "به درخواست تازه کاربر PR27 کلاد/installer-plain-http درhead1d024687 بررسی شد: خرابی repair HTTP وپسرفت upgrade نصبHTTPS قدیمی باگواهی موجود بازتولیدشد؛ مستندبازبینی ثبتشد واین featureواردalpha16نمی‌شود.",
+    "بازبینی نگهداری کلیدها: payload صف deployment جدید نیزباFernetرمزمی‌شودتا کلیدSS/2022 درکپی صف متن‌روشن نماند؛ checksum/id/ACKبدون تغییرمعنا وschema16حفظ شد.",
+    "PR26 پس از32/32بررسی موفق (16jobمستقل) ادغام شد؛ main90b211ae57d81e75061f3cba89635e2f52a5b6b9 باtree کدآزموده‌شدهبرابر است.",
+    "v1.0.0-alpha.16 ازhead7e19198e273f2d884544d03f5be1d25fbc9babaf به صورتprerelease/latest=falseمنتشرشد؛ stableهمچنانv0.2.0 است. HTTP کلادجزواین انتشارنیست."
+  ],
+  "remaining": [
+    "PR27کلاد:رفع repair درحالتHTTP وپسرفت upgradeنصبHTTPSقدیمی باگواهی موجود، آزمونرفتاریواجرایHTTPواقعی رویDebian12/Ubuntu24؛ originHTTPS/mTLSنودها نبایدتضعیفشود.",
+    "نصب خودکار نقش نود Xray/WireGuard/OpenVPN و نمایش وضعیت مستقل نقش‌ها؛ نصب دو نقش اخیر هنوزدستی است.",
+    "AWG وHysteria2/TUIC/AnyTLS وپروتکل‌های باقی طبق ماتریس؛ خروجیواقعی/حجم/دوره/قطع‌نشست شرطپذیرشهرنقش است.",
+    "انتخاب خروجی دامنه/سرویس/چندلوکیشنDNS و مسیرواقعیUDPبازی، به‌علاوه پذیرشVPS/WAN/ACMEعمومی وباربرایstablev1."
+  ],
+  "next_action": "alpha16 وPR26 تمام شده‌اند؛ آن‌ها را دوباره منتشر نکن. origin/main/PRهای تازه را بررسی وcheckpointنهایی این شاخه را درشروع برش بعدی آرشیو کن. برای ادامه رویشاخه تازه ازmain، ابتداreview PR27 درdocs/coordination/reviews/installer-plain-http-v1.fa.md را بخوان و headکلاد را دوبارهبررسی کن؛ دوایرادبازتولیدشده باید باحفظ SS/رمزگذاریصف وقراردادHTTPS/mTLS اصلاح ودرfixtureبومیHTTP دوOS پذیرفته شوند، سپسنصبنود/پروتکل‌های بعدی ادامهیابند. کدHTTP فعلی بدوناصلاحادغام نشود؛ هیچ استقرار/شبکه میزبان یاVPSکاربر تغییرنکرده است.",
+  "tests": [
+    "Shadowsocks: سه آزمون محلی با Xray26.3.27 وMihomo1.19.32 واقعی در67ثانیه موفق؛ پنج روش ودو دستگاه وچرخه حجم/دوره/انقضا/ابطال.",
+    "Browser جدیدSS/2022 create/edit/redaction وپرتال چندپروفایلی/QR وMobile موفق، بدون خطایJS.",
+    "Regression سراسری با Xray/Mihomo/FRP واقعی درحال اجرا؛ PostgreSQL کامل ودو OS را CI روی head نهایی باید تأیید کند.",
+    "OpenVPN2.6.14 native UDP/TCP پس از اصلاح replay fixture: هر دو چرخه کامل و negative cert/serial/quota/period/restore موفق؛ شکست CI قبلی ثبت شد وhead تازه باید همه CI را پاس کند.",
+    "Local full:280 tests/278passed/2skip (Unbound انتخاب‌نشده وevent-trigger اختصاصیPG).",
+    "SmartDNS network:9آزمون موفق پس از drainکردن workerهای DB پیش ازپاک‌سازیfixture؛ retry/نادیده‌گرفتن خطایcleanup اضافه نشد.",
+    "PR27: دوایراد رفتاری باstateآزمایشگاهی وبدونrunفرمان میزبان بازتولیدشد؛ review درdocs/coordination/reviews/installer-plain-http-v1.fa.md.",
+    "پس ازرمزگذاریdeployment: دوآزمونصفSQLiteوPostgreSQL16 موفق؛ SS APIدرهر دوDB موفق؛ سهآزمونواقعیSS/Xray/Mihomo دوبارهدر65ثانیه موفق. regressionوCIرویheadجدیدلازم است.",
+    "آخرین head7e19198: regressionمحلی280آزمون/278موفق/2skip در308.9ثانیه؛ skipها Unboundانتخاب‌نشده وevent-triggerاختصاصیPG بودند.",
+    "CI نهایی روی7e19198:32/32 موفق شاملSQLite/PostgreSQL، Xray/Mihomo وSS واقعی درهر دوDB، browser، nativeinstaller وSmart exit دوOS، WireGuardkernel/userspace، OpenVPNUDP/TCP وtunnel."
+  ],
+  "blockers": [
+    "VPS/دامنه واقعی برایتأییدWAN/ACMEعمومی موجودنیست؛ مانع توسعهآزمایشگاهی نیست.",
+    "PR27حالتHTTP کلاد دوایرادعملی تأییدشدهدارد وهنوزبرایادغام آماده نیست؛ بررسی ثبت شده است."
+  ],
+  "pr_url": "https://github.com/danialrad04-sketch/donino-panel/pull/26"
+}

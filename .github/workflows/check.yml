@@ -153,6 +153,23 @@ jobs:
       - run: python tests/native_acceptance.py --os ${{ matrix.os }}
         env:
           DOCKER_BUILDKIT: "1"
+  native-http-installer:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [debian12, ubuntu24]
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - name: HTTP IPv4 setup, real services, reinstall/repair and terminal menu
+        run: python tests/native_http_acceptance.py --os ${{ matrix.os }}
+        env:
+          DOCKER_BUILDKIT: "1"
   native-smart-exit:
     runs-on: ubuntu-24.04
     timeout-minutes: 15

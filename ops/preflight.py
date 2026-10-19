@@ -11,7 +11,22 @@ from pathlib import Path
 from .common import InstallError
 
 
-def domain_name(value):
+def domain_name(value, *, allow_ip=False):
+    if allow_ip:
+        try:
+            address = ipaddress.ip_address(value)
+        except ValueError:
+            pass
+        else:
+            if address.is_unspecified or address.is_multicast:
+                raise InstallError(
+                    "Use an assigned IPv4 address, not a wildcard or multicast"
+                )
+            if address.version != 4:
+                raise InstallError(
+                    "HTTP literal address must be IPv4; a domain may have AAAA"
+                )
+            return str(address)
     try:
         value = value.rstrip(".").encode("idna").decode("ascii").lower()
     except UnicodeError as exc:
@@ -76,7 +91,7 @@ def resolve_and_check(domain, expected=()):
         ) from exc
     allowed = {str(ipaddress.ip_address(value)) for value in expected}
     allowed.update(local_addresses())
-    if not expected:
+    if not expected and not actual.issubset(allowed):
         try:
             with urllib.request.urlopen(
                 "https://api.ipify.org", timeout=10
@@ -103,8 +118,11 @@ def inspect(
     allow_nginx=False,
     network=True,
     ports=(80, 443),
+    plain=False,
 ):
-    domain = domain_name(domain)
+    domain = domain_name(domain, allow_ip=plain)
+    if plain and ports == (80, 443):
+        ports = (80,)
     release = os_release()
     errors = []
     if (release.get("ID"), release.get("VERSION_ID")) not in {
@@ -150,7 +168,7 @@ def inspect(
         "ipv6": ipv6,
         "addresses": addresses,
         "errors": errors,
-        "required_public_ports": ["80/tcp", "443/tcp"],
+        "required_public_ports": [str(port) + "/tcp" for port in ports],
         "database": "postgresql",
-        "tls": "nginx+certbot",
+        "tls": "none" if plain else "nginx+certbot",
     }
