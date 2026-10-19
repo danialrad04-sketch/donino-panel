@@ -209,7 +209,10 @@ Server(('fd42:200:2::2',8082),handler).serve_forever()
                 ],
                 capture_output=True,
             )
-            if ready.returncode == 0:
+            if ready.returncode == 0 and (
+                os.environ.get("DONINO_TEST_WG_SPLIT") == "1"
+                or ipv6_probe("origin").returncode == 0
+            ):
                 break
             time.sleep(0.05)
         if ready.returncode != 0:
@@ -586,7 +589,19 @@ for line in sys.stdin:
                     )
                 agent.tick()
                 transfer("clientb")
-                time.sleep(3.2)
+                # Watchdog sampling + process scheduling is not an exact 3.2s SLO.
+                # Wait for its kernel withdrawal, without syncing the panel or
+                # retrying application traffic, then attempt one new transfer.
+                name = "dnw" + ep["id"][:8]
+                until = time.monotonic() + 6
+                while agent.kernel.exists(name) and peers[1][
+                    "public_key"
+                ] in agent.kernel.counters(name):
+                    if time.monotonic() >= until:
+                        raise AssertionError(
+                            "Expiry watchdog did not withdraw the peer"
+                        )
+                    time.sleep(0.05)
                 transfer("clientb", fail=True)
                 print(
                     "PASS: real-time expiry stopped traffic without another panel sync",
