@@ -26,7 +26,9 @@ continue work already assigned by the user.
 - Regenerate `release-manifest.json` after product/docs edits; run relevant
   tests and `git diff --check`. Describe actual limits and skipped checks.
 - No real user VPS/domain is currently available. Local CI is not evidence of
-  public ACME issuance, Iranian ISP reachability, game compatibility or stable 1.0.
+  public ACME issuance, Iranian ISP reachability or game compatibility.
+  The user scoped v1 to existing features on 2026-10-20; docs/V1.fa.md defines
+  the installable release gates and preserves unverified external boundaries.
 
 Do not deploy, change host firewall policy, or expose services merely because
 this development workflow exists. Follow the user's actual operational scope.

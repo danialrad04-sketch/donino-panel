@@ -67,6 +67,37 @@ class OpsTest(unittest.TestCase):
         self.assertNotIn("t1", text)
         self.assertNotIn("long-test-password", text)
 
+    @sqlite_only
+    def test_doctor_reports_old_schema_without_modifying_or_querying_new_tables(self):
+        old = self.root / "old.db"
+        with sqlite3.connect(old) as db:
+            db.executescript(
+                (Path(__file__).parent / "fixtures/v0.1.sql").read_text()
+            )
+        before = old.read_bytes()
+        with patch("app.ops.db_path", return_value=old):
+            rows, code = ops.doctor()
+        self.assertEqual(code, 0, rows)
+        self.assertIn(("WARN", "schema", f"database 0; run `migrate` (current {SCHEMA_VERSION})"), rows)
+        self.assertEqual(old.read_bytes(), before)
+
+    @sqlite_only
+    def test_doctor_reports_corrupt_and_incomplete_databases_without_traceback(self):
+        for corrupt in (True, False):
+            with self.subTest(corrupt=corrupt):
+                broken = self.root / f"broken-{corrupt}.db"
+                if corrupt:
+                    broken.write_bytes(b"not a database: private-sensitive-data")
+                else:
+                    with sqlite3.connect(broken) as db:
+                        db.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
+                before = broken.read_bytes()
+                with patch("app.ops.db_path", return_value=broken):
+                    rows, code = ops.doctor()
+                self.assertEqual(code, 1, rows)
+                self.assertNotIn("private-sensitive-data", json.dumps(rows))
+                self.assertEqual(broken.read_bytes(), before)
+
     def test_backup_writes_verified_manifest(self):
         dest = self.root / "b.db"
         manifest = ops.backup(dest)

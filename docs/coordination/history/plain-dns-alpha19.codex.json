@@ -1,0 +1,27 @@
+{
+  "task_id": "codex-v1-progress",
+  "status": "in_progress",
+  "branch": "development/plain-dns",
+  "last_verified_commit": null,
+  "completed": [
+    "بررسی alpha18 و doctor-dns pin a2b2ff843cb1fc8f0a5712a88149f5c379198ff1؛ اجبار گواهی در installer و نمایش صرف DoH در UI شناسایی شد.",
+    "Plain HTTP DNS نصب UDP/TCP53، DoT0، عدم خواندن/ساخت گواهی، گزینه۱۰ و حفظ DNS در reinstall/repair پیاده شد.",
+    "API runtime و leaseهای source IP مدیر با canonicalIPv4/IPv6، conflict و max3، role writer و حذف محدود به حساب؛ UI/portal IP معمولی بدون آدرس HTTP DoH و نمایش expiry کاربر آماده شد.",
+    "HTTP panel با NGINX stream443 و Smart gateway بدون گواهی پنل هم‌زیست شد؛ قرارداد TLS/auth خروجی تغییر نکرد.",
+    "Doctor fork HEAD همان a2b2ff843cb1fc8f0a5712a88149f5c379198ff1 است؛ relay/exit-nginx،dnsmasq و IP ACL/panel مطالعه و منابع/حدود در PLAIN-DNS.fa.md ثبت شدند."
+  ],
+  "remaining": [
+    "Exact-head final CI with18 distinct jobs/36 checks; merge and alpha19 prerelease/latest=false.",
+    "Standalone foreign exit still has its verified certificate/auth contract; no automatic domain-free IP pairing, HTTP80 CDN relay, arbitrary gameUDP/WAN/ISP or stable-v1 claim."
+  ],
+  "next_action": "Push plain-dns branch and open PR. Require all36 exact-head checks; resolve actual failures, merge tested tree and publish v1.0.0-alpha.19. README/docs reference alpha19 tag, so publish before telling user to upgrade. No user VPS/firewall was modified.",
+  "tests": [
+    "Local full unit regression289 tests:270 passed,19 explicit skips needing real engines/privileged PostgreSQL; final CI supplies independent fixtures.",
+    "Real UDP/TCP without TLS: unauthorized drop, IP assignment, DNS response, byte ledger, query quota, reset, IP removal and actual user expiry passed.",
+    "Native HTTP DNS53/realUnbound/no certificate/source lease/quota/Smart gateway/reinstall/repair/PTY/uninstall passed on Debian12 and Ubuntu24 in isolated Docker.",
+    "Full Chromium API-backed browser acceptance passed, including new managed-IP registration/removal and hidden HTTP DoH controls; final added mobile IP-form assertion will run in CI.",
+    "Ruff F, node syntax, source manifest and git diff whitespace checks passed."
+  ],
+  "blockers": [],
+  "pr_url": null
+}

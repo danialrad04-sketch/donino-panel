@@ -1,5 +1,19 @@
 # Donino releases
 
+## 1.0.0 — scoped installable release, 2026-10-20
+
+- Release the existing control panel, account/device management, Xray profiles,
+  DNS, installation and backup workflows; unimplemented roadmap engines and
+  business features move to later releases. See `docs/V1.fa.md` for boundaries.
+- Readiness now rejects empty/old/future schemas and missing account tables
+  instead of reporting success from a connection-only query. Liveness remains
+  separate and errors never disclose database details.
+- The read-only doctor reports corrupt/incomplete SQLite databases safely and
+  reports legacy schemas without querying tables introduced by later migrations.
+- Align installer defaults, UI versions and current documentation to v1.0.0.
+- Optional WireGuard/OpenVPN, Smart DNS/tunnel and shared-budget limitations
+  remain explicit; no user VPS, public ACME, ISP/game or capacity certification.
+
 ## 1.0.0-alpha.19 — ordinary DNS with server IP, 2026-10-20
 
 - Remove the certificate/DoH prerequisite from explicit HTTP-panel DNS setup;

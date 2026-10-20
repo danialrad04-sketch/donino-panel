@@ -118,9 +118,12 @@ def _doctor_sqlite(add, path):
         )
     else:
         add("OK", "database permissions", oct(mode))
-    _report_schema(add, _schema_version(path))
+    version = _schema_version(path)
+    _report_schema(add, version)
     result = _integrity(path)
     add("OK" if result == "ok" else "FAIL", "integrity_check", result)
+    if result != "ok" or version != SCHEMA_VERSION:
+        return
     with sqlite3.connect(f"file:{path}?mode=ro", uri=True) as db:
         users = db.execute("SELECT COUNT(*) FROM users").fetchone()[0]
         devices = db.execute("SELECT COUNT(*) FROM devices").fetchone()[0]
@@ -138,6 +141,9 @@ def _doctor_postgres(add):
                 add("WARN", "database", "PostgreSQL reachable but empty; run `migrate`")
                 return
             version = schema_version(db)
+            _report_schema(add, version)
+            if version != SCHEMA_VERSION:
+                return
             users = db.execute("SELECT COUNT(*) FROM users").fetchone()[0]
             devices = db.execute("SELECT COUNT(*) FROM devices").fetchone()[0]
             nodes = db.execute("SELECT COUNT(*) FROM nodes").fetchone()[0]
@@ -148,7 +154,6 @@ def _doctor_postgres(add):
         add("FAIL", "database", f"PostgreSQL unreachable: {type(error).__name__}")
         return
     add("OK", "database", "PostgreSQL reachable")
-    _report_schema(add, version)
     _report_counts(add, users, devices, nodes, owners)
     if shutil.which("pg_dump") and shutil.which("pg_restore"):
         add("OK", "pg tools", "pg_dump and pg_restore found")
@@ -174,7 +179,13 @@ def doctor():
         if not path.exists():
             add("FAIL", "database", f"not found at {path}")
         else:
-            _doctor_sqlite(add, path)
+            try:
+                _doctor_sqlite(add, path)
+            except (OSError, sqlite3.Error) as error:
+                add(
+                    "FAIL", "database",
+                    f"SQLite inspection failed: {type(error).__name__}",
+                )
 
     public = os.environ.get("DONINO_PUBLIC_URL", "")
     if not public:

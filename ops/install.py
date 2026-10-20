@@ -1136,7 +1136,7 @@ for attempt in range(20):
 
 def arguments(argv=None):
     parser = argparse.ArgumentParser(
-        description="Donino native installer — development preview"
+        description="Donino native installer"
     )
     parser.add_argument(
         "command",

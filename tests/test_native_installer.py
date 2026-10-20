@@ -14,7 +14,7 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.x509.oid import NameOID
 from fastapi.testclient import TestClient
 
-from app.db import database, digest
+from app.db import database, digest, SCHEMA_VERSION, set_schema_version
 from app.main import app
 from ops.common import InstallError, atomic_write
 from ops.install import (
@@ -385,3 +385,23 @@ class BootstrapTest(unittest.TestCase):
             self.assertEqual(response.status_code, 503)
             self.assertNotIn("private", response.text)
             self.assertEqual(self.client.get("/healthz").status_code, 200)
+
+    def test_readiness_rejects_wrong_schema_and_missing_account_tables(self):
+        for version in (0, SCHEMA_VERSION - 1, SCHEMA_VERSION + 1):
+            with self.subTest(version=version):
+                with database() as db:
+                    set_schema_version(db, version)
+                response = self.client.get("/readyz")
+                self.assertEqual(response.status_code, 503)
+                self.assertEqual(response.json(), {"status": "unavailable"})
+                self.assertEqual(self.client.get("/healthz").status_code, 200)
+        with database() as db:
+            set_schema_version(db, SCHEMA_VERSION)
+        self.assertEqual(self.client.get("/readyz").status_code, 200)
+        with database() as db:
+            db.execute("ALTER TABLE devices RENAME TO unavailable_devices")
+        try:
+            self.assertEqual(self.client.get("/readyz").status_code, 503)
+        finally:
+            with database() as db:
+                db.execute("ALTER TABLE unavailable_devices RENAME TO devices")

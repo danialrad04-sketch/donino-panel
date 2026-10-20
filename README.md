@@ -8,7 +8,9 @@
 
 پنل مستقل مدیریت Xray با رابط فارسی، معماری چند نود و هویت اختصاصی دونینو.
 
-**آخرین انتشار پایدار: ۰.۲.۰ — توسعهٔ فعلی: پیش‌نمایش ۱.۰ alpha 19 (پیش‌نمایش آزمایشی).**
+**نسخهٔ ۱.۰.۰ — انتشار نصب‌شدنی با امکانات فعلی.**
+
+[شروع و ارتقا به v1](docs/V1.fa.md) · [دامنهٔ انتشار و محدودیت‌ها](docs/V1.fa.md#دامنهٔ-انتشار)
 
 [Shadowsocks و 2022](docs/SHADOWSOCKS.fa.md) با پنج روش AEAD، رمز مستقل دستگاه، خروجی URI/Mihomo و انتقال واقعی TCP/UDP اضافه شد. تغییر کاربران روی نود دارای این نقش فعلاً با restart هسته انجام می‌شود.
 
@@ -57,11 +59,11 @@
 - ثبت رویدادهای مدیریت، پشتیبان SQLite سازگار، CLI مدیریت، OpenAPI پشت ورود.
 - آزمون API، آزمون انتقال واقعی با هر سه پروتکل، آزمون رابط در مرورگر و موبایل، GitHub Actions.
 
-**هنوز تکمیل نشده:** OpenVPN، AWG، Hysteria2، TUIC، Shadowsocks، sing-box، اتصال مستقیم به PasarGuard Node، مهاجرت VPN از پنل‌های دیگر، فروش/پرداخت، تلگرام، محدودیت IP/HWID و مسیریابی جامع VPN. MFA و مسیر نصب ACME موجودند؛ صدور عمومی روی دامنهٔ کاربر هنوز آزموده نشده است. این نسخه برابری با تمام پنل‌های مرجع را ادعا نمی‌کند. [وضعیت دقیق امکانات](docs/ROADMAP.fa.md).
+**برای نسخه‌های بعد:** AWG، Hysteria2، TUIC، sing-box، اتصال مستقیم به PasarGuard Node، مهاجرت VPN از پنل‌های دیگر، فروش/پرداخت، تلگرام، محدودیت IP/HWID و مسیریابی جامع VPN. MFA و مسیر نصب ACME موجودند؛ صدور عمومی روی دامنهٔ کاربر هنوز آزموده نشده است. این نسخه برابری با تمام پنل‌های مرجع را ادعا نمی‌کند. [وضعیت دقیق امکانات](docs/ROADMAP.fa.md).
 
 ## مسیر توسعهٔ ۱.۰
 
-[برنامهٔ جامع](docs/MASTER-PLAN.fa.md) در ۱۵ فاز تعریف شده است: زیرساخت و نصب خودکار، DNS گیمینگ و مهاجرت doctor-dns، WireGuard/OpenVPN، موتورهای بیشتر و مدیریت حرفه‌ای. اسناد [تطبیق امکانات](docs/FEATURE-PARITY.fa.md)، [ماتریس پروتکل](docs/PROTOCOL-MATRIX.fa.md)، [طراحی DNS گیمینگ](docs/DNS-GAMING-DESIGN.fa.md)، [نصب و SSL](docs/INSTALLER-SPEC.fa.md) و [معیارهای پذیرش](docs/ACCEPTANCE-TESTS.fa.md) مرجع اجرا هستند. این‌ها خروجی فاز صفر و برنامهٔ امکانات آینده‌اند؛ انتشار پایدار موجود **۰.۲.۰** است؛ امکانات جدید در prereleaseهای ۱.۰ عرضه شده‌اند و تکمیل همهٔ فازها ادعا نمی‌شود.
+[برنامهٔ جامع](docs/MASTER-PLAN.fa.md) در ۱۵ فاز تعریف شده است: زیرساخت و نصب خودکار، DNS گیمینگ و مهاجرت doctor-dns، WireGuard/OpenVPN، موتورهای بیشتر و مدیریت حرفه‌ای. اسناد [تطبیق امکانات](docs/FEATURE-PARITY.fa.md)، [ماتریس پروتکل](docs/PROTOCOL-MATRIX.fa.md)، [طراحی DNS گیمینگ](docs/DNS-GAMING-DESIGN.fa.md)، [نصب و SSL](docs/INSTALLER-SPEC.fa.md) و [معیارهای پذیرش](docs/ACCEPTANCE-TESTS.fa.md) مرجع اجرا هستند. این‌ها نقشهٔ توسعهٔ بلندمدت‌اند. طبق انتخاب کاربر، نسخهٔ **۱.۰.۰** به امکانات فعلی محدود شده و موارد پیاده‌نشده به نسخه‌های بعد منتقل شده‌اند؛ [قرارداد انتشار v1](docs/V1.fa.md) مرجع محدودهٔ فعلی است.
 
 ![صفحهٔ اشتراک کاربر](docs/images/portal.png)
 
@@ -90,7 +92,7 @@ DONINO_SECURE_COOKIE=false python -m uvicorn app.main:app --host 127.0.0.1 --por
 روی Debian 12 یا Ubuntu 24.04 با معماری amd64:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/danialrad04-sketch/donino-panel/v1.0.0-alpha.19/install.sh | sudo sh
+curl -fsSL https://raw.githubusercontent.com/danialrad04-sketch/donino-panel/v1.0.0/install.sh | sudo sh
 ```
 
 منوی مستقل در صفحهٔ تازهٔ ترمینال باز می‌شود: نصب HTTP با IPv4 یا دامنه،
@@ -102,7 +104,7 @@ HTTPS خودکار با Let's Encrypt، گواهی موجود، وضعیت، rep
 نصب مستقیم بدون SSL و بدون نیاز به دامنه، با IP واقعی سرور خود:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/danialrad04-sketch/donino-panel/v1.0.0-alpha.19/install.sh | sudo sh -s -- install --domain 203.0.113.10 --tls none
+curl -fsSL https://raw.githubusercontent.com/danialrad04-sketch/donino-panel/v1.0.0/install.sh | sudo sh -s -- install --domain 203.0.113.10 --tls none
 ```
 
 در HTTP گذرواژه و کوکی روی شبکه رمز نمی‌شوند؛ ارتباط نود دوردست با mTLS

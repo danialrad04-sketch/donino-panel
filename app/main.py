@@ -40,6 +40,8 @@ from .db import (
     is_postgres,
     IntegrityErrors,
     MAX_DEVICES_PER_USER,
+    SCHEMA_VERSION,
+    schema_version,
 )
 from .core import DEFAULT_TRANSPORT, TRANSPORTS, eligible, status, profiles, is_reality
 from .shadowsocks import METHODS as SS_METHODS, key_size as ss_key_size
@@ -367,7 +369,11 @@ def health():
 def readiness():
     try:
         with database() as db:
-            db.execute("SELECT 1").fetchone()
+            if schema_version(db) != SCHEMA_VERSION:
+                return JSONResponse({"status": "unavailable"}, status_code=503)
+            # Exercise the tables needed to serve accounts, not just the connection.
+            for table in ("admins", "users", "devices", "nodes"):
+                db.execute(f"SELECT 1 FROM {table} LIMIT 1").fetchone()
     except Exception:
         return JSONResponse({"status": "unavailable"}, status_code=503)
     return {"status": "ok", "version": __version__}
