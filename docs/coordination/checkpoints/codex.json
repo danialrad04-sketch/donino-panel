@@ -16,8 +16,9 @@
   "next_action": "Push development/v1-readiness, open PR, inspect all exact-head CI results, resolve failures, merge only reviewed passing head, publish v1.0.0 with documented scoped release and external limitations.",
   "tests": [
     "Baseline:289 tests,270 passed,19 explicit skips.",
-    "Targeted:test_ops13 (12 passed/1 PostgreSQL skip),test_native_installer11 passed."
+    "Targeted:test_ops13 (12 passed/1 PostgreSQL skip),test_native_installer11 passed.",
+    "v1 local regression:292 tests,273 passed,19 explicit skips; manifest/coordination/JS/whitespace passed."
   ],
   "blockers": [],
-  "pr_url": null
+  "pr_url": "https://github.com/danialrad04-sketch/donino-panel/pull/31"
 }
