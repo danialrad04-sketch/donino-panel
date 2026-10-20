@@ -2,26 +2,31 @@
   "task_id": "codex-v1-progress",
   "status": "in_progress",
   "branch": "development/plain-dns",
-  "last_verified_commit": null,
+  "last_verified_commit": "d0269289f300ff694b5b0e1d1d2f337b916c71e0",
   "completed": [
     "بررسی alpha18 و doctor-dns pin a2b2ff843cb1fc8f0a5712a88149f5c379198ff1؛ اجبار گواهی در installer و نمایش صرف DoH در UI شناسایی شد.",
     "Plain HTTP DNS نصب UDP/TCP53، DoT0، عدم خواندن/ساخت گواهی، گزینه۱۰ و حفظ DNS در reinstall/repair پیاده شد.",
     "API runtime و leaseهای source IP مدیر با canonicalIPv4/IPv6، conflict و max3، role writer و حذف محدود به حساب؛ UI/portal IP معمولی بدون آدرس HTTP DoH و نمایش expiry کاربر آماده شد.",
     "HTTP panel با NGINX stream443 و Smart gateway بدون گواهی پنل هم‌زیست شد؛ قرارداد TLS/auth خروجی تغییر نکرد.",
-    "Doctor fork HEAD همان a2b2ff843cb1fc8f0a5712a88149f5c379198ff1 است؛ relay/exit-nginx،dnsmasq و IP ACL/panel مطالعه و منابع/حدود در PLAIN-DNS.fa.md ثبت شدند."
+    "Doctor fork HEAD همان a2b2ff843cb1fc8f0a5712a88149f5c379198ff1 است؛ relay/exit-nginx،dnsmasq و IP ACL/panel مطالعه و منابع/حدود در PLAIN-DNS.fa.md ثبت شدند.",
+    "PR30 با تمام36 بررسی موفق در18 job متمایز روی d0269289f300ff694b5b0e1d1d2f337b916c71e0 ادغام شد؛ main=1f8f637883e840608e6c10b3cdf0a296149779f4 و tree آن با کد آزموده یکسان است.",
+    "v1.0.0-alpha.19 به‌صورت prerelease و latest=false بدون asset منتشر شد: https://github.com/danialrad04-sketch/donino-panel/releases/tag/v1.0.0-alpha.19",
+    "اسکریپت نصب از tag عمومی دانلود و --help با بررسی bootstrap/manifest بدون نصب میزبان موفق اجرا شد. برای نصب قبلی sudo donino گزینه7 tag alpha19 و سپس گزینه10 با IP خود سرور؛ IP مشتری در حساب DNS ثبت شود."
   ],
   "remaining": [
-    "Exact-head final CI with18 distinct jobs/36 checks; merge and alpha19 prerelease/latest=false.",
-    "Standalone foreign exit still has its verified certificate/auth contract; no automatic domain-free IP pairing, HTTP80 CDN relay, arbitrary gameUDP/WAN/ISP or stable-v1 claim."
+    "Foreign exit still requires its verified TLS/auth contract; automatic domain-free bare-IP exit pairing and HTTP80 CDN relay are not implemented.",
+    "Arbitrary game UDP, real Iranian ISP/game/WAN acceptance, public ACME and final stable-v1 gates remain unverified; no user VPS/domain available."
   ],
-  "next_action": "Push plain-dns branch and open PR. Require all36 exact-head checks; resolve actual failures, merge tested tree and publish v1.0.0-alpha.19. README/docs reference alpha19 tag, so publish before telling user to upgrade. No user VPS/firewall was modified.",
+  "next_action": "این مرحله منتشر شده است. در ادامه از origin/main شاخه محدود تازه بساز و این handoff را دست‌نخورده آرشیو کن؛ وضعیت remote و تغییرات همکاران را ابتدا بررسی کن. برای ادامه DNS/relay اولویت با نصب جفت خروجی امن و پذیرش واقعی مسیر است؛ قابلیت عمومی بازی/UDP یا v1 کامل ادعا نشود. Claude همچنان suspended و فاقد مأموریت تازه است.",
   "tests": [
     "Local full unit regression289 tests:270 passed,19 explicit skips needing real engines/privileged PostgreSQL; final CI supplies independent fixtures.",
     "Real UDP/TCP without TLS: unauthorized drop, IP assignment, DNS response, byte ledger, query quota, reset, IP removal and actual user expiry passed.",
     "Native HTTP DNS53/realUnbound/no certificate/source lease/quota/Smart gateway/reinstall/repair/PTY/uninstall passed on Debian12 and Ubuntu24 in isolated Docker.",
-    "Full Chromium API-backed browser acceptance passed, including new managed-IP registration/removal and hidden HTTP DoH controls; final added mobile IP-form assertion will run in CI.",
-    "Ruff F, node syntax, source manifest and git diff whitespace checks passed."
+    "Full Chromium API-backed browser acceptance passed, including new managed-IP registration/removal and hidden HTTP DoH controls; final mobile IP-form assertion also passed in CI.",
+    "Ruff F, node syntax, source manifest and git diff whitespace checks passed.",
+    "Exact head final GitHub checks:36/36 success,18 distinct jobs, Python3.11/3.12, PostgreSQL, browser, real-engine acceptances and native HTTP DNS/HTTPS on Debian12/Ubuntu24.",
+    "Published alpha19 tag install.sh --help downloaded/bootstrap-verified successfully from /tmp; no host install or firewall change."
   ],
   "blockers": [],
-  "pr_url": null
+  "pr_url": "https://github.com/danialrad04-sketch/donino-panel/pull/30"
 }
