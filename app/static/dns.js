@@ -1,14 +1,14 @@
 "use strict";
-let dnsData = { policies: [], accounts: [] };
+let dnsData = { policies: [], accounts: [], runtime: {} };
 function renderDNS() {
   return (
     heading(
       "DNS اختصاصی",
       "سیاست دامنه، سهمیهٔ درخواست و دسترسی هر کاربر را مستقل از ترافیک VPN مدیریت کنید.",
     ) +
-    '<p class="notice">DNS و مسیریابی Smart DNS به مجوز حساب و IP ثبت‌شده وابسته‌اند. مسیر Smart DNS فعلی HTTPS با SNI آشکار است؛ بازی/UDP، ECH و DoQ پذیرش جداگانه می‌خواهند. resolver و gateway باید راه‌اندازی شده باشند.</p>' +
-    '<section id="smart-dns-content" class="card">در حال دریافت وضعیت خروجی‌ها…</section>' +
+    '<p class="notice">DNS معمولی با IP سرور و ثبت IP مشتری کار می‌کند؛ دامنه، SSL پنل و DoH اجباری نیست. رفع تحریم سرویس‌های منتخب با خروجی Smart DNS جداگانه تنظیم می‌شود. DNS به‌تنهایی همهٔ ترافیک یا UDP بازی را از خارج عبور نمی‌دهد.</p>' +
     '<div id="dns-content">در حال دریافت…</div>' +
+    '<section id="smart-dns-content" class="card">در حال دریافت وضعیت خروجی‌ها…</section>' +
     (owner()
       ? '<section class="card"><h2>انتقال doctor-dns</h2><p>پیش‌نمایش و انتقال مرحله‌ای با ابزار محلی سرور انجام می‌شود. حساب منتقل‌شده تا تطبیق حجم، انقضا و مسیر relay غیرفعال می‌ماند.</p><button data-action="dns-imports">مشاهدهٔ انتقال‌ها</button></section>'
       : "")
@@ -16,28 +16,75 @@ function renderDNS() {
 }
 async function loadDNS() {
   try {
-    const [policies, accounts] = await Promise.all([
+    const [policies, accounts, runtime] = await Promise.all([
       api("/dns/policies"),
       api("/dns/accounts"),
+      api("/dns/runtime"),
     ]);
-    dnsData = { policies, accounts };
+    dnsData = { policies, accounts, runtime };
     if (page !== "dns" || !$("#dns-content")) return;
     $("#dns-content").innerHTML =
+      dnsConnectionCard(runtime) +
       `<section class="card"><div class="card-head dns-policy-head"><h2>سیاست‌های دامنه</h2>${owner() ? '<button class="primary" data-action="dns-add-policy">سیاست جدید</button><button class="secondary" data-action="dns-catalog">از کاتالوگ سرویس‌ها</button>' : ""}</div>${policies.length ? `<div class="table-scroll"><table><thead><tr><th>نام</th><th>قواعد</th>${owner() ? "<th>عملیات</th>" : ""}</tr></thead><tbody>${policies.map((p) => `<tr><td>${esc(p.name)}</td><td>${number(p.rules.length)}</td>${owner() ? `<td class="actions"><button data-action="dns-edit-policy" data-id="${p.id}">ویرایش</button><button class="danger" data-action="dns-delete-policy" data-id="${p.id}">حذف</button></td>` : ""}</tr>`).join("")}</tbody></table></div>` : '<p class="muted">ابتدا یک سیاست بسازید. سیاست بدون قاعده، پاسخ resolver معتبر را بدون بازنویسی برمی‌گرداند.</p>'}</section>
-    <section class="card"><div class="card-head"><h2>خدمت DNS کاربران</h2>${writable() ? '<button class="primary" data-action="dns-add-account">فعال‌سازی DNS</button>' : ""}</div>${accounts.length ? `<div class="table-scroll"><table><thead><tr><th>کاربر / سیاست</th><th>درخواست / سهمیه</th><th>بایت DNS</th><th>وضعیت</th>${writable() ? "<th>عملیات</th>" : ""}</tr></thead><tbody>${accounts.map((a) => `<tr><td><b>${esc(a.user_name)}</b><span class="subline">${esc(a.policy_name)}</span></td><td>${number(a.queries)} / ${a.query_limit ? number(a.query_limit) : "نامحدود"}<span class="subline">${number(a.qps)} درخواست در ثانیه</span></td><td>${bytes(a.request_bytes + a.response_bytes)}<span class="subline">${number(a.blocked)} مسدود؛ ${number(a.errors)} خطا</span></td><td>${badge(a.enabled ? "active" : "disabled")}</td>${writable() ? `<td class="actions"><button data-action="dns-edit-account" data-id="${a.id}">ویرایش</button><button data-action="dns-token" data-id="${a.id}">اعتبارنامه</button><button data-action="dns-periods" data-id="${a.id}">دوره‌ها</button><button data-action="dns-reset" data-id="${a.id}">دورهٔ تازه</button><button class="danger" data-action="dns-delete-account" data-id="${a.id}">حذف</button></td>` : ""}</tr>`).join("")}</tbody></table></div>` : '<p class="muted">DNS برای هیچ کاربری فعال نشده است. دسترسی عمومی پیش‌فرض بسته است.</p>'}</section>`;
+    <section class="card"><div class="card-head"><h2>خدمت DNS کاربران</h2>${writable() ? '<button class="primary" data-action="dns-add-account">فعال‌سازی DNS</button>' : ""}</div>${accounts.length ? `<div class="table-scroll"><table><thead><tr><th>کاربر / سیاست</th><th>درخواست / سهمیه</th><th>بایت DNS</th><th>وضعیت</th>${writable() ? "<th>عملیات</th>" : ""}</tr></thead><tbody>${accounts.map((a) => `<tr><td><b>${esc(a.user_name)}</b><span class="subline">${esc(a.policy_name)}</span><span class="subline">انقضای کاربر: ${date(a.user_expires)}</span></td><td>${number(a.queries)} / ${a.query_limit ? number(a.query_limit) : "نامحدود"}<span class="subline">${number(a.qps)} درخواست در ثانیه</span></td><td>${bytes(a.request_bytes + a.response_bytes)}<span class="subline">${number(a.blocked)} مسدود؛ ${number(a.errors)} خطا</span></td><td>${badge(!a.enabled || !a.user_enabled ? "disabled" : a.user_expires && a.user_expires * 1000 <= Date.now() ? "expired" : "active")}</td>${writable() ? `<td class="actions"><button data-action="dns-edit-account" data-id="${a.id}">ویرایش</button><button data-action="dns-ips" data-id="${a.id}">IPهای مجاز</button>${runtime.doh_url ? `<button data-action="dns-token" data-id="${a.id}">اعتبارنامه DoH</button>` : ""}<button data-action="dns-periods" data-id="${a.id}">دوره‌ها</button><button data-action="dns-reset" data-id="${a.id}">دورهٔ تازه</button><button class="danger" data-action="dns-delete-account" data-id="${a.id}">حذف</button></td>` : ""}</tr>`).join("")}</tbody></table></div>` : '<p class="muted">DNS برای هیچ کاربری فعال نشده است. دسترسی عمومی پیش‌فرض بسته است.</p>'}</section>`;
     await loadSmartDNS();
   } catch (error) {
     if (page === "dns" && $("#dns-content"))
       $("#dns-content").textContent = error.message;
   }
 }
+function dnsConnectionCard(runtime) {
+  const addresses = runtime.addresses || [];
+  return `<section class="card dns-connection"><div class="card-head"><h2>DNS معمولی با IP</h2>${badge(runtime.configured ? "active" : "disabled", runtime.configured ? "پیکربندی شده" : "نصب نشده")}</div><p>بدون نیاز به دامنه، HTTPS یا DoH. IP سرور را در تنظیمات DNS دستگاه وارد کنید و IP اینترنت مشتری را برای همان حساب ثبت کنید.</p>${addresses.length ? `<div class="dns-addresses">${addresses.map((ip) => `<code dir="ltr">${esc(ip)}</code>`).join("")}<span>UDP / TCP · پورت ${number(runtime.port)}</span></div>` : ""}${!runtime.configured ? '<p class="notice">روی سرور، sudo donino ← گزینهٔ ۱۰ را اجرا کنید تا DNS معمولی روی IP انتخابی و پورت ۵۳ نصب شود. ساخت حساب در پنل به‌تنهایی سرویس شبکه را نصب نمی‌کند.</p>' : runtime.port !== 53 ? '<p class="notice">کنسول‌ها و DNS سیستم معمولاً پورت ۵۳ می‌خواهند؛ برای پورت سفارشی کلاینت سازگار لازم است.</p>' : ""}<p class="muted">سهمیهٔ درخواست DNS از حجم VPN جداست. پاسخ DNS به‌تنهایی عبور UDP بازی یا کاهش پینگ را تضمین نمی‌کند.</p>${runtime.doh_url ? `<p>DoH اختیاری: <span class="mono">${esc(runtime.doh_url)}</span></p>` : '<p class="muted">DoH روی این پنل HTTP ارائه نمی‌شود و برای DNS معمولی لازم نیست.</p>'}</section>`;
+}
 function showDNSCredential(value) {
+  if (!dnsData.runtime.doh_url) {
+    modal(
+      "راهنمای DNS معمولی",
+      dnsConnectionCard(dnsData.runtime) +
+        `<p class="note">حساب DNS ساخته شد. اکنون IP اینترنت مشتری را ثبت کنید؛ نام کاربری یا رمز DoH لازم نیست.</p><button class="primary" data-action="dns-ips" data-id="${esc(value.id)}">ثبت IP مشتری</button>`,
+    );
+    return;
+  }
   modal(
     "اعتبارنامهٔ خصوصی DoH",
-    `<p class="notice">این اعتبارنامه فقط همین بار نمایش داده می‌شود. در کلاینت سازگار، آن را در هدر Authorization با پیشوند Bearer قرار دهید. نام کاربری و رمز VPN جای آن را نمی‌گیرند.</p><label>نشانی DoH<input readonly dir="ltr" value="${esc(location.origin + value.doh_path)}"></label><label>اعتبارنامه<textarea readonly dir="ltr">${esc(value.token)}</textarea></label>`,
+    `<p class="notice">DoH اختیاری است؛ DNS معمولی با IPهای مجاز هم قابل استفاده است. اعتبارنامه فقط همین بار نمایش داده می‌شود و باید در هدر Authorization با پیشوند Bearer قرار گیرد.</p><label>نشانی DoH<input readonly dir="ltr" value="${esc(dnsData.runtime.doh_url)}"></label><label>اعتبارنامه<textarea readonly dir="ltr">${esc(value.token)}</textarea></label>`,
+  );
+}
+async function manageDNSIPs(id) {
+  const leases = await api(`/dns/accounts/${id}/ip-leases`);
+  form(
+    "IPهای مجاز DNS",
+    `<div class="full"><p class="note">IP اینترنت مشتری را وارد کنید، نه IP سرور DNS. دستگاه‌های پشت یک NAT از یک حساب مشترک استفاده می‌کنند؛ IP مشترک را نمی‌توان هم‌زمان به دو حساب داد. حداکثر سه IP فعال.</p>${leases.length ? leases.map((l) => `<div class="node-row"><div><b class="mono">${esc(l.ip)}</b><small>تا ${new Date(l.expires * 1000).toLocaleString("fa-IR")}</small></div><button type="button" class="danger" data-action="dns-remove-ip" data-id="${esc(id + "|" + l.ip)}">حذف IP</button></div>`).join("") : '<p class="muted">IP مجاز فعالی برای این حساب ثبت نشده است.</p>'}</div>` +
+      input("IP مشتری (IPv4 یا IPv6)", "ip", {
+        full: true,
+        extra: 'dir="ltr" placeholder="203.0.113.20"',
+      }) +
+      input("مدت اعتبار IP (ساعت)", "hours", {
+        type: "number",
+        value: 24,
+        extra: 'min="1" max="24"',
+        hint: "با پایان اعتبار، DNS این IP قطع می‌شود؛ ثبت مجدد همان IP اعتبار را تمدید می‌کند.",
+      }),
+    async (f) => {
+      await api(`/dns/accounts/${id}/ip-leases`, {
+        method: "POST",
+        body: JSON.stringify({ ip: f.ip.trim(), ttl: Number(f.hours) * 3600 }),
+      });
+      await saved();
+    },
   );
 }
 async function handleDNSAction(action, id) {
+  if (action === "dns-ips") return manageDNSIPs(id);
+  if (action === "dns-remove-ip") {
+    const [accountId, address] = id.split("|");
+    await api(
+      `/dns/accounts/${accountId}/ip-leases/${encodeURIComponent(address)}`,
+      { method: "DELETE" },
+    );
+    return manageDNSIPs(accountId);
+  }
   if (action.startsWith("dns-smart-")) return handleSmartDNSAction(action, id);
   if (action === "dns-catalog") return catalogPolicyForm();
   if (action === "dns-imports") return showDoctorImports();

@@ -40,7 +40,23 @@ def options(args, state, dns):
     return {"addresses": addresses}
 
 
-def config(domain, *, ipv6=True):
+def config(domain, *, ipv6=True, plain=False):
+    if plain:
+        # The client TLS handshake passes unchanged; an HTTP control panel
+        # needs no certificate or domain to carry this independent service.
+        return f"""# Managed by Donino: certificate-free TLS passthrough, HTTP panel on port80.
+stream {{
+    server {{
+        listen 443;
+        {"listen [::]:443;" if ipv6 else ""}
+        ssl_preread on;
+        proxy_protocol on;
+        proxy_connect_timeout 3s;
+        proxy_timeout 90s;
+        proxy_pass 127.0.0.1:8444;
+    }}
+}}
+"""
     domain = domain_name(domain)
     return f"""# Managed by Donino. TLS passes unchanged to the selected backend.
 stream {{
@@ -62,11 +78,11 @@ stream {{
 """
 
 
-def preflight(state):
+def preflight(state, *, plain=False):
     """Reject conflicting/custom listeners before interrupting a service."""
     inventory = state.get("managed_files", {})
     if not state.get("smart_dns"):
-        for port in (8443, 8444):
+        for port in (8444,) if plain else (8443, 8444):
             with socket.socket() as sock:
                 try:
                     sock.bind(("127.0.0.1", port))

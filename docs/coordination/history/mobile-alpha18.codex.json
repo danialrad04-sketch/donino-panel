@@ -1,0 +1,35 @@
+{
+  "task_id": "codex-v1-progress",
+  "status": "in_progress",
+  "branch": "development/mobile-navigation",
+  "last_verified_commit": "761cdef3c87d01593f0757ead314a40a481dc2c0",
+  "completed": [
+    "بررسی main و فعالیت کلاد؛ PR باز وجود ندارد. checkpoint نهایی alpha17 بدون تغییر آرشیو شد.",
+    "علت رابط گوشی: تمام 10 مقصد دسکتاپ در نوار پایین بدون drawer یا سلسله‌مراتب فشرده شده‌اند.",
+    "ناوبری جدید با چهار مقصد پایین گوشی و drawer سه‌گروهی، جدول کارتی، sheet فرم، هدف لمس و asset cache نسخه18 پیاده شد.",
+    "فوکوس/Tab معکوس/Escape/backdrop، حفظ اسکرول، همان مسیر/تاریخچه، نقش viewer و API403، resize و لمس فرم در Chromium واقعی موفق شدند.",
+    "تصاویر روشن/تیره و دسکتاپ بازبینی شدند؛ node grid در عرض320 و فوکوس لینک هنگام تبدیل دسکتاپ به گوشی اصلاح شد.",
+    "CI head5b6666b یک شکست fixture Shadowsocks نشان داد: free-port بلافاصله بسته می‌شد و OS می‌توانست همان پورت inventory را برگرداند. پنج socket تا تکمیل fixture رزرو شدند؛ محدودیت واقعی API409 حفظ شد.",
+    "PR29 با 36/36 check موفق (18 job مستقل) روی761cdef3c87d01593f0757ead314a40a481dc2c0 ادغام شد؛ main=d62fc5dd01028e3e8475d101c9e9e4a57c2eac05 دقیقاً همان tree آزموده‌شده است.",
+    "v1.0.0-alpha.18 منتشر شد: prerelease=true، draft=false، latest=false؛ tag دقیقاً روی761cdef است و stable latest هنوزv0.2.0 باقی است.",
+    "دانلود از tag عمومی با curl، دریافت bootstrap/archive، اعتبارسنجی manifest و --help موفق شد؛ هیچ نصب یا تغییر VPS کاربر انجام نشده است.",
+    "آپلود PNGهای اختیاری به uploads.github.com خطای HTTP401 داشت؛ draft ناموفق باقی نماند و release بدون پیوست با موفقیت منتشر شد. پیش‌نمایش‌های محلی /workspace/artifacts/donino-mobile/ فقط دادهٔ ساختگی دارند؛ هیچ key/token/QR خصوصی در تصاویر انتخابی نیست."
+  ],
+  "remaining": [
+    "Physical phone and Safari/iOS acceptance remain unperformed; Chromium emulated mobile/touch and responsive browser behavior were tested.",
+    "Operator must upgrade an existing installation explicitly (sudo donino option7, v1.0.0-alpha.18); GitHub publication is not deployment.",
+    "Stable-v1 network/protocol/automatic VPN node installer/multi-location routing/operations and public ACME/VPS/ISP/game/load gates remain separate."
+  ],
+  "next_action": "alpha18 delivered: https://github.com/danialrad04-sketch/donino-panel/releases/tag/v1.0.0-alpha.18 . For a new authorized task, start from current origin/main, archive this final checkpoint intact, inspect remote Claude activity and continue the next requested gate. Do not re-tag/re-publish alpha18 or claim physical iOS/public WAN acceptance. Claude remains suspended until the user assigns work.",
+  "tests": [
+    "Full local browser acceptance passed: real API admin/inbounds/DNS/Smart DNS/tunnel/WireGuard/OpenVPN/portal/QR/theme/logout; no original-page JS errors or third-party requests.",
+    "Dedicated final navigation acceptance passed on Chromium: 320/390/430/768/844 landscape, focus cycle both directions, escape/backdrop, same-page/history, page scroll restore and last pager clearance, resize focus, touch context, viewer navigation and real API403.",
+    "Local unit regression: 285 tests, 266 passed, 19 explicit skips requiring real engine binaries or privileged PostgreSQL fixture; final CI supplies those separate environments.",
+    "Ruff F, JS syntax checks and diff whitespace passed.",
+    "Shadowsocks API acceptance repeated 10 times after reservation fix: 10/10 passed. Deliberately reused port deterministically returns409; no product validation was relaxed. Final CI must run on new exact head.",
+    "Final exact-head CI:36/36 successful,18 distinct jobs, including Python3.11/3.12, PostgreSQL, real engines, native HTTP/HTTPS Debian12/Ubuntu24 and final full browser acceptance.",
+    "Published tag/bootstrap/manifest smoke passed; release target/tag commit matches tested SHA; merged main tree matches tested tree."
+  ],
+  "blockers": [],
+  "pr_url": "https://github.com/danialrad04-sketch/donino-panel/pull/29"
+}

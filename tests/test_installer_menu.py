@@ -49,6 +49,32 @@ class InstallerMenuTest(unittest.TestCase):
         self.assertTrue(text.endswith("\033[?1049l"))
         self.assertIn("HTTP sends login", text)
 
+    def test_existing_http_panel_enables_plain_dns_without_certificate_prompt(self):
+        tty = FakeTTY(["10\n", "203.0.113.9\n", "y\n", "\n", "0\n"])
+        calls = []
+        result = run_menu(
+            tty,
+            execute=lambda argv: calls.append(argv) or 0,
+            read_state=lambda: {"domain": "203.0.113.9", "tls_mode": "none"},
+            upgrade=lambda _: self.fail("DNS setup is not a release upgrade"),
+        )
+        self.assertEqual(result, 0)
+        self.assertEqual(
+            calls,
+            [
+                [
+                    "install",
+                    "--with-dns",
+                    "--dns-listen",
+                    "203.0.113.9",
+                    "--dns-port",
+                    "53",
+                    "--dot-port",
+                    "0",
+                ]
+            ],
+        )
+
     def test_cancel_and_invalid_input_never_start_host_actions(self):
         tty = FakeTTY(
             ["1\n", "host;sh\n", "\n", "2\n", "panel.example.com\n", "\n", "n\n", "0\n"]

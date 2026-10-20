@@ -1,5 +1,21 @@
 # Donino releases
 
+## 1.0.0-alpha.19 — ordinary DNS with server IP, 2026-10-20
+
+- Remove the certificate/DoH prerequisite from explicit HTTP-panel DNS setup;
+  UDP/TCP53, optional DoT0, actual Unbound and installed menu option10.
+- Per-account writer-managed source IP registration/renewal/removal, canonical
+  IPv4/IPv6 identities, shared-IP conflict and three-lease bounds; preserve
+  query quota, rate, period, disable and user expiry enforcement.
+- Advertise configured plain DNS IP/port separately from optional HTTPS DoH;
+  admin and customer UI stop generating HTTP DoH instructions and expose IP
+  management and connection steps. Configuration is not a readiness claim.
+- HTTP control can coexist with authorized TLS/SNI443 passthrough without a
+  panel certificate. Carrier TLS/authentication is preserved. Not arbitrary
+  game UDP, ECH, HTTP CDN relay or stable-v1 acceptance.
+- Native HTTP acceptance on both OSes now proves certificate-free UDP/TCP53,
+  source access, quota, Smart gateway readiness and preserving reinstall/repair.
+
 ## 1.0.0-alpha.18 — mobile navigation and responsive management, 2026-10-19
 
 - Replace the ten-item mobile footer with four primary destinations and a

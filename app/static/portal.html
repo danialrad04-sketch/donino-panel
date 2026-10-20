@@ -7,8 +7,8 @@
     <meta name="robots" content="noindex,nofollow" />
     <title>اشتراک من | Donino</title>
     <link rel="icon" href="/static/logo.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="/static/style.css?v=1.0.0-alpha.18" />
-    <script src="/static/portal.js" defer></script>
+    <link rel="stylesheet" href="/static/style.css?v=1.0.0-alpha.19" />
+    <script src="/static/portal.js?v=1.0.0-alpha.19" defer></script>
   </head>
   <body class="portal-body">
     <div class="portal-wrap">
@@ -111,10 +111,15 @@
           <section id="portal-dns" class="card" hidden>
             <h2>DNS اختصاصی شما</h2>
             <p id="dns-summary"></p>
+            <label
+              >IP سرور DNS<input id="dns-server-address" readonly dir="ltr"
+            /></label>
+            <p id="dns-connection-help" class="muted"></p>
             <p class="muted">
               بایت DNS مربوط به درخواست نام دامنه است؛ حجم دانلود و ترافیک بازی
-              را نشان نمی‌دهد. برای DNS عادی یا DoT، IP همین اتصال را ثبت کنید.
-              در IP مشترک از DoH با اعتبارنامه یا تونل سازگار استفاده کنید.
+              را نشان نمی‌دهد. برای DNS معمولی، IP اینترنت همین اتصال را ثبت
+              کنید. دستگاه‌های پشت یک IP مشترک از یک حساب استفاده می‌کنند؛ حساب
+              مستقل به IP جدا یا تونل سازگار نیاز دارد.
             </p>
             <p id="dns-ip-list" class="mono"></p>
             <div class="compact-actions">
@@ -140,7 +145,7 @@
         </section>
       </main>
       <footer>
-        <span>Donino / 1.0 alpha 7</span
+        <span>Donino / 1.0 alpha 19</span
         ><span>دسترسی ساده. فضای اختصاصی شما.</span
         ><a
           href="https://github.com/danialrad04-sketch/donino-panel"

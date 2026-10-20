@@ -15,7 +15,21 @@ class HTTPFixture(NativeFixture):
 
     def install(self, name, **_):
         self.exec(
-            name, "./install.sh", "install", "--domain", "127.0.0.1", "--tls", "none"
+            name,
+            "./install.sh",
+            "install",
+            "--domain",
+            "127.0.0.1",
+            "--tls",
+            "none",
+            "--with-dns",
+            "--dns-listen",
+            "127.0.0.1",
+            "--dns-port",
+            "53",
+            "--with-smart-dns",
+            "--smart-dns-ip",
+            "127.0.0.1",
         )
 
     def run(self):
@@ -53,6 +67,71 @@ class HTTPFixture(NativeFixture):
             assert user["id"]
             print(
                 self.os_name + ": HTTP/IP bootstrap, login and API passed", flush=True
+            )
+            runtime = client.get("/api/dns/runtime").json()
+            assert runtime["configured"] and runtime["port"] == 53
+            assert runtime["doh_url"] is None and runtime["dot_port"] is None
+            self.exec(
+                name,
+                "sh",
+                "-c",
+                "test ! -e /etc/donino/tls/panel.crt && test ! -e /var/lib/donino-panel/dns-tls/current/panel.key",
+            )
+            policy = client.post(
+                "/api/dns/policies", json={"name": "plain-native"}
+            ).json()
+            dns_account = client.post(
+                "/api/dns/accounts",
+                json={
+                    "user_id": user["id"],
+                    "policy_id": policy["id"],
+                    "query_limit": 2,
+                },
+            ).json()
+            lease = client.post(
+                f"/api/dns/accounts/{dns_account['id']}/ip-leases",
+                json={"ip": "127.0.0.1"},
+            )
+            assert lease.status_code == 200
+            self.exec(
+                name,
+                "/opt/donino-panel/current/.venv/bin/python",
+                "-c",
+                """
+import dns.message,dns.query
+query=dns.message.make_query('donino.health.','A')
+for method in (dns.query.udp,dns.query.tcp):
+ answer=method(query,'127.0.0.1',port=53,timeout=3)
+ assert answer.answer[0][0].address=='127.0.0.1'
+try:
+ dns.query.udp(query,'127.0.0.1',port=53,timeout=.3)
+ raise AssertionError('Exhausted DNS quota still answered')
+except dns.exception.Timeout:pass
+""",
+            )
+            stats = client.get(f"/api/dns/accounts/{dns_account['id']}/periods").json()
+            assert stats[0]["queries"] == 2 and stats[0]["response_bytes"] > 0
+            smart = client.get("/api/dns/smart/status").json()
+            assert smart["enabled"] and smart["gateway_ready"]
+            self.exec(
+                name,
+                "/opt/donino-panel/current/.venv/bin/python",
+                "-c",
+                """
+import socket,ssl
+# Only the application TLS handshake is passed through; no panel certificate.
+context=ssl.create_default_context()
+try:
+ with socket.create_connection(('127.0.0.1',443),timeout=3) as raw:
+  with context.wrap_socket(raw,server_hostname='unauthorized.example.com'):
+   raise AssertionError('Unauthorized SNI passed the source/policy gate')
+except (OSError,ssl.SSLError):pass
+""",
+            )
+            print(
+                self.os_name
+                + ": certificate-free UDP/TCP53, real Unbound, source-IP allowlist, quota and HTTP-panel Smart gateway passed",
+                flush=True,
             )
             node = client.post(
                 "/api/nodes", json={"name": "http-fixture-node", "host": "127.0.0.1"}

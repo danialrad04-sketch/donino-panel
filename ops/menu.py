@@ -52,6 +52,7 @@ class Screen:
             ("7", "Upgrade from a pinned release"),
             ("8", "Create first-owner setup link"),
             ("9", "Uninstall services (preserve data)"),
+            ("10", "Enable plain DNS / UDP+TCP, no DoH or certificate"),
             ("0", "Exit"),
         ):
             self.write(f"    {key}   {text}\n")
@@ -93,6 +94,42 @@ class Screen:
                 f"\n  Install {host} / {mode}. PostgreSQL, NGINX, Python and systemd are automatic.\n"
             )
             return args
+        if option == "10":
+            if not state.get("domain"):
+                raise InstallError("Install the panel first, then enable DNS")
+            import ipaddress
+
+            default = state.get("dns", {}).get("listen") or state["domain"]
+            try:
+                ipaddress.ip_address(default)
+            except ValueError:
+                default = ""
+            address = str(
+                ipaddress.ip_address(
+                    self.ask(
+                        "Assigned DNS listen IP (use server IP, not client IP)",
+                        default,
+                    )
+                )
+            )
+            if (
+                ipaddress.ip_address(address).is_unspecified
+                or ipaddress.ip_address(address).is_multicast
+            ):
+                raise InstallError("Use an explicit assigned server address")
+            self.write(
+                "\n  Plain DNS UDP/TCP53. Register each customer's source IP in the panel.\n  Existing DNS services/firewall are not replaced automatically.\n"
+            )
+            return [
+                "install",
+                "--with-dns",
+                "--dns-listen",
+                address,
+                "--dns-port",
+                "53",
+                "--dot-port",
+                "0",
+            ]
         return {
             "4": ["doctor"],
             "5": ["repair"],

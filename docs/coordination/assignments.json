@@ -13,10 +13,10 @@
     },
     "codex": {
       "task_id": "codex-v1-progress",
-      "branch": "development/mobile-navigation",
+      "branch": "development/plain-dns",
       "document": "docs/coordination/tasks/codex-v1-progress.fa.md",
       "checkpoint": "docs/coordination/checkpoints/codex.json",
-      "base_commit": "80e24d7899585b58718cca1fb5ffb7cde2e7b8ce",
+      "base_commit": "d62fc5dd01028e3e8475d101c9e9e4a57c2eac05",
       "coordinator": "codex"
     }
   }
