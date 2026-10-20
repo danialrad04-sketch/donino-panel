@@ -113,7 +113,15 @@ async function loadDNSPortal() {
   if (!response.ok) return;
   const value = await response.json();
   $("#dns-summary").textContent =
-    `${number(value.queries)} درخواست از ${value.query_limit ? number(value.query_limit) : "سهمیهٔ نامحدود"}؛ ${bytes(value.request_bytes + value.response_bytes)} بایت DNS. سیاست: ${value.policy_name}. DoH: ${value.doh_url}`;
+    `${number(value.queries)} درخواست از ${value.query_limit ? number(value.query_limit) : "سهمیهٔ نامحدود"}؛ ${bytes(value.request_bytes + value.response_bytes)} بایت DNS. سیاست: ${value.policy_name}.`;
+  const connection = value.connection || {};
+  $("#dns-server-address").value = (connection.addresses || []).join(", ");
+  $("#dns-connection-help").textContent = connection.configured
+    ? `DNS معمولی UDP/TCP، پورت ${connection.port}. IP سرور را در دستگاه وارد و IP اینترنت همین اتصال را ثبت کنید. نام کاربری، دامنه یا DoH لازم نیست.`
+    : "سرویس DNS هنوز روی سرور پیکربندی نشده است؛ از مدیر سرویس بخواهید آن را نصب کند.";
+  $("#dns-credential").hidden = !connection.doh_url;
+  if (connection.doh_url)
+    $("#dns-summary").textContent += ` DoH اختیاری: ${connection.doh_url}`;
   if (value.relay_enabled)
     $("#dns-summary").textContent +=
       ` · Smart DNS: ${bytes((value.relay_up || 0) + (value.relay_down || 0))} از ${value.relay_limit ? bytes(value.relay_limit) : "حجم نامحدود"}. برای HTTPS منتخب، IP همین اتصال را ثبت کنید.`;

@@ -8,7 +8,7 @@
 
 پنل مستقل مدیریت Xray با رابط فارسی، معماری چند نود و هویت اختصاصی دونینو.
 
-**آخرین انتشار پایدار: ۰.۲.۰ — توسعهٔ فعلی: پیش‌نمایش ۱.۰ alpha 18 (پیش‌نمایش آزمایشی).**
+**آخرین انتشار پایدار: ۰.۲.۰ — توسعهٔ فعلی: پیش‌نمایش ۱.۰ alpha 19 (پیش‌نمایش آزمایشی).**
 
 [Shadowsocks و 2022](docs/SHADOWSOCKS.fa.md) با پنج روش AEAD، رمز مستقل دستگاه، خروجی URI/Mihomo و انتقال واقعی TCP/UDP اضافه شد. تغییر کاربران روی نود دارای این نقش فعلاً با restart هسته انجام می‌شود.
 
@@ -90,7 +90,7 @@ DONINO_SECURE_COOKIE=false python -m uvicorn app.main:app --host 127.0.0.1 --por
 روی Debian 12 یا Ubuntu 24.04 با معماری amd64:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/danialrad04-sketch/donino-panel/v1.0.0-alpha.18/install.sh | sudo sh
+curl -fsSL https://raw.githubusercontent.com/danialrad04-sketch/donino-panel/v1.0.0-alpha.19/install.sh | sudo sh
 ```
 
 منوی مستقل در صفحهٔ تازهٔ ترمینال باز می‌شود: نصب HTTP با IPv4 یا دامنه،
@@ -102,7 +102,7 @@ HTTPS خودکار با Let's Encrypt، گواهی موجود، وضعیت، rep
 نصب مستقیم بدون SSL و بدون نیاز به دامنه، با IP واقعی سرور خود:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/danialrad04-sketch/donino-panel/v1.0.0-alpha.18/install.sh | sudo sh -s -- install --domain 203.0.113.10 --tls none
+curl -fsSL https://raw.githubusercontent.com/danialrad04-sketch/donino-panel/v1.0.0-alpha.19/install.sh | sudo sh -s -- install --domain 203.0.113.10 --tls none
 ```
 
 در HTTP گذرواژه و کوکی روی شبکه رمز نمی‌شوند؛ ارتباط نود دوردست با mTLS
@@ -110,6 +110,14 @@ curl -fsSL https://raw.githubusercontent.com/danialrad04-sketch/donino-panel/v1.
 انتخاب کنید؛ صدور و تمدید Certbot و تنظیم گواهی خودکار است. پورت‌های عمومی
 ۸۰ و ۴۴۳ باید در دسترس باشند. آزمون دامنهٔ عمومی/VPS هنوز انجام نشده است.
 [راهنمای نصب، حفظ اطلاعات و محدودیت‌ها](docs/INSTALL-MENU.fa.md).
+
+## DNS معمولی با IP، بدون DoH و گواهی
+
+روی پنل نصب‌شده، `sudo donino` و گزینهٔ **۱۰** را انتخاب کنید؛ IP اختصاص‌یافته
+به سرور را بدهید. سرویس UDP/TCP53 و Unbound نصب می‌شوند؛ DNS معمولی دامنه یا
+SSL پنل نمی‌خواهد. در پنل، سیاست و خدمت DNS کاربر بسازید، از «IPهای مجاز» IP
+اینترنت مشتری را ثبت کنید و IP سرور را در DNS دستگاه وارد کنید.
+[راهنمای کامل نصب، IP، سهمیه و مرز رفع تحریم](docs/PLAIN-DNS.fa.md).
 
 ## رابط گوشی
 

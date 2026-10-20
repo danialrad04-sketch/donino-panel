@@ -106,17 +106,28 @@ def dns_options(args, state):
     listen = str(
         ipaddress.ip_address(args.dns_listen or previous.get("listen", "127.0.0.1"))
     )
-    port = args.dns_port if args.dns_port is not None else previous.get("port", 5353)
+    port = (
+        args.dns_port
+        if args.dns_port is not None
+        else previous.get("port", 53 if getattr(args, "tls", None) == "none" else 5353)
+    )
+    plain = getattr(args, "tls", None) == "none"
     dot_port = (
-        args.dot_port if args.dot_port is not None else previous.get("dot_port", 8530)
+        args.dot_port
+        if args.dot_port is not None
+        else previous.get("dot_port", 0 if plain else 8530)
     )
     if (
-        not (1 <= port <= 65535 and 1 <= dot_port <= 65535)
+        not (1 <= port <= 65535 and 0 <= dot_port <= 65535)
         or port == dot_port
         or 5335 in (port, dot_port)
     ):
         raise InstallError(
-            "DNS/DoT ports must be distinct, valid and separate from upstream 5335"
+            "DNS/DoT ports must be distinct and separate from upstream 5335; DoT 0 disables TLS"
+        )
+    if plain and dot_port:
+        raise InstallError(
+            "HTTP panel supports plain DNS; set --dot-port 0 (DoT requires a verified certificate)"
         )
     return {"listen": listen, "port": port, "dot_port": dot_port}
 
@@ -131,6 +142,8 @@ def available_dns_ports(settings, *, include_upstream=True):
             else []
         ),
     ):
+        if not port:
+            continue
         family = socket.AF_INET6 if ":" in host else socket.AF_INET
         for protocol in protocols:
             with socket.socket(family, protocol) as sock:
@@ -432,6 +445,19 @@ WantedBy=timers.target
         return values
 
     def smart_environment(self, values):
+        if self.state.get("dns"):
+            settings = self.state["dns"]
+            values.update(
+                DONINO_DNS_ENABLED="1",
+                DONINO_DNS_LISTEN=settings["listen"],
+                DONINO_DNS_PORT=str(settings["port"]),
+                DONINO_DOT_PORT=str(settings["dot_port"])
+                if settings["dot_port"]
+                else "",
+                DONINO_DNS_PUBLIC_IPS=settings["listen"]
+                if settings["listen"] not in ("0.0.0.0", "::")
+                else self.state["domain"],
+            )
         if self.state.get("tunnel_monitor"):
             values["DONINO_TUNNEL_MONITOR"] = "1"
         elif self.args.without_tunnel_monitor:
@@ -442,7 +468,8 @@ WantedBy=timers.target
                 DONINO_SMART_DNS_IPS=",".join(self.state["smart_dns"]["addresses"]),
             )
         if (
-            self.state.get("smart_dns")
+            self.state.get("dns")
+            or self.state.get("smart_dns")
             or self.state.get("tunnel_monitor")
             or self.args.without_tunnel_monitor
         ):
@@ -561,7 +588,7 @@ WantedBy=timers.target
             0o600,
         )
         path = Path("/etc/nginx/conf.d/donino-panel.conf")
-        smart = bool(tls and self.state.get("smart_dns"))
+        smart = bool((tls or plain) and self.state.get("smart_dns"))
         targets = (path, smart_front.FRONT) if smart else (path,)
         previous = {p: p.read_bytes() if p.exists() else None for p in targets}
         inventory = dict(self.state.get("managed_files", {}))
@@ -569,7 +596,9 @@ WantedBy=timers.target
             if smart:
                 self.managed_write(
                     smart_front.FRONT,
-                    smart_front.config(domain, ipv6=self.state.get("ipv6", True)),
+                    smart_front.config(
+                        domain, ipv6=self.state.get("ipv6", True), plain=plain
+                    ),
                 )
             self.managed_write(
                 path,
@@ -757,13 +786,20 @@ for attempt in range(60):
 
     def dns_services(self):
         settings = self.state["dns"]
-        self.dns_certificate()
+        if settings["dot_port"]:
+            self.dns_certificate()
         values = read_env(CONFIG / "panel.env")
         values.update(
             {
                 "DONINO_DNS_LISTEN": settings["listen"],
                 "DONINO_DNS_PORT": str(settings["port"]),
-                "DONINO_DOT_PORT": str(settings["dot_port"]),
+                "DONINO_DOT_PORT": str(settings["dot_port"])
+                if settings["dot_port"]
+                else "",
+                "DONINO_DNS_ENABLED": "1",
+                "DONINO_DNS_PUBLIC_IPS": settings["listen"]
+                if settings["listen"] not in ("0.0.0.0", "::")
+                else self.state["domain"],
             }
         )
         atomic_write(
@@ -776,9 +812,13 @@ for attempt in range(60):
         )
         run(["unbound-checkconf", "/etc/unbound/donino.conf"], capture=True)
         for unit in ("donino-unbound.service", "donino-dns.service"):
-            self.managed_write(
-                "/etc/systemd/system/" + unit, (SOURCE / "deploy" / unit).read_text()
-            )
+            content = (SOURCE / "deploy" / unit).read_text()
+            if unit == "donino-dns.service" and not settings["dot_port"]:
+                content = content.replace(
+                    " --tls-cert /var/lib/donino-panel/dns-tls/current/panel.crt --tls-key /var/lib/donino-panel/dns-tls/current/panel.key",
+                    "",
+                )
+            self.managed_write("/etc/systemd/system/" + unit, content)
         run(["systemctl", "daemon-reload"])
         run(["systemctl", "enable", "--now", "donino-unbound", "donino-dns"])
         run(["systemctl", "restart", "donino-unbound", "donino-dns"])
@@ -796,16 +836,17 @@ for attempt in range(60):
                 "-c",
                 """import socket,ssl,sys,time
 import dns.message,dns.query
-context=ssl.create_default_context(cafile=sys.argv[5] or None)
+context=ssl.create_default_context(cafile=sys.argv[5] or None) if int(sys.argv[3]) else None
 for attempt in range(20):
     try:
         result=dns.query.udp(dns.message.make_query('donino.health.','A'),'127.0.0.1',port=5335,timeout=1)
         assert result.answer and result.answer[0][0].address=='127.0.0.1'
         with socket.create_connection((sys.argv[1],int(sys.argv[2])),timeout=1):
             pass
-        with socket.create_connection((sys.argv[1],int(sys.argv[3])),timeout=1) as raw:
-            with context.wrap_socket(raw,server_hostname=sys.argv[4]):
-                pass
+        if context:
+            with socket.create_connection((sys.argv[1],int(sys.argv[3])),timeout=1) as raw:
+                with context.wrap_socket(raw,server_hostname=sys.argv[4]):
+                    pass
         break
     except (OSError,dns.exception.DNSException,AssertionError):
         if attempt==19:
@@ -979,11 +1020,6 @@ for attempt in range(20):
                     "--tls none does not accept certificate, email or staging options",
                     5,
                 )
-            if smart or settings:
-                raise InstallError(
-                    "DNS and Smart DNS (DoH) require HTTPS; use --tls acme or existing",
-                    5,
-                )
         previous_mode = self.state.get("tls_mode")
         # Old HTTPS installations have no provider metadata. Absence is not
         # evidence of ACME; preserve either HTTPS certificate provider choice.
@@ -995,6 +1031,14 @@ for attempt in range(20):
                 "TLS mode cannot change on an existing installation; restore a backup on a fresh host instead",
                 5,
             )
+        if smart and self.args.tls == "none" and not self.state.get("smart_dns"):
+            with socket.socket() as listener:
+                try:
+                    listener.bind(("0.0.0.0", 443))
+                except OSError as exc:
+                    raise InstallError(
+                        "Smart DNS needs free TCP443; existing services are not replaced"
+                    ) from exc
         if smart:
             inventory = self.state.get("managed_files", {})
             for target in (smart_front.FRONT, smart_front.PANEL, smart_front.UNIT):
@@ -1006,7 +1050,7 @@ for attempt in range(20):
                     raise InstallError(
                         "Refusing to overwrite unmanaged or modified Smart DNS configuration"
                     )
-            smart_front.preflight(self.state)
+            smart_front.preflight(self.state, plain=self.args.tls == "none")
         if settings:
             inventory = self.state.get("managed_files", {})
             for path in (
@@ -1172,9 +1216,15 @@ def arguments(argv=None):
     )
     parser.add_argument("--dns-listen", help="DNS/DoT listen IP (default: loopback)")
     parser.add_argument(
-        "--dns-port", type=int, help="UDP/TCP gateway port (default: 5353)"
+        "--dns-port",
+        type=int,
+        help="UDP/TCP DNS port (HTTP default: 53; HTTPS default: 5353)",
     )
-    parser.add_argument("--dot-port", type=int, help="DoT gateway port (default: 8530)")
+    parser.add_argument(
+        "--dot-port",
+        type=int,
+        help="DoT gateway port (HTTPS default: 8530; 0 disables, HTTP default: 0)",
+    )
     parser.add_argument(
         "--with-smart-dns",
         action="store_true",

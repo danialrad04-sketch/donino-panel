@@ -575,9 +575,19 @@ def main():
                 page.locator("#edit-form [name=query_limit]").fill("500")
                 page.locator("#edit-form button[type=submit]").click()
                 page.locator("#modal-title").filter(
-                    has_text="اعتبارنامهٔ خصوصی DoH"
+                    has_text="راهنمای DNS معمولی"
                 ).wait_for()
                 page.locator("#close-modal").click()
+                assert page.locator('[data-action="dns-token"]').count() == 0
+                page.locator('#main [data-action="dns-ips"]').click()
+                page.locator('#edit-form [name=ip]').fill('203.0.113.20')
+                page.locator('#edit-form button[type=submit]').click()
+                page.locator('#modal').wait_for(state='hidden')
+                page.locator('#main [data-action="dns-ips"]').click()
+                page.get_by_text("203.0.113.20", exact=True).wait_for()
+                page.locator('[data-action="dns-remove-ip"]').click()
+                page.get_by_text('IP مجاز فعالی برای این حساب ثبت نشده است.',exact=True).wait_for()
+                page.locator('#close-modal').click()
                 exercise_smart_dns_ui(page)
                 exercise_tunnel_ui(page)
                 exercise_wireguard_ui(page)
@@ -653,6 +663,11 @@ def main():
                             "document.documentElement.scrollWidth <= innerWidth"
                         ), "Mobile Smart DNS routing form overflow"
                         page.locator("#close-modal").click()
+                        page.locator('#main [data-action="dns-ips"]').click()
+                        page.locator('#edit-form [name=ip]').wait_for()
+                        assert page.locator('#modal').bounding_box()['width'] <= 390
+                        page.locator('#edit-form [name=ip]').fill('203.0.113.21')
+                        page.locator('#close-modal').click()
                 page.locator('[data-action="mfa-setup"]').click()
                 page.locator("#edit-form [name=password]").fill(password)
                 page.locator("#edit-form button[type=submit]").click()
@@ -688,6 +703,8 @@ def main():
                 customer.locator("#portal-content").wait_for(state="visible")
                 customer.locator("#portal-dns").wait_for(state="visible")
                 assert "۵۰۰" in customer.locator("#dns-summary").inner_text()
+                assert not customer.locator("#dns-credential").is_visible()
+                assert "DoH:" not in customer.locator("#dns-summary").inner_text()
                 customer.locator("#dns-claim").click()
                 customer.locator("#dns-message").filter(
                     has_text="نشانی عمومی"

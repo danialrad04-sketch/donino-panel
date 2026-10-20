@@ -10,11 +10,12 @@ import uuid
 from urllib.parse import urlsplit
 
 from fastapi import Depends, HTTPException, Request, Response
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, IPvAnyAddress
 from starlette.concurrency import run_in_threadpool
 
 from .db import audit, database, digest, upsert
 from .deps import admin, owner, writer, one, public_base
+from .dns_endpoints import connection_info
 from .dns_policy import DNSPolicyInput
 from .dns_service import DNSService, canonical_address
 from .gaming_catalog import catalog, CatalogPolicyInput, compile_policy
@@ -35,10 +36,38 @@ class IPClaim(BaseModel):
     ttl: int = Field(default=3600, ge=60, le=86400)
 
 
+class ManagedIPClaim(IPClaim):
+    ip: IPvAnyAddress
+
+
+def claim_source(db, account_id, ip, ttl):
+    now = int(time.time())
+    db.execute("DELETE FROM dns_ip_leases WHERE expires<=?", (now,))
+    old = db.execute("SELECT * FROM dns_ip_leases WHERE ip=?", (str(ip),)).fetchone()
+    if old and old["account_id"] != account_id:
+        raise HTTPException(
+            409, "این IP به حساب دیگری متصل است؛ IP مشترک قابل تفکیک نیست"
+        )
+    count = db.execute(
+        "SELECT COUNT(*) FROM dns_ip_leases WHERE account_id=?", (account_id,)
+    ).fetchone()[0]
+    if not old and count >= 3:
+        raise HTTPException(409, "حداکثر سه IP هم‌زمان مجاز است")
+    expires = now + ttl
+    upsert(
+        db,
+        "dns_ip_leases",
+        ["ip", "account_id", "expires", "created"],
+        [str(ip), account_id, expires, old["created"] if old else now],
+        ["ip"],
+    )
+    return {"ip": str(ip), "expires": expires}
+
+
 def dns_accounts(db, uid=None):
     rows = db.execute(
         """SELECT a.id,a.user_id,a.policy_id,a.enabled,a.query_limit,a.qps,a.period_no,
-        a.created,a.updated,u.name AS user_name,p.name AS policy_name,
+        a.created,a.updated,u.name AS user_name,u.enabled AS user_enabled,u.expires AS user_expires,p.name AS policy_name,
         d.queries,d.request_bytes,d.response_bytes,d.errors,d.blocked,
         a.relay_enabled,a.relay_limit,a.relay_connections,d.relay_up,d.relay_down,d.relay_sessions,d.relay_errors
         FROM dns_accounts a JOIN users u ON u.id=a.user_id JOIN dns_policies p ON p.id=a.policy_id
@@ -67,6 +96,56 @@ def portal_account(db, token):
 def mount_dns_api(app):
     service = DNSService()
     app.state.dns_service = service
+
+    @app.get("/api/dns/runtime")
+    def runtime(request: Request, account=Depends(admin)):
+        return connection_info(public_base(request))
+
+    @app.get("/api/dns/accounts/{account_id}/ip-leases")
+    def managed_ips(account_id: str, account=Depends(admin)):
+        with database() as db:
+            one(db, "dns_accounts", account_id)
+            return [
+                dict(r)
+                for r in db.execute(
+                    "SELECT ip,expires FROM dns_ip_leases WHERE account_id=? AND expires>? ORDER BY ip",
+                    (account_id, int(time.time())),
+                )
+            ]
+
+    @app.post("/api/dns/accounts/{account_id}/ip-leases")
+    def assign_ip(account_id: str, body: ManagedIPClaim, account=Depends(writer)):
+        try:
+            ip = canonical_address(str(body.ip))
+        except ValueError as exc:
+            raise HTTPException(422, "IP مشتری معتبر نیست") from exc
+        if ip.is_unspecified or ip.is_multicast or ip.is_link_local:
+            raise HTTPException(422, "IP مشتری معتبر نیست")
+        with database() as db:
+            one(db, "dns_accounts", account_id)
+            value = claim_source(db, account_id, ip, body.ttl)
+            audit(db, account["username"], "dns.ip.assign", str(ip))
+        return value
+
+    @app.delete("/api/dns/accounts/{account_id}/ip-leases/{address}")
+    def remove_ip(account_id: str, address: str, account=Depends(writer)):
+        try:
+            address = str(canonical_address(address))
+        except ValueError as exc:
+            raise HTTPException(422, "IP مشتری معتبر نیست") from exc
+        with database() as db:
+            one(db, "dns_accounts", account_id)
+            row = db.execute(
+                "SELECT account_id FROM dns_ip_leases WHERE ip=?", (address,)
+            ).fetchone()
+            if not row or row["account_id"] != account_id:
+                raise HTTPException(404, "IP در این حساب ثبت نشده است")
+            db.execute(
+                "DELETE FROM dns_ip_leases WHERE ip=? AND account_id=?",
+                (address, account_id),
+            )
+            audit(db, account["username"], "dns.ip.remove", address)
+        return {"ok": True}
 
     @app.get("/api/dns/catalog")
     def gaming_catalog(account=Depends(admin)):
@@ -110,6 +189,7 @@ def mount_dns_api(app):
         )
         with database() as db:
             from .smart_dns import validate_routes
+
             validate_routes(db, body.rules)
             db.execute(
                 "INSERT INTO dns_policies VALUES(?,?,?,?,?,?)",
@@ -131,6 +211,7 @@ def mount_dns_api(app):
         with database() as db:
             one(db, "dns_policies", policy_id)
             from .smart_dns import validate_routes
+
             validate_routes(db, body.rules)
             db.execute(
                 "UPDATE dns_policies SET name=?,revision=?,rules=?,updated=? WHERE id=?",
@@ -281,7 +362,8 @@ def mount_dns_api(app):
                     (account["id"], int(time.time())),
                 )
             ]
-            value["doh_url"] = public_base(request) + "/dns-query"
+            value["connection"] = connection_info(public_base(request))
+            value["doh_url"] = value["connection"]["doh_url"]
             value["server_name"] = urlsplit(public_base(request)).hostname
         return value
 
@@ -307,34 +389,11 @@ def mount_dns_api(app):
             raise HTTPException(422, "نشانی عمومی اتصال قابل تشخیص نیست") from exc
         if not ip.is_global or ip.is_multicast:
             raise HTTPException(422, "برای اثبات IP باید از همان نشانی عمومی متصل شوید")
-        now = int(time.time())
         with database() as db:
             account = portal_account(db, token)
-            db.execute("DELETE FROM dns_ip_leases WHERE expires<=?", (now,))
-            old = db.execute(
-                "SELECT * FROM dns_ip_leases WHERE ip=?", (str(ip),)
-            ).fetchone()
-            if old and old["account_id"] != account["id"]:
-                raise HTTPException(
-                    409,
-                    "این IP مشترک به حساب دیگری متصل است؛ از DoH احرازشده یا تونل استفاده کنید",
-                )
-            count = db.execute(
-                "SELECT COUNT(*) FROM dns_ip_leases WHERE account_id=?",
-                (account["id"],),
-            ).fetchone()[0]
-            if not old and count >= 3:
-                raise HTTPException(409, "حداکثر سه IP هم‌زمان مجاز است")
-            expires = now + body.ttl
-            upsert(
-                db,
-                "dns_ip_leases",
-                ["ip", "account_id", "expires", "created"],
-                [str(ip), account["id"], expires, old["created"] if old else now],
-                ["ip"],
-            )
+            value = claim_source(db, account["id"], ip, body.ttl)
             audit(db, "portal:" + account["user_id"], "dns.ip.claim", str(ip))
-        return {"ip": str(ip), "expires": expires}
+        return value
 
     @app.delete("/api/portal/{token}/dns/ip-leases")
     def release_ips(token: str):
@@ -371,7 +430,12 @@ def mount_dns_api(app):
                 raise HTTPException(415, "Use application/dns-message")
             wire = await request.body()
         try:
-            output = await run_in_threadpool(service.answer, wire, token=auth[7:], source_ip=request.client.host if request.client else None)
+            output = await run_in_threadpool(
+                service.answer,
+                wire,
+                token=auth[7:],
+                source_ip=request.client.host if request.client else None,
+            )
         except ValueError as exc:
             raise HTTPException(400, str(exc)) from exc
         return Response(
