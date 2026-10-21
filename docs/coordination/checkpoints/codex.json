@@ -1,27 +1,29 @@
 {
   "task_id": "codex-v1-progress",
   "status": "in_progress",
-  "branch": "development/plain-dns",
+  "branch": "development/v1-readiness",
   "last_verified_commit": null,
   "completed": [
-    "بررسی alpha18 و doctor-dns pin a2b2ff843cb1fc8f0a5712a88149f5c379198ff1؛ اجبار گواهی در installer و نمایش صرف DoH در UI شناسایی شد.",
-    "Plain HTTP DNS نصب UDP/TCP53، DoT0، عدم خواندن/ساخت گواهی، گزینه۱۰ و حفظ DNS در reinstall/repair پیاده شد.",
-    "API runtime و leaseهای source IP مدیر با canonicalIPv4/IPv6، conflict و max3، role writer و حذف محدود به حساب؛ UI/portal IP معمولی بدون آدرس HTTP DoH و نمایش expiry کاربر آماده شد.",
-    "HTTP panel با NGINX stream443 و Smart gateway بدون گواهی پنل هم‌زیست شد؛ قرارداد TLS/auth خروجی تغییر نکرد.",
-    "Doctor fork HEAD همان a2b2ff843cb1fc8f0a5712a88149f5c379198ff1 است؛ relay/exit-nginx،dnsmasq و IP ACL/panel مطالعه و منابع/حدود در PLAIN-DNS.fa.md ثبت شدند."
+    "کاربر v1 را به امکانات فعلی محدود کرد؛ موتورهای تازه/فروش/نمایندگی برای نسخه‌های بعد و مقصد فعلی GitHub است؛ VPS ندارد.",
+    "alpha19 در main و release منتشر شده و CI مبنای 1f8f637 موفق است؛ checkpoint قبلی intact آرشیو شد.",
+    "Readiness schema/table validation و doctor امن برای SQLite خراب/قدیمی پیاده شد؛ 24 آزمون مرتبط با یک skip PostgreSQL محلی گذشت.",
+    "نسخه/نصب/UI و راهنمای محدوده/نصب/ارتقا/بازیابی برای v1.0.0 آماده شد؛ حدود اختیاری و خارجی حفظ شدند.",
+    "2026-10-21: اصلاح رزرو هم‌زمان TCP/UDP در fixture Shadowsocks، regression تداخل UDP و گزارش سانسورشدهٔ startup تکمیل شد؛ پذیرش واقعی Xray/Mihomo چهار آزمون بدون skip موفق شد.",
+    "2026-10-21: انتظار محدود10ثانیه برای پیام TLS ناهمگام gRPC در همان process کلاینت اضافه شد؛ هیچ assertion رد گواهی یا hostname حذف نشد."
   ],
   "remaining": [
-    "Exact-head final CI with18 distinct jobs/36 checks; merge and alpha19 prerelease/latest=false.",
-    "Standalone foreign exit still has its verified certificate/auth contract; no automatic domain-free IP pairing, HTTP80 CDN relay, arbitrary gameUDP/WAN/ISP or stable-v1 claim."
+    "عبور تمام 36 بررسی از18 نوع job روی commit نهایی PR31، سپس ادغام با محافظ SHA.",
+    "انتشار GitHub v1.0.0 با assets و شواهد CI و بررسی دانلود عمومی tag/manifest؛ نصب VPS کاربر به زمان تهیهٔ سرور موکول است."
   ],
-  "next_action": "Push plain-dns branch and open PR. Require all36 exact-head checks; resolve actual failures, merge tested tree and publish v1.0.0-alpha.19. README/docs reference alpha19 tag, so publish before telling user to upgrade. No user VPS/firewall was modified.",
+  "next_action": "Push final fixture/checkpoint, require all36 exact-head checks, merge PR31 using --match-head-commit, verify merged tree equals tested head, publish v1.0.0 and verify public installer/manifest/source.",
   "tests": [
-    "Local full unit regression289 tests:270 passed,19 explicit skips needing real engines/privileged PostgreSQL; final CI supplies independent fixtures.",
-    "Real UDP/TCP without TLS: unauthorized drop, IP assignment, DNS response, byte ledger, query quota, reset, IP removal and actual user expiry passed.",
-    "Native HTTP DNS53/realUnbound/no certificate/source lease/quota/Smart gateway/reinstall/repair/PTY/uninstall passed on Debian12 and Ubuntu24 in isolated Docker.",
-    "Full Chromium API-backed browser acceptance passed, including new managed-IP registration/removal and hidden HTTP DoH controls; final added mobile IP-form assertion will run in CI.",
-    "Ruff F, node syntax, source manifest and git diff whitespace checks passed."
+    "Baseline:289 tests,270 passed,19 explicit skips.",
+    "Targeted:test_ops13 (12 passed/1 PostgreSQL skip),test_native_installer11 passed.",
+    "v1 local regression:292 tests,273 passed,19 explicit skips; manifest/coordination/JS/whitespace passed.",
+    "Prior head1204abf:35/36 CI successes; one Shadowsocks client startup failed. A UDP collision was reproduced and fixture corrected; no failed result is treated as acceptance.",
+    "2026-10-21 local:real Shadowsocks suite4/4 passed in65.162s with checksum-pinned Xray26.3.27 and Mihomo1.19.32; UDP conflict regression passed; manifest/coordination/JS/whitespace passed.",
+    "Head bc3e529:34/36 CI successes; one TLS diagnostic timing failure and one fail-fast cancellation. Targeted real-Xray TLS acceptance after correction passed all4 transports with valid CA/hostname and rejected wrong CA/hostname (19.958s). Final CI must rerun on the new head."
   ],
   "blockers": [],
-  "pr_url": null
+  "pr_url": "https://github.com/danialrad04-sketch/donino-panel/pull/31"
 }

@@ -7,9 +7,11 @@ DONINO_TEST_MIHOMO. No production target, route or firewall is modified.
 import base64
 import contextlib
 import copy
+import errno
 import json
 import http.client
 import os
+import re
 import socket
 import socketserver
 import subprocess
@@ -30,10 +32,46 @@ from test_xray_transports import (
     MARKER,
     _EchoHandler,
     _LocalPanel,
-    _free_port,
     _socks_connect,
 )
 from http.server import ThreadingHTTPServer
+
+
+def reserve_tcp_udp(stack, first_port=0):
+    """Reserve both transports until the caller starts the actual engine."""
+    for attempt in range(100):
+        with contextlib.ExitStack() as candidate:
+            tcp = candidate.enter_context(socket.socket())
+            udp = candidate.enter_context(
+                socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            )
+            try:
+                tcp.bind(("127.0.0.1", first_port if attempt == 0 else 0))
+                port = tcp.getsockname()[1]
+                udp.bind(("127.0.0.1", port))
+            except OSError as error:
+                if error.errno != errno.EADDRINUSE:
+                    raise
+                continue
+            stack.enter_context(candidate.pop_all())
+            return port
+    raise RuntimeError("No available TCP/UDP fixture port")
+
+
+class PortReservationTest(unittest.TestCase):
+    def test_udp_collision_is_rejected_and_both_transports_stay_reserved(self):
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as occupied:
+            occupied.bind(("127.0.0.1", 0))
+            with contextlib.ExitStack() as reservations:
+                port = reserve_tcp_udp(reservations, occupied.getsockname()[1])
+                self.assertNotEqual(port, occupied.getsockname()[1])
+                for kind in (socket.SOCK_STREAM, socket.SOCK_DGRAM):
+                    with socket.socket(socket.AF_INET, kind) as competitor:
+                        with self.assertRaises(OSError):
+                            competitor.bind(("127.0.0.1", port))
+            for kind in (socket.SOCK_STREAM, socket.SOCK_DGRAM):
+                with socket.socket(socket.AF_INET, kind) as released:
+                    released.bind(("127.0.0.1", port))
 
 
 def decode_link(link):
@@ -63,19 +101,18 @@ class ShadowsocksFixture(PanelBase):
         super().setUp()
         self.node = self.post("/nodes", {"name": "ss-edge", "host": "127.0.0.1"}).json()
         self.endpoints = []
-        # Keep all chosen TCP ports bound until the inventory is built. Closing
+        # Keep both TCP and UDP ports bound until the inventory is built. Closing
         # each ephemeral reservation immediately lets the OS return the same
         # number for a later cipher, which correctly causes API 409.
         with contextlib.ExitStack() as reservations:
             for method in METHODS:
-                reserved = reservations.enter_context(socket.socket())
-                reserved.bind(("127.0.0.1", 0))
+                port = reserve_tcp_udp(reservations)
                 body = {
                     "node_id": self.node["id"],
                     "name": method,
                     "protocol": "shadowsocks",
                     "ss_method": method,
-                    "port": reserved.getsockname()[1],
+                    "port": port,
                 }
                 response = self.post("/inbounds", body)
                 self.assertEqual(response.status_code, 201)
@@ -228,49 +265,55 @@ class RealShadowsocksTest(ShadowsocksFixture):
     @contextlib.contextmanager
     def client_proxy(self, proxy):
         self.serial += 1
-        socks = _free_port()
-        config = {
-            "log": {"loglevel": "warning"},
-            "inbounds": [
-                {
-                    "listen": "127.0.0.1",
-                    "port": socks,
-                    "protocol": "socks",
-                    "settings": {"auth": "noauth", "udp": True},
-                }
-            ],
-            "outbounds": [
-                {
-                    "protocol": "shadowsocks",
-                    "settings": {
-                        "servers": [
-                            {
-                                "address": proxy["server"],
-                                "port": proxy["port"],
-                                "method": proxy["cipher"],
-                                "password": proxy["password"],
-                            }
-                        ]
-                    },
-                }
-            ],
-        }
-        path = Path(self.tmp.name) / f"private-client-{self.serial}.json"
-        path.touch(mode=0o600)
-        path.write_text(json.dumps(config))
-        log = path.with_suffix(".log")
-        log.touch(mode=0o600)
-        with log.open("w") as output:
-            proc = subprocess.Popen(
-                [self.agent.binary, "run", "-c", str(path)],
-                stdout=output,
-                stderr=output,
-            )
+        with contextlib.ExitStack() as reservations:
+            socks = reserve_tcp_udp(reservations)
+            config = {
+                "log": {"loglevel": "warning"},
+                "inbounds": [
+                    {
+                        "listen": "127.0.0.1",
+                        "port": socks,
+                        "protocol": "socks",
+                        "settings": {"auth": "noauth", "udp": True},
+                    }
+                ],
+                "outbounds": [
+                    {
+                        "protocol": "shadowsocks",
+                        "settings": {
+                            "servers": [
+                                {
+                                    "address": proxy["server"],
+                                    "port": proxy["port"],
+                                    "method": proxy["cipher"],
+                                    "password": proxy["password"],
+                                }
+                            ]
+                        },
+                    }
+                ],
+            }
+            path = Path(self.tmp.name) / f"private-client-{self.serial}.json"
+            path.touch(mode=0o600)
+            path.write_text(json.dumps(config))
+            log = path.with_suffix(".log")
+            log.touch(mode=0o600)
+            with log.open("w") as output:
+                reservations.close()
+                proc = subprocess.Popen(
+                    [self.agent.binary, "run", "-c", str(path)],
+                    stdout=output,
+                    stderr=output,
+                )
         try:
             deadline = time.monotonic() + 5
             while True:
                 if proc.poll() is not None:
-                    self.fail("Real Shadowsocks client failed to start")
+                    diagnostic = log.read_text(errors="replace")[-1500:]
+                    diagnostic = re.sub(
+                        r"[A-Za-z0-9+/=_-]{24,}", "[redacted]", diagnostic
+                    )
+                    self.fail("Real Shadowsocks client failed to start: " + diagnostic)
                 try:
                     with socket.create_connection(("127.0.0.1", socks), timeout=0.1):
                         break
@@ -333,7 +376,6 @@ class RealShadowsocksTest(ShadowsocksFixture):
                     body = b""
             if ok:
                 if MARKER not in body:
-                    import re
 
                     diagnostic = self.client_log_path.read_text(errors="replace")[
                         -1500:
