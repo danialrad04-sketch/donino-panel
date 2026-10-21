@@ -7,17 +7,20 @@
     "کاربر v1 را به امکانات فعلی محدود کرد؛ موتورهای تازه/فروش/نمایندگی برای نسخه‌های بعد و مقصد فعلی GitHub است؛ VPS ندارد.",
     "alpha19 در main و release منتشر شده و CI مبنای 1f8f637 موفق است؛ checkpoint قبلی intact آرشیو شد.",
     "Readiness schema/table validation و doctor امن برای SQLite خراب/قدیمی پیاده شد؛ 24 آزمون مرتبط با یک skip PostgreSQL محلی گذشت.",
-    "نسخه/نصب/UI و راهنمای محدوده/نصب/ارتقا/بازیابی برای v1.0.0 آماده شد؛ حدود اختیاری و خارجی حفظ شدند."
+    "نسخه/نصب/UI و راهنمای محدوده/نصب/ارتقا/بازیابی برای v1.0.0 آماده شد؛ حدود اختیاری و خارجی حفظ شدند.",
+    "2026-10-21: اصلاح رزرو هم‌زمان TCP/UDP در fixture Shadowsocks، regression تداخل UDP و گزارش سانسورشدهٔ startup تکمیل شد؛ پذیرش واقعی Xray/Mihomo چهار آزمون بدون skip موفق شد."
   ],
   "remaining": [
-    "انتظار تکمیل regression محلی و CI نهایی روی SHA دقیق PR؛ بررسی و ادغام فقط با عبور همه jobها.",
-    "ساخت release v1.0.0 روی commit آزموده‌شده و انتشار نصب‌کننده/manifest با لینک شواهد؛ سپس بررسی دانلود عمومی tag."
+    "عبور تمام 36 بررسی از18 نوع job روی commit نهایی PR31، سپس ادغام با محافظ SHA.",
+    "انتشار GitHub v1.0.0 با assets و شواهد CI و بررسی دانلود عمومی tag/manifest؛ نصب VPS کاربر به زمان تهیهٔ سرور موکول است."
   ],
-  "next_action": "Push development/v1-readiness, open PR, inspect all exact-head CI results, resolve failures, merge only reviewed passing head, publish v1.0.0 with documented scoped release and external limitations.",
+  "next_action": "Push final fixture/checkpoint, require all36 exact-head checks, merge PR31 using --match-head-commit, verify merged tree equals tested head, publish v1.0.0 and verify public installer/manifest/source.",
   "tests": [
     "Baseline:289 tests,270 passed,19 explicit skips.",
     "Targeted:test_ops13 (12 passed/1 PostgreSQL skip),test_native_installer11 passed.",
-    "v1 local regression:292 tests,273 passed,19 explicit skips; manifest/coordination/JS/whitespace passed."
+    "v1 local regression:292 tests,273 passed,19 explicit skips; manifest/coordination/JS/whitespace passed.",
+    "Prior head1204abf:35/36 CI successes; one Shadowsocks client startup failed. A UDP collision was reproduced and fixture corrected; no failed result is treated as acceptance.",
+    "2026-10-21 local:real Shadowsocks suite4/4 passed in65.162s with checksum-pinned Xray26.3.27 and Mihomo1.19.32; UDP conflict regression passed; manifest/coordination/JS/whitespace passed."
   ],
   "blockers": [],
   "pr_url": "https://github.com/danialrad04-sketch/donino-panel/pull/31"

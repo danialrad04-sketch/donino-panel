@@ -1,10 +1,10 @@
 {
   "format": "donino-source-v1",
   "version": "1.0.0",
-  "source_sha256": "54d348889c792d9e6bb5e04e7d10bc4dbebe05153fb7098330abb686c89db172",
+  "source_sha256": "84a01de8bf2146e2c7e50360184e6b9a58e85dc46c1fef244cd7d313f1336e0a",
   "files": {
     "AGENTS.md": "4907525526470817ad556bd755f053e4449582bf812c817e7458a2bd80bef56c",
-    "CHANGELOG.md": "2a512082148372c630f54cce0e242386360196c77426b6a86563d6fa7b58699a",
+    "CHANGELOG.md": "e7acc74db151602fea05a7ccfef029aca61a9236102f4fb192dcc8cd10e50ba1",
     "CLAUDE.md": "7ceae33fdec1ad94746db92f7e3eba672db8269d8c38e3d8cfc1515cfaf24402",
     "LICENSE": "d8a6cc31abc16b6748c7a21f21611f5a1ec33f67d22ca23d7da1c19b95496bee",
     "README.md": "721ea1c8021943fde67a63032fabe32b4db09fe9c4f8ff43c9727f2639de983c",
@@ -135,7 +135,7 @@
     "docs/coordination/README.fa.md": "c7a0dae0343dc653512ade4cf169a7becb31bd041cd913a0d9bb12b5e22dbe5e",
     "docs/coordination/assignments.json": "cce5983beb705765dd7f1652e72f21115f1f159d50e675254f334f0c73fecfb9",
     "docs/coordination/checkpoints/claude.json": "b0cf12f259c1de00c43b4d74a69a0dde438697fd269965011385ebee20ef129f",
-    "docs/coordination/checkpoints/codex.json": "3753a33a6e1c39032352bb12159916b304770796c7d2df4813752b8c8b9e0c01",
+    "docs/coordination/checkpoints/codex.json": "ac3fad77ee9635d85742919df6c2d6eaa67dda2cd62c5f7676cba09292705471",
     "docs/coordination/history/installer-alpha17.codex.json": "d8a45e317a17d04cbfc79a5f43c80777a1a0de7777a618341e69d1e7f3a03c4d",
     "docs/coordination/history/mihomo-tls-acceptance-v1.claude.json": "b0cf12f259c1de00c43b4d74a69a0dde438697fd269965011385ebee20ef129f",
     "docs/coordination/history/mobile-alpha18.codex.json": "1be515800f17c9c1cb32ee7a395477cda6179a65c280e82cc0ffa38f9b1dd489",

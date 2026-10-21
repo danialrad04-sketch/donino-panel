@@ -1,6 +1,6 @@
 # Donino releases
 
-## 1.0.0 — scoped installable release, 2026-10-20
+## 1.0.0 — scoped installable release, 2026-10-21
 
 - Release the existing control panel, account/device management, Xray profiles,
   DNS, installation and backup workflows; unimplemented roadmap engines and
@@ -11,6 +11,8 @@
 - The read-only doctor reports corrupt/incomplete SQLite databases safely and
   reports legacy schemas without querying tables introduced by later migrations.
 - Align installer defaults, UI versions and current documentation to v1.0.0.
+- Reserve TCP and UDP together in real Shadowsocks fixtures, reject an occupied
+  UDP candidate and expose sanitized startup diagnostics for client failures.
 - Optional WireGuard/OpenVPN, Smart DNS/tunnel and shared-budget limitations
   remain explicit; no user VPS, public ACME, ISP/game or capacity certification.
 
