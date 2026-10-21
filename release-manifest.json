@@ -1,7 +1,7 @@
 {
   "format": "donino-source-v1",
   "version": "1.0.0",
-  "source_sha256": "ae3c9d4da382d071b59a7703440dae77b47b5838ae483258d23f902291e8cc8c",
+  "source_sha256": "0c00df6625e13ab7fa66ab76fee61da8106802f8b21f88827289cba6485c6d14",
   "files": {
     "AGENTS.md": "4907525526470817ad556bd755f053e4449582bf812c817e7458a2bd80bef56c",
     "CHANGELOG.md": "1c8c9b1f2d4225bf7223698f32245f089cee3afcfa638140efefe81824d69fd8",
@@ -135,7 +135,7 @@
     "docs/coordination/README.fa.md": "c7a0dae0343dc653512ade4cf169a7becb31bd041cd913a0d9bb12b5e22dbe5e",
     "docs/coordination/assignments.json": "cce5983beb705765dd7f1652e72f21115f1f159d50e675254f334f0c73fecfb9",
     "docs/coordination/checkpoints/claude.json": "b0cf12f259c1de00c43b4d74a69a0dde438697fd269965011385ebee20ef129f",
-    "docs/coordination/checkpoints/codex.json": "afb0b466dd9d767aa4af5e36de61e3af43d986ce71814ebd1f91738ae456cd58",
+    "docs/coordination/checkpoints/codex.json": "4e5f5effc7f184447994fa1569aa4df6a124074e65559f5ba7fda5b9949c323e",
     "docs/coordination/history/installer-alpha17.codex.json": "d8a45e317a17d04cbfc79a5f43c80777a1a0de7777a618341e69d1e7f3a03c4d",
     "docs/coordination/history/mihomo-tls-acceptance-v1.claude.json": "b0cf12f259c1de00c43b4d74a69a0dde438697fd269965011385ebee20ef129f",
     "docs/coordination/history/mobile-alpha18.codex.json": "1be515800f17c9c1cb32ee7a395477cda6179a65c280e82cc0ffa38f9b1dd489",

@@ -1,28 +1,32 @@
 {
   "task_id": "codex-v1-progress",
-  "status": "in_progress",
+  "status": "waiting_for_review",
   "branch": "development/v1-readiness",
-  "last_verified_commit": null,
+  "last_verified_commit": "ede4351f0aba3dc7f0d64f83a98e21273b70eea2",
   "completed": [
     "کاربر v1 را به امکانات فعلی محدود کرد؛ موتورهای تازه/فروش/نمایندگی برای نسخه‌های بعد و مقصد فعلی GitHub است؛ VPS ندارد.",
     "alpha19 در main و release منتشر شده و CI مبنای 1f8f637 موفق است؛ checkpoint قبلی intact آرشیو شد.",
     "Readiness schema/table validation و doctor امن برای SQLite خراب/قدیمی پیاده شد؛ 24 آزمون مرتبط با یک skip PostgreSQL محلی گذشت.",
     "نسخه/نصب/UI و راهنمای محدوده/نصب/ارتقا/بازیابی برای v1.0.0 آماده شد؛ حدود اختیاری و خارجی حفظ شدند.",
     "2026-10-21: اصلاح رزرو هم‌زمان TCP/UDP در fixture Shadowsocks، regression تداخل UDP و گزارش سانسورشدهٔ startup تکمیل شد؛ پذیرش واقعی Xray/Mihomo چهار آزمون بدون skip موفق شد.",
-    "2026-10-21: انتظار محدود10ثانیه برای پیام TLS ناهمگام gRPC در همان process کلاینت اضافه شد؛ هیچ assertion رد گواهی یا hostname حذف نشد."
+    "2026-10-21: انتظار محدود10ثانیه برای پیام TLS ناهمگام gRPC در همان process کلاینت اضافه شد؛ هیچ assertion رد گواهی یا hostname حذف نشد.",
+    "2026-10-21: تمام36 بررسی از18 نوع job روی ede4351f0aba3dc7f0d64f83a98e21273b70eea2 موفق شدند؛ PR31 با محافظ SHA ادغام شد. درخت cdad7417e58f212cc7b453089a8dbf6cdba9ef9c دقیقاً با head آزموده‌شده یکسان است.",
+    "v1.0.0 روی cdad7417e58f212cc7b453089a8dbf6cdba9ef9c به‌صورت public/latest/prerelease=false منتشر شد: https://github.com/danialrad04-sketch/donino-panel/releases/tag/v1.0.0",
+    "نصب‌کننده و manifest عمومی tag با release commit یکسان‌اند؛ آرشیو عمومی با unpack_verified و verify_manifest باز و inventory آن تأیید شد؛ checksumها و CI URLs در یادداشت انتشار ثبت شدند.",
+    "Upload پیوست سفارشی در uploads.github.com با401 رد شد و draft ناموفق حذف شد؛ انتشار نهایی با Source code استاندارد GitHub و لینک مستقیم install.sh/manifest انجام شد. نصب روی VPS کاربر انجام نشده چون سرور ندارد."
   ],
-  "remaining": [
-    "عبور تمام 36 بررسی از18 نوع job روی commit نهایی PR31، سپس ادغام با محافظ SHA.",
-    "انتشار GitHub v1.0.0 با assets و شواهد CI و بررسی دانلود عمومی tag/manifest؛ نصب VPS کاربر به زمان تهیهٔ سرور موکول است."
-  ],
-  "next_action": "Push final fixture/checkpoint, require all36 exact-head checks, merge PR31 using --match-head-commit, verify merged tree equals tested head, publish v1.0.0 and verify public installer/manifest/source.",
+  "remaining": [],
+  "next_action": "Scoped v1 release is complete. On a future request inspect v1.0.0 and this pushed handoff; operational deployment needs the user VPS/domain. Keep optional experimental and external-acceptance limits documented. This completion checkpoint is metadata only; do not retag the immutable release.",
   "tests": [
     "Baseline:289 tests,270 passed,19 explicit skips.",
     "Targeted:test_ops13 (12 passed/1 PostgreSQL skip),test_native_installer11 passed.",
     "v1 local regression:292 tests,273 passed,19 explicit skips; manifest/coordination/JS/whitespace passed.",
     "Prior head1204abf:35/36 CI successes; one Shadowsocks client startup failed. A UDP collision was reproduced and fixture corrected; no failed result is treated as acceptance.",
     "2026-10-21 local:real Shadowsocks suite4/4 passed in65.162s with checksum-pinned Xray26.3.27 and Mihomo1.19.32; UDP conflict regression passed; manifest/coordination/JS/whitespace passed.",
-    "Head bc3e529:34/36 CI successes; one TLS diagnostic timing failure and one fail-fast cancellation. Targeted real-Xray TLS acceptance after correction passed all4 transports with valid CA/hostname and rejected wrong CA/hostname (19.958s). Final CI must rerun on the new head."
+    "Head bc3e529:34/36 CI successes; one TLS diagnostic timing failure and one fail-fast cancellation. Targeted real-Xray TLS acceptance after correction passed all4 transports with valid CA/hostname and rejected wrong CA/hostname (19.958s). Final CI must rerun on the new head.",
+    "Final head ede4351:36/36 successful checks across18 distinct jobs; Check Donino runs39580410037/39580401169 and Mihomo39580410094/39580400621.",
+    "Public v1.0.0 download:installer/manifest match release commit; all source archive inventory hashes verified; manifest source_sha256 ae3c9d4da382d071b59a7703440dae77b47b5838ae483258d23f902291e8cc8c.",
+    "Final completion handoff only:coordination/manifest/whitespace checks; release code and tag unchanged."
   ],
   "blockers": [],
   "pr_url": "https://github.com/danialrad04-sketch/donino-panel/pull/31"
