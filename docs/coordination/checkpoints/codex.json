@@ -8,7 +8,8 @@
     "alpha19 در main و release منتشر شده و CI مبنای 1f8f637 موفق است؛ checkpoint قبلی intact آرشیو شد.",
     "Readiness schema/table validation و doctor امن برای SQLite خراب/قدیمی پیاده شد؛ 24 آزمون مرتبط با یک skip PostgreSQL محلی گذشت.",
     "نسخه/نصب/UI و راهنمای محدوده/نصب/ارتقا/بازیابی برای v1.0.0 آماده شد؛ حدود اختیاری و خارجی حفظ شدند.",
-    "2026-10-21: اصلاح رزرو هم‌زمان TCP/UDP در fixture Shadowsocks، regression تداخل UDP و گزارش سانسورشدهٔ startup تکمیل شد؛ پذیرش واقعی Xray/Mihomo چهار آزمون بدون skip موفق شد."
+    "2026-10-21: اصلاح رزرو هم‌زمان TCP/UDP در fixture Shadowsocks، regression تداخل UDP و گزارش سانسورشدهٔ startup تکمیل شد؛ پذیرش واقعی Xray/Mihomo چهار آزمون بدون skip موفق شد.",
+    "2026-10-21: انتظار محدود10ثانیه برای پیام TLS ناهمگام gRPC در همان process کلاینت اضافه شد؛ هیچ assertion رد گواهی یا hostname حذف نشد."
   ],
   "remaining": [
     "عبور تمام 36 بررسی از18 نوع job روی commit نهایی PR31، سپس ادغام با محافظ SHA.",
@@ -20,7 +21,8 @@
     "Targeted:test_ops13 (12 passed/1 PostgreSQL skip),test_native_installer11 passed.",
     "v1 local regression:292 tests,273 passed,19 explicit skips; manifest/coordination/JS/whitespace passed.",
     "Prior head1204abf:35/36 CI successes; one Shadowsocks client startup failed. A UDP collision was reproduced and fixture corrected; no failed result is treated as acceptance.",
-    "2026-10-21 local:real Shadowsocks suite4/4 passed in65.162s with checksum-pinned Xray26.3.27 and Mihomo1.19.32; UDP conflict regression passed; manifest/coordination/JS/whitespace passed."
+    "2026-10-21 local:real Shadowsocks suite4/4 passed in65.162s with checksum-pinned Xray26.3.27 and Mihomo1.19.32; UDP conflict regression passed; manifest/coordination/JS/whitespace passed.",
+    "Head bc3e529:34/36 CI successes; one TLS diagnostic timing failure and one fail-fast cancellation. Targeted real-Xray TLS acceptance after correction passed all4 transports with valid CA/hostname and rejected wrong CA/hostname (19.958s). Final CI must rerun on the new head."
   ],
   "blockers": [],
   "pr_url": "https://github.com/danialrad04-sketch/donino-panel/pull/31"

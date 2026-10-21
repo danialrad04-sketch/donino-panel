@@ -13,6 +13,8 @@
 - Align installer defaults, UI versions and current documentation to v1.0.0.
 - Reserve TCP and UDP together in real Shadowsocks fixtures, reject an occupied
   UDP candidate and expose sanitized startup diagnostics for client failures.
+- Keep negative TLS clients alive for bounded asynchronous gRPC error logging;
+  rejection and certificate-error assertions remain mandatory.
 - Optional WireGuard/OpenVPN, Smart DNS/tunnel and shared-budget limitations
   remain explicit; no user VPS, public ACME, ISP/game or capacity certification.
 

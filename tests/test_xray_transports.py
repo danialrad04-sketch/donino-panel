@@ -524,7 +524,9 @@ class Lab:
         return json.loads((self.folder / "node/config.json").read_text())
 
     # traffic
-    def fetch(self, link, ca=DEFAULT_CA, server_name=None, loglevel="warning"):
+    def fetch(
+        self, link, ca=DEFAULT_CA, server_name=None, loglevel="warning", expected_log=None
+    ):
         """Start a real client from the link, fetch through it, stop it. Returns the body or b''."""
         self.clients += 1
         socks = _free_port()
@@ -564,6 +566,15 @@ class Lab:
                         body += chunk
             except OSError:
                 body = b""
+            if expected_log is not None:
+                # gRPC can close the SOCKS request before its asynchronous TLS
+                # dialer finishes logging. Keep this same client alive briefly
+                # so the negative test can verify the actual certificate error.
+                deadline = time.monotonic() + 10
+                while expected_log not in log.read_text().lower():
+                    if proc.poll() is not None or time.monotonic() >= deadline:
+                        break
+                    time.sleep(0.05)
         finally:
             proc.terminate()
             try:
@@ -943,7 +954,9 @@ class RealTransportTest(unittest.TestCase):
             for protocol, transport in NEW_TRANSPORTS:
                 link = lab.find(links, protocol, transport, default)
                 lab.expect(link, True, "valid-ca-and-hostname")
-                wrong_ca = lab.fetch(link, ca=other_ca, loglevel="info")
+                wrong_ca = lab.fetch(
+                    link, ca=other_ca, loglevel="info", expected_log="certificate"
+                )
                 self.assertNotIn(
                     MARKER, wrong_ca, f"{protocol}/{transport} accepted an untrusted CA"
                 )
@@ -960,7 +973,10 @@ class RealTransportTest(unittest.TestCase):
                     )
                     print("  Client log (wrong CA):", line.strip()[:200])
                 wrong_host = lab.fetch(
-                    link, server_name="wrong.example", loglevel="info"
+                    link,
+                    server_name="wrong.example",
+                    loglevel="info",
+                    expected_log="certificate",
                 )
                 self.assertNotIn(
                     MARKER,
